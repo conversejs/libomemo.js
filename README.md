@@ -1,12 +1,12 @@
-**Deprecation Warning**: It is recommended that the TypeScript interface of [libsignal-client](https://github.com/signalapp/libsignal-client) be used for all new applications. This library is no longer used by us or maintained.
+# lib-omemo
 
-# libsignal-protocol-javascript
+This is a work-in-progress fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
+a Signal Protocol implementation for the browser.
+
+This fork modifies it to conform to the XMPP [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html)
+specification version 0.3.0.
 
 [![Build Status](https://travis-ci.org/signalapp/libsignal-protocol-javascript.svg?branch=master)](https://travis-ci.org/signalapp/libsignal-protocol-javascript)
-
-
-Signal Protocol implementation for the browser based on
-[libsignal-protocol-java](https://github.com/signalapp/libsignal-protocol-java).
 
 ```
 /dist       # Distributables
@@ -18,6 +18,7 @@ Signal Protocol implementation for the browser based on
 ```
 
 ## Overview
+
 A ratcheting forward secrecy protocol that works in synchronous and
 asynchronous messaging environments.
 
