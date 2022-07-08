@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 // I am the worker
 this.onmessage = function(e) {

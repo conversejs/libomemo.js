@@ -2,6 +2,7 @@
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 Internal.BaseKeyType = {
@@ -13,7 +14,7 @@ Internal.ChainType = {
   RECEIVING: 2
 };
 
-Internal.SessionRecord = function() {
+Internal.SessionRecord = (function() {
     'use strict';
     var ARCHIVED_STATES_MAX_LENGTH = 40;
     var OLD_RATCHETS_MAX_LENGTH = 10;
@@ -43,6 +44,9 @@ Internal.SessionRecord = function() {
         } else if (thing === Object(thing)) {
             var obj = {};
             for (var key in thing) {
+                if (!Object.prototype.hasOwnProperty.call(thing, key)) {
+                    continue;
+                }
                 try {
                   obj[key] = ensureStringed(thing[key]);
                 } catch (ex) {
@@ -65,6 +69,7 @@ Internal.SessionRecord = function() {
     var migrations = [
       {
         version: 'v1',
+        // eslint-disable-next-line func-name-matching
         migrate: function migrateV1(data) {
           var sessions = data.sessions;
           var key;
@@ -146,6 +151,9 @@ Internal.SessionRecord = function() {
 
             var openSession;
             for (var key in sessions) {
+                if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
+                    continue;
+                }
                 if (sessions[key].indexInfo.closed == -1) {
                     openSession = sessions[key];
                 }
@@ -252,6 +260,9 @@ Internal.SessionRecord = function() {
             var oldestBaseKey, oldestSession;
             while (Object.keys(sessions).length > ARCHIVED_STATES_MAX_LENGTH) {
                 for (var key in sessions) {
+                    if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
+                        continue;
+                    }
                     var session = sessions[key];
                     if (session.indexInfo.closed > -1 && // session is closed
                         (!oldestSession || session.indexInfo.closed < oldestSession.indexInfo.closed)) {
@@ -270,4 +281,4 @@ Internal.SessionRecord = function() {
     };
 
     return SessionRecord;
-}();
+}());

@@ -2,6 +2,7 @@
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 (function() {

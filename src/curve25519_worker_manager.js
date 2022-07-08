@@ -1,4 +1,4 @@
-;(function() {
+(function() {
 
 'use strict';
 
@@ -40,6 +40,7 @@ function Curve25519Worker(url) {
 
 Curve25519Worker.prototype = {
     constructor: Curve25519Worker,
+    // eslint-disable-next-line no-unused-vars
     postMessage: function(methodName, args, onsuccess, onerror) {
         return new Promise(function(resolve, reject) {
           this.jobs[this.jobId] = { onsuccess: resolve, onerror: reject };

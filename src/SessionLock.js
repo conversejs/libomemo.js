@@ -2,7 +2,7 @@
   * jobQueue manages multiple queues indexed by device to serialize
   * session io ops on the database.
   */
-;(function() {
+(function() {
 'use strict';
 
 Internal.SessionLock = {};

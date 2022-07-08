@@ -6,6 +6,7 @@
             throw new Error("Invalid private key");
         }
     }
+
     function validatePubKeyFormat(pubKey) {
         if (pubKey === undefined || ((pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) && pubKey.byteLength != 32)) {
             throw new Error("Invalid public key");

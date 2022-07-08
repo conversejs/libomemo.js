@@ -1,3 +1,5 @@
+/* global SessionBuilder */
+
 function SessionCipher(storage, remoteAddress) {
   this.remoteAddress = remoteAddress;
   this.storage = storage;

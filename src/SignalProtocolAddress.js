@@ -32,5 +32,6 @@ libsignal.SignalProtocolAddress.fromString = function(encodedAddress) {
     throw new Error('Invalid SignalProtocolAddress string');
   }
   var parts = encodedAddress.split('.');
+  // eslint-disable-next-line radix
   return new libsignal.SignalProtocolAddress(parts[0], parseInt(parts[1]));
 };

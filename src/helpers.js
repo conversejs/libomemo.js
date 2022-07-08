@@ -2,6 +2,7 @@
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var util = (function() {
     'use strict';
 
@@ -24,10 +25,7 @@ var util = (function() {
                 }
             }
 
-            var str;
-            if (typeof thing == "string") {
-                str = thing;
-            } else {
+            if (typeof thing !== "string") {
                 throw new Error("Tried to convert a non-string of type " + typeof thing + " to an array buffer");
             }
             return new dcodeIO.ByteBuffer.wrap(thing, 'binary').toArrayBuffer();
