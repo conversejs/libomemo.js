@@ -91,7 +91,7 @@ describe('SessionBuilder', function() {
                 return builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId : 12356
-                }).then(function(e) {
+                }).then(function() {
                     assert.fail('should not be trusted');
                 }).catch(function(e) {
                     assert.strictEqual(e.message, 'Identity key changed');
@@ -184,7 +184,7 @@ describe('SessionBuilder', function() {
                 return builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId : 12356
-                }).then(function(e) {
+                }).then(function() {
                     assert.fail('should not be trusted');
                 }).catch(function(e) {
                     assert.strictEqual(e.message, 'Identity key changed');

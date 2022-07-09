@@ -34,7 +34,7 @@ SignalProtocolStore.prototype = {
     delete this.store[key];
   },
 
-  isTrustedIdentity: function(identifier, identityKey, direction) {
+  isTrustedIdentity: function(identifier, identityKey) {
     if (identifier === null || identifier === undefined) {
       throw new Error("tried to check identity key for undefined/null key");
     }
@@ -47,11 +47,13 @@ SignalProtocolStore.prototype = {
     }
     return Promise.resolve(util.toString(identityKey) === util.toString(trusted));
   },
+
   loadIdentityKey: function(identifier) {
     if (identifier === null || identifier === undefined)
       throw new Error("Tried to get identity key for undefined/null key");
     return Promise.resolve(this.get('identityKey' + identifier));
   },
+
   saveIdentity: function(identifier, identityKey) {
     if (identifier === null || identifier === undefined)
       throw new Error("Tried to put identity key for undefined/null key");

@@ -1,5 +1,3 @@
-/* global chai */
-
 describe('KeyHelper', function() {
 
     const { assert } = chai;
@@ -38,7 +36,7 @@ describe('KeyHelper', function() {
             }).then(done, done);
         });
         it('throws on bad keyId', function() {
-            assert.throws(function(done) {
+            assert.throws(function() {
                 libsignal.KeyHelper.generatePreKey('bad');
             }, TypeError);
         });
@@ -55,7 +53,7 @@ describe('KeyHelper', function() {
             }).then(done, done);
         });
         it('throws on bad keyId', function() {
-            assert.throws(function(done) {
+            assert.throws(function() {
                 libsignal.KeyHelper.generateSignedPreKey('bad');
             }, TypeError);
         });

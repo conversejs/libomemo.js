@@ -1,15 +1,16 @@
-/* global chai */
-
 window.libsignal = {};
 window.Internal = {};
 
 /*
  * global helpers for tests
  */
+
+// eslint-disable-next-line no-unused-vars
 function assertEqualArrayBuffers(ab1, ab2) {
   chai.assert.deepEqual(new Uint8Array(ab1), new Uint8Array(ab2));
 }
 
+// eslint-disable-next-line no-unused-vars
 function hexToArrayBuffer(str) {
   var ret = new ArrayBuffer(str.length / 2);
   var array = new Uint8Array(ret);
@@ -21,6 +22,7 @@ function hexToArrayBuffer(str) {
 
 var KeyHelper = libsignal.KeyHelper;
 
+// eslint-disable-next-line no-unused-vars
 function generateIdentity(store) {
     return Promise.all([
         KeyHelper.generateIdentityKeyPair(),
@@ -31,6 +33,7 @@ function generateIdentity(store) {
     });
 }
 
+// eslint-disable-next-line no-unused-vars
 function generatePreKeyBundle(store, preKeyId, signedPreKeyId) {
     return Promise.all([
         store.getIdentityKeyPair(),

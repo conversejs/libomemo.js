@@ -1,5 +1,5 @@
 /* vim: ts=4:sw=4 */
-/* global before, SignalProtocolStore */
+/* global before, SignalProtocolStore, testIdentityKeyStore, testPreKeyStore, testSignedPreKeyStore, testSessionStore */
 
 'use strict';
 

@@ -1,4 +1,4 @@
-/* global before, assertEqualArrayBuffers */
+/* global before, assertEqualArrayBuffers, SignalProtocolAddress */
 
 // eslint-disable-next-line no-unused-vars
 function testPreKeyStore(store) {
@@ -8,11 +8,13 @@ function testPreKeyStore(store) {
     var number = '+5558675309';
     var testKey;
     describe('PreKeyStore', function() {
+
         before(function(done) {
             Internal.crypto.createKeyPair().then(function(keyPair) {
                 testKey = keyPair;
             }).then(done,done);
         });
+
         describe('storePreKey', function() {
             it('stores prekeys', function(done) {
                 var address = new SignalProtocolAddress(number, 1);
@@ -24,6 +26,7 @@ function testPreKeyStore(store) {
                 }).then(done,done);
             });
         });
+
         describe('loadPreKey', function() {
             it('returns prekeys that exist', function(done) {
                 var address = new SignalProtocolAddress(number, 1);
@@ -36,11 +39,12 @@ function testPreKeyStore(store) {
             });
             it('returns undefined for prekeys that do not exist', function() {
                 var address = new SignalProtocolAddress(number, 2);
-                return store.loadPreKey(2).then(function(key) {
+                return store.loadPreKey(address.toString()).then(function(key) {
                     assert.isUndefined(key);
                 });
             });
         });
+
         describe('removePreKey', function() {
             it('deletes prekeys', function(done) {
                 var address = new SignalProtocolAddress(number, 2);

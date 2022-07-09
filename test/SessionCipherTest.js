@@ -1,5 +1,5 @@
 /* vim: ts=4:sw=4 */
-/* global before, SignalProtocolStore, generateIdentity, generatePreKeyBundle */
+/* global after, before, SignalProtocolStore, generateIdentity, generatePreKeyBundle, TestVectors, textsecure, SessionCipher */
 
 'use strict';
 describe('SessionCipher', function() {
@@ -289,7 +289,7 @@ describe('SessionCipher', function() {
     }
 
     TestVectors.forEach(function(test) {
-        describe(test.name, function(done) {
+        describe(test.name, function() {
             this.timeout(20000);
 
             var privKeyQueue = [];
@@ -305,11 +305,9 @@ describe('SessionCipher', function() {
                     if (privKeyQueue.length == 0) {
                         throw new Error('Out of private keys');
                     } else {
-                        var privKey = privKeyQueue.shift();
-                        return Internal.crypto.createKeyPair(privKey).then(function(keyPair) {
-                            var a = btoa(util.toString(keyPair.privKey));
-                            var b = btoa(util.toString(privKey));
-                            if (util.toString(keyPair.privKey) != util.toString(privKey))
+                        var newPrivKey = privKeyQueue.shift();
+                        return Internal.crypto.createKeyPair(newPrivKey).then(function(keyPair) {
+                            if (util.toString(keyPair.privKey) != util.toString(newPrivKey))
                                 throw new Error('Failed to rederive private key!');
                             else
                                 return keyPair;
@@ -325,6 +323,8 @@ describe('SessionCipher', function() {
                 }
             });
 
+            // XXX: not clear what this was used for
+            // eslint-disable-next-line no-unused-vars
             function describeStep(step) {
                 var direction = step[0];
                 var data = step[1];

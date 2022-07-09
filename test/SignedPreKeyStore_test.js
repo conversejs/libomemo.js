@@ -1,4 +1,11 @@
+/* global before, assertEqualArrayBuffers */
+
+
+// eslint-disable-next-line no-unused-vars
 function testSignedPreKeyStore(store) {
+
+    const { assert } = chai;
+
     describe('SignedPreKeyStore', function() {
         var testKey;
         before(function(done) {

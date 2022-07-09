@@ -7,7 +7,7 @@ package-lock.json: package.json
 
 .PHONY: eslint
 eslint: package-lock.json
-	$(ESLINT) src/**/*.js
+	$(ESLINT) src/**/*.js test/**/*.js
 
 
 .PHONY: check
