@@ -187,7 +187,6 @@ module.exports = function(grunt) {
   });
 
   grunt.registerTask('dev', ['connect', 'watch']);
-  grunt.registerTask('test', ['connect']);
   grunt.registerTask('default', ['concat']);
   grunt.registerTask('build', ['compile', 'concat']);
 
