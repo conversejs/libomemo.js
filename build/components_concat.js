@@ -4561,7 +4561,7 @@
      * @const
      * @expose
      */
-    ProtoBuf.VERSION = "5.0.1";
+    ProtoBuf.VERSION = "5.0.3";
 
     /**
      * Wire types.
@@ -4933,10 +4933,10 @@
         TYPEDEF: /^[a-zA-Z][a-zA-Z_0-9]*$/,
 
         // Type references
-        TYPEREF: /^(?:\.?[a-zA-Z_][a-zA-Z_0-9]*)+$/,
+        TYPEREF: /^(?:\.?[a-zA-Z_][a-zA-Z_0-9]*)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)*$/,
 
         // Fully qualified type references
-        FQTYPEREF: /^(?:\.[a-zA-Z][a-zA-Z_0-9]*)+$/,
+        FQTYPEREF: /^(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+$/,
 
         // All numbers
         NUMBER: /^-?(?:[1-9][0-9]*|0|0[xX][0-9a-fA-F]+|0[0-7]+|([0-9]*(\.[0-9]*)?([Ee][+-]?[0-9]+)?)|inf|nan)$/,
@@ -5607,7 +5607,11 @@
                 else if (token === "service")
                     this._parseService(msg);
                 else if (token === "extensions")
-                    msg["extensions"] = this._parseExtensionRanges();
+                    if (msg.hasOwnProperty("extensions")) {
+                        msg["extensions"] = msg["extensions"].concat(this._parseExtensionRanges())
+                    } else {
+                        msg["extensions"] = this._parseExtensionRanges();
+                    }
                 else if (token === "reserved")
                     this._parseIgnored(); // TODO
                 else if (token === "extend")
@@ -6213,9 +6217,11 @@
          * converted to string form if so.
          * @param {string} syntax Syntax level of defining message type, e.g.,
          * proto2 or proto3.
+         * @param {string} name Name of the field containing this element (for error
+         * messages)
          * @constructor
          */
-        var Element = function(type, resolvedType, isMapKey, syntax) {
+        var Element = function(type, resolvedType, isMapKey, syntax, name) {
 
             /**
              * Element type, as a string (e.g., int32).
@@ -6240,6 +6246,12 @@
              * @type {string}
              */
             this.syntax = syntax;
+
+            /**
+             * Name of the field containing this element (for error messages)
+             * @type {string}
+             */
+            this.name = name;
 
             if (isMapKey && ProtoBuf.MAP_KEY_TYPES.indexOf(type) < 0)
                 throw Error("Invalid map key type: " + type.name);
@@ -6289,6 +6301,10 @@
             if (typeof value === 'number')
                 return ProtoBuf.Long.fromNumber(value, unsigned || false);
             throw Error("not convertible to Long");
+        }
+
+        ElementPrototype.toString = function() {
+            return (this.name || '') + (this.isMapKey ? 'map' : 'value') + ' element';
         }
 
         /**
@@ -6965,9 +6981,11 @@
                 MessagePrototype.set = function(keyOrObj, value, noAssert) {
                     if (keyOrObj && typeof keyOrObj === 'object') {
                         noAssert = value;
-                        for (var ikey in keyOrObj)
-                            if (keyOrObj.hasOwnProperty(ikey) && typeof (value = keyOrObj[ikey]) !== 'undefined')
+                        for (var ikey in keyOrObj) {
+                            // Check if virtual oneof field - don't set these
+                            if (keyOrObj.hasOwnProperty(ikey) && typeof (value = keyOrObj[ikey]) !== 'undefined' && T._oneofsByName[ikey] === undefined)
                                 this.$set(ikey, value, noAssert);
+                        }
                         return this;
                     }
                     var field = T._fieldsByName[keyOrObj];
@@ -7431,10 +7449,11 @@
                         length = -1;
                     if (typeof buffer === 'string')
                         buffer = ByteBuffer.wrap(buffer, enc ? enc : "base64");
-                    buffer = ByteBuffer.isByteBuffer(buffer) ? buffer : ByteBuffer.wrap(buffer); // May throw
+                    else if (!ByteBuffer.isByteBuffer(buffer))
+                        buffer = ByteBuffer.wrap(buffer); // May throw
                     var le = buffer.littleEndian;
                     try {
-                        var msg = T.decode(buffer.LE());
+                        var msg = T.decode(buffer.LE(), length);
                         buffer.LE(le);
                         return msg;
                     } catch (e) {
@@ -7457,7 +7476,8 @@
                 Message.decodeDelimited = function(buffer, enc) {
                     if (typeof buffer === 'string')
                         buffer = ByteBuffer.wrap(buffer, enc ? enc : "base64");
-                    buffer = ByteBuffer.isByteBuffer(buffer) ? buffer : ByteBuffer.wrap(buffer); // May throw
+                    else if (!ByteBuffer.isByteBuffer(buffer))
+                        buffer = ByteBuffer.wrap(buffer); // May throw
                     if (buffer.remaining() < 1)
                         return null;
                     var off = buffer.offset,
@@ -7579,6 +7599,7 @@
             this._fields = [];
             this._fieldsById = {};
             this._fieldsByName = {};
+            this._oneofsByName = {};
             for (var i=0, k=this.children.length, child; i<k; i++) {
                 child = this.children[i];
                 if (child instanceof Enum || child instanceof Message || child instanceof Service) {
@@ -7590,6 +7611,9 @@
                     this._fields.push(child),
                     this._fieldsById[child.id] = child,
                     this._fieldsByName[child.name] = child;
+                else if (child instanceof Message.OneOf) {
+                    this._oneofsByName[child.name] = child;
+                }
                 else if (!(child instanceof Message.OneOf) && !(child instanceof Extension)) // Not built
                     throw Error("Illegal reflect child of "+this.toString(true)+": "+this.children[i].toString(true));
             }
@@ -7696,7 +7720,8 @@
          * @expose
          */
         MessagePrototype.decode = function(buffer, length, expectedGroupEndId) {
-            length = typeof length === 'number' ? length : -1;
+            if (typeof length !== 'number')
+                length = -1;
             var start = buffer.offset,
                 msg = new (this.clazz)(),
                 tag, wireType, id, field;
@@ -7915,9 +7940,9 @@
          * @expose
          */
         FieldPrototype.build = function() {
-            this.element = new Element(this.type, this.resolvedType, false, this.syntax);
+            this.element = new Element(this.type, this.resolvedType, false, this.syntax, this.name);
             if (this.map)
-                this.keyElement = new Element(this.keyType, undefined, true, this.syntax);
+                this.keyElement = new Element(this.keyType, undefined, true, this.syntax, this.name);
 
             // In proto3, fields do not have field presence, and every field is set to
             // its type's default value ("", 0, 0.0, or false).
@@ -9136,7 +9161,11 @@
                     root = require("path")['resolve'](root);
                 if (root.indexOf("\\") >= 0 || filename.file.indexOf("\\") >= 0)
                     delim = '\\';
-                var fname = root + delim + filename.file;
+                var fname;
+                if (ProtoBuf.Util.IS_NODE)
+                    fname = require("path")['join'](root, filename.file);
+                else
+                    fname = root + delim + filename.file;
                 if (this.files[fname] === true)
                     return this.reset();
                 this.files[fname] = true;
@@ -9182,7 +9211,10 @@
                         var importFilename = json['imports'][i];
                         if (importFilename === "google/protobuf/descriptor.proto")
                             continue; // Not needed and therefore not used
-                        importFilename = importRoot + delim + importFilename;
+                        if (ProtoBuf.Util.IS_NODE)
+                            importFilename = require("path")['join'](importRoot, importFilename);
+                        else
+                            importFilename = importRoot + delim + importFilename;
                         if (this.files[importFilename] === true)
                             continue; // Already imported
                         if (/\.proto$/i.test(importFilename) && !ProtoBuf.DotProto)       // If this is a light build
@@ -9278,6 +9310,16 @@
                     if (!Lang.TYPE.test(this.ptr.keyType))
                         throw Error("illegal key type for map field in "+this.ptr.toString(true)+": "+this.ptr.keyType);
                     this.ptr.keyType = ProtoBuf.TYPES[this.ptr.keyType];
+                }
+
+                // If it's a repeated and packable field then proto3 mandates it should be packed by
+                // default
+                if (
+                  this.ptr.syntax === 'proto3' &&
+                  this.ptr.repeated && this.ptr.options.packed === undefined &&
+                  ProtoBuf.PACKABLE_WIRE_TYPES.indexOf(this.ptr.type.wireType) !== -1
+                ) {
+                  this.ptr.options.packed = true;
                 }
 
             } else if (this.ptr instanceof ProtoBuf.Reflect.Service.Method) {
