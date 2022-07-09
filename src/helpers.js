@@ -3,7 +3,7 @@
  */
 
 // eslint-disable-next-line no-redeclare
-var util = (function() {
+var util = libsignal.util = (function() {
     'use strict';
 
     var StaticArrayBufferProto = new ArrayBuffer().__proto__;

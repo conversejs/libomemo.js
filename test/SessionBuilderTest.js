@@ -1,5 +1,10 @@
+/* global SignalProtocolStore, before */
+
 describe('SessionBuilder', function() {
     this.timeout(5000);
+
+    const { util, SignalProtocolAddress, KeyHelper } = libsignal;
+    const { generateIdentity } = KeyHelper;
 
     var ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
     var BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
@@ -10,8 +15,6 @@ describe('SessionBuilder', function() {
         var bobStore = new SignalProtocolStore();
         var bobPreKeyId = 1337;
         var bobSignedKeyId = 1;
-
-        var Curve = libsignal.Curve;
 
         before(function(done) {
             Promise.all([
