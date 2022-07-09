@@ -85,18 +85,6 @@ module.exports = function(grunt) {
         }
 
       },
-      test: {
-        src: [
-          'node_modules/mocha/mocha.js',
-          'node_modules/chai/chai.js',
-          'node_modules/jquery/dist/jquery.js',
-          'test/_test.js'
-        ],
-        dest: 'test/test.js',
-        options: {
-          banner: 'var Internal = {};\nwindow.libsignal = {};\n'
-        }
-      }
     },
     compile: {
         curve25519_compiled: {
