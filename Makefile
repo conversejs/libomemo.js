@@ -22,3 +22,8 @@ dist/libsignal-protocol.js:: node_modules
 	$(GRUNT) build
 
 dist: dist/libsignal-protocol.js
+
+build/curve25519_compiled.js:: node_modules
+	$(GRUNT) compile
+
+compile: build/curve25519_compiled.js Gruntfile.js
