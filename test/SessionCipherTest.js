@@ -1,9 +1,11 @@
-/*
- * vim: ts=4:sw=4
- */
+/* vim: ts=4:sw=4 */
+/* global before, SignalProtocolStore, generateIdentity, generatePreKeyBundle */
 
 'use strict';
 describe('SessionCipher', function() {
+
+    const { assert } = chai;
+    const { SignalProtocolAddress } = libsignal;
 
     describe('getRemoteRegistrationId', function() {
         var store = new SignalProtocolStore();
@@ -377,8 +379,6 @@ describe('SessionCipher', function() {
       var bobPreKeyId = 1337;
       var bobSignedKeyId = 1;
 
-      var Curve = libsignal.Curve;
-
       var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
       before(function(done) {
@@ -402,30 +402,28 @@ describe('SessionCipher', function() {
 
       describe("When bob's identity changes", function() {
         var messageFromBob;
-        before(function(done) {
+        before(function() {
           return bobSessionCipher.encrypt(originalMessage).then(function(ciphertext) {
             messageFromBob = ciphertext;
           }).then(function() {
             return generateIdentity(bobStore);
           }).then(function() {
             return aliceStore.saveIdentity(BOB_ADDRESS.toString(), bobStore.get('identityKey').pubKey);
-          }).then(function() {
-            done();
           });
         });
 
-        it('alice cannot encrypt with the old session', function(done) {
+        it('alice cannot encrypt with the old session', function() {
           var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
           return aliceSessionCipher.encrypt(originalMessage).catch(function(e) {
             assert.strictEqual(e.message, 'Identity key changed');
-          }).then(done,done);
+          });
         });
 
-        it('alice cannot decrypt from the old session', function(done) {
+        it('alice cannot decrypt from the old session', function() {
           var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
           return aliceSessionCipher.decryptWhisperMessage(messageFromBob.body, 'binary').catch(function(e) {
             assert.strictEqual(e.message, 'Identity key changed');
-          }).then(done, done);
+          });
         });
       });
     });

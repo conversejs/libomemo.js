@@ -26,6 +26,9 @@ module.exports = function(config) {
       'src/curve25519_worker_manager.js',
       'build/components_concat.js',
 
+      // TODO: should be removed
+      'test/temp_helpers.js',
+
       "src/Curve.js",
       "src/crypto.js",
       "src/helpers.js",
@@ -38,7 +41,19 @@ module.exports = function(config) {
       "src/SessionLock.js",
       "src/NumericFingerprint.js",
 
+      'test/KeyHelperTest.js',
+      'test/NumericFingerprintTest.js',
       'test/SessionBuilderTest.js',
+      'test/SessionCipherTest.js',
+      'test/SignalProtocolAddressTest.js',
+      'test/cryptoTest.js',
+      'test/helpersTest.js',
+
+      'test/SessionStore_test.js',
+      'test/SignedPreKeyStore_test.js',
+      'test/PreKeyStore_test.js',
+      'test/IdentityKeyStore_test.js',
+      'test/SignalProtocolStore_test.js',
     ],
 
 

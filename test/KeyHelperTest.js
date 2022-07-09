@@ -1,4 +1,9 @@
+/* global chai */
+
 describe('KeyHelper', function() {
+
+    const { assert } = chai;
+
     function validateKeyPair(keyPair) {
         assert.isDefined(keyPair.pubKey);
         assert.isDefined(keyPair.privKey);

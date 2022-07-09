@@ -1,10 +1,11 @@
-/* global SignalProtocolStore, before */
+/* global SignalProtocolStore, assertEqualArrayBuffers, before, generateIdentity, generatePreKeyBundle */
+
 
 describe('SessionBuilder', function() {
     this.timeout(5000);
 
+    const { assert } = chai;
     const { util, SignalProtocolAddress, KeyHelper } = libsignal;
-    const { generateIdentity } = KeyHelper;
 
     var ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
     var BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
@@ -34,13 +35,13 @@ describe('SessionBuilder', function() {
         var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
         var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
-        it('creates a session', function(done) {
+        it('creates a session', function() {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                 assert.isDefined(record);
                 var sessionRecord = Internal.SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
-            }).then(done, done);
+            });
         });
 
         it('the session can encrypt', function(done) {
@@ -107,8 +108,6 @@ describe('SessionBuilder', function() {
         var bobPreKeyId = 1337;
         var bobSignedKeyId = 1;
 
-        var Curve = libsignal.Curve;
-
         before(function(done) {
             Promise.all([
                 generateIdentity(aliceStore),
@@ -128,13 +127,13 @@ describe('SessionBuilder', function() {
         var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
         var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
-        it('creates a session', function(done) {
+        it('creates a session', function() {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                 assert.isDefined(record);
                 var sessionRecord = Internal.SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
-            }).then(done, done);
+            });
         });
 
         it('the session can encrypt', function(done) {

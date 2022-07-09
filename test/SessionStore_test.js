@@ -1,4 +1,10 @@
+/* global before, assertEqualArrayBuffers, SignalProtocolAddress */
+
+// eslint-disable-next-line no-unused-vars
 function testSessionStore(store) {
+
+    const { assert } = chai;
+
     describe('SessionStore', function() {
         var number = '+5558675309';
         var testRecord = 'an opaque string';
@@ -30,11 +36,11 @@ function testSessionStore(store) {
                     });
                 }).then(done,done);
             });
-            it('returns undefined for sessions that do not exist', function(done) {
-              var address = new SignalProtocolAddress(number, 2);
+            it('returns undefined for sessions that do not exist', function() {
+                var address = new SignalProtocolAddress(number, 2);
                 return store.loadSession(address.toString()).then(function(record) {
                     assert.isUndefined(record);
-                }).then(done,done);
+                });
             });
         });
         describe('removeSession', function() {
@@ -63,11 +69,14 @@ function testSessionStore(store) {
                     });
                 });
                 promise.then(function() {
-                    return store.removeAllSessions(number).then(function(record) {
+                    return store.removeAllSessions(number).then(function() {
                         return Promise.all(devices.map(store.loadSession.bind(store))).then(function(records) {
                             for (var i in records) {
+                                if (!Object.prototype.hasOwnProperty.call(records, i)) {
+                                    continue;
+                                }
                                 assert.isUndefined(records[i]);
-                            };
+                            }
                         });
                     });
                 }).then(done,done);

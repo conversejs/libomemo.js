@@ -4,6 +4,9 @@
 
 'use strict';
 describe('NumericFingerprint', function() {
+
+    const { assert } = window.chai;
+
     this.timeout(5000);
     var ALICE_IDENTITY = [
         0x05, 0x06, 0x86, 0x3b, 0xc6, 0x6d, 0x02, 0xb4, 0x0d, 0x27, 0xb8, 0xd4,

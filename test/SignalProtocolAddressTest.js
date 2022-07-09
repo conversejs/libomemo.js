@@ -1,4 +1,9 @@
+/* global SignalProtocolAddress */
+
 describe('SignalProtocolAddress', function() {
+
+  const  { assert } = chai;
+
   var name = 'name';
   var deviceId = 42;
   var string = 'name.42';
@@ -24,7 +29,7 @@ describe('SignalProtocolAddress', function() {
     it('throws on a bad inputs', function() {
       [ '', null, {} ].forEach(function(input) {
         assert.throws(function() {
-          var address = libsignal.SignalProtocolAddress.fromString(input);
+          libsignal.SignalProtocolAddress.fromString(input);
         });
       });
     });

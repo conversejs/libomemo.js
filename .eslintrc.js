@@ -6,6 +6,7 @@ module.exports = {
     "globals": {
         "Internal": true,
         "Module": true,
+        "chai": true,
         "dcodeIO": true,
         "libsignal": true,
         "parseInt": true,

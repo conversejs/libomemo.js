@@ -1,11 +1,13 @@
-/*
- * vim: ts=4:sw=4
- */
+/* vim: ts=4:sw=4 */
+/* global after, before, hexToArrayBuffer, assertEqualArrayBuffers */
 
 'use strict';
 window.assert = chai.assert;
 
 describe("Crypto", function() {
+
+    const { assert } = chai;
+
     describe("Encrypt AES-CBC", function() {
         it('works', function(done) {
             var key = hexToArrayBuffer('603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4');
@@ -43,26 +45,26 @@ describe("Crypto", function() {
 
 
     describe("HKDF", function() {
-        it('works', function(done) {
+        it('works', function() {
             // HMAC RFC5869 Test vectors
             var T1 = hexToArrayBuffer("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf");
             var T2 = hexToArrayBuffer("34007208d5b887185865");
             var IKM = new Uint8Array(new ArrayBuffer(22));
-            for (var i = 0; i < 22; i++)
+            for (let i = 0; i < 22; i++)
                 IKM[i] = 11;
 
             var salt = new Uint8Array(new ArrayBuffer(13));
-            for (var i = 0; i < 13; i++)
+            for (let i = 0; i < 13; i++)
                 salt[i] = i;
 
             var info = new Uint8Array(new ArrayBuffer(10));
-            for (var i = 0; i < 10; i++)
+            for (let i = 0; i < 10; i++)
                 info[i] = 240 + i;
 
             return Internal.crypto.HKDF(IKM.buffer, salt.buffer, info.buffer).then(function(OKM){
                 assertEqualArrayBuffers(OKM[0], T1);
                 assertEqualArrayBuffers(OKM[1].slice(0, 10), T2);
-            }).then(done).catch(done);
+            });
         });
     });
 
@@ -121,10 +123,10 @@ describe("Crypto", function() {
         var sig  = hexToArrayBuffer("2bc06c745acb8bae10fbc607ee306084d0c28e2b3bb819133392473431291fd0dfa9c7f11479996cf520730d2901267387e08d85bbf2af941590e3035a545285");
         describe("Ed25519Sign", function() {
             // Some self-generated test vectors
-            it('works', function(done) {
+            it('works', function() {
                 return Internal.crypto.Ed25519Sign(priv, msg).then(function(sigCalc) {
                     assertEqualArrayBuffers(sig, sigCalc);
-                }).then(done).catch(done);
+                });
             });
         });
 
@@ -140,8 +142,8 @@ describe("Crypto", function() {
                 }).catch(done);
             });
 
-            it("does not throw on good signature", function(done) {
-                return Internal.crypto.Ed25519Verify(pub, msg, sig).then(done).catch(done);
+            it("does not throw on good signature", function() {
+                return Internal.crypto.Ed25519Verify(pub, msg, sig);
             });
         });
     }

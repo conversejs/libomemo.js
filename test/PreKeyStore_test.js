@@ -1,4 +1,10 @@
+/* global before, assertEqualArrayBuffers */
+
+// eslint-disable-next-line no-unused-vars
 function testPreKeyStore(store) {
+
+    const { assert } = chai;
+
     var number = '+5558675309';
     var testKey;
     describe('PreKeyStore', function() {
@@ -28,11 +34,11 @@ function testPreKeyStore(store) {
                     });
                 }).then(done,done);
             });
-            it('returns undefined for prekeys that do not exist', function(done) {
+            it('returns undefined for prekeys that do not exist', function() {
                 var address = new SignalProtocolAddress(number, 2);
                 return store.loadPreKey(2).then(function(key) {
                     assert.isUndefined(key);
-                }).then(done,done);
+                });
             });
         });
         describe('removePreKey', function() {
