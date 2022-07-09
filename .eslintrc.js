@@ -8,6 +8,8 @@ module.exports = {
         "Module": true,
         "chai": true,
         "dcodeIO": true,
+        "describe": true,
+        "it": true,
         "libsignal": true,
         "parseInt": true,
         "util": true,
