@@ -1,12 +1,16 @@
 ESLINT		?= ./node_modules/.bin/eslint
 GRUNT 		?= ./node_modules/.bin/grunt
-KARMA			?= ./node_modules/.bin/karma
+KARMA		?= ./node_modules/.bin/karma
 
-package-lock.json: package.json
+.PHONY: clean
+clean:
+	rm -rf node_modules
+
+node_modules: package.json package-lock.json
 	npm i
 
 .PHONY: eslint
-eslint: package-lock.json
+eslint: node_modules
 	$(ESLINT) src/**/*.js test/**/*.js
 
 
@@ -14,7 +18,7 @@ eslint: package-lock.json
 check: eslint
 	$(KARMA) start karma.conf.js $(ARGS)
 
-dist/libsignal-protocol.js:: package-lock.json
+dist/libsignal-protocol.js:: node_modules
 	$(GRUNT) build
 
 dist: dist/libsignal-protocol.js
