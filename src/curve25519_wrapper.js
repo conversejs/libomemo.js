@@ -54,6 +54,7 @@ var Internal = Internal || {};
 
             return { pubKey: res.buffer, privKey: priv.buffer };
         },
+
         sharedSecret: function(pubKey, privKey) {
             // Where to store the result
             var sharedKey_ptr = Module._malloc(32);
@@ -82,6 +83,7 @@ var Internal = Internal || {};
 
             return res.buffer;
         },
+
         sign: function(privKey, message) {
             // Where to store the result
             var signature_ptr = Module._malloc(64);
@@ -92,7 +94,7 @@ var Internal = Internal || {};
             // Get a pointer to the message
             var message_ptr = _allocate(new Uint8Array(message));
 
-            var err = Module._curve25519_sign(signature_ptr,
+            var err = Module._xed25519_sign(signature_ptr,
                                               privateKey_ptr,
                                               message_ptr,
                                               message.byteLength);
@@ -109,6 +111,7 @@ var Internal = Internal || {};
 
             return res.buffer;
         },
+
         verify: function(pubKey, message, sig) {
             // Get a pointer to their public key
             var publicKey_ptr = _allocate(new Uint8Array(pubKey));

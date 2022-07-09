@@ -1818,7 +1818,7 @@ var Internal = Internal || {};
             // Get a pointer to the message
             var message_ptr = _allocate(new Uint8Array(message));
 
-            var err = Module._curve25519_sign(signature_ptr,
+            var err = Module._xed25519_sign(signature_ptr,
                                               privateKey_ptr,
                                               message_ptr,
                                               message.byteLength);

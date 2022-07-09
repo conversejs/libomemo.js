@@ -117,10 +117,10 @@ describe("Crypto", function() {
             });
         });
 
-        var priv = hexToArrayBuffer("48a8892cc4e49124b7b57d94fa15becfce071830d6449004685e387c62409973");
-        var pub  = hexToArrayBuffer("0555f1bfede27b6a03e0dd389478ffb01462e5c52dbbac32cf870f00af1ed9af3a");
-        var msg  = hexToArrayBuffer("617364666173646661736466");
-        var sig  = hexToArrayBuffer("2bc06c745acb8bae10fbc607ee306084d0c28e2b3bb819133392473431291fd0dfa9c7f11479996cf520730d2901267387e08d85bbf2af941590e3035a545285");
+        const priv = hexToArrayBuffer("48a8892cc4e49124b7b57d94fa15becfce071830d6449004685e387c62409973");
+        const pub = hexToArrayBuffer("0555f1bfede27b6a03e0dd389478ffb01462e5c52dbbac32cf870f00af1ed9af3a");
+        const msg = hexToArrayBuffer("617364666173646661736466");
+        const sig = hexToArrayBuffer("f029e99d7ed021db4c43a5b4fcca65fcd4984114ac6041df30c10b6f3a3eb50a84b890ca0203c90189239287144a7f234c3a369a79eca0aea94925631335e50d");
         describe("Ed25519Sign", function() {
             // Some self-generated test vectors
             it('works', function() {
