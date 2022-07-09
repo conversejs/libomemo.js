@@ -145,21 +145,6 @@ module.exports = function(grunt) {
         }
       }
     },
-    'saucelabs-mocha': {
-      all: {
-        options: {
-          urls: ['http://127.0.0.1:9998/test/index.html'],
-          build: process.env.TRAVIS_JOB_ID,
-          browsers: [
-            { browserName: 'chrome', version: '41' },
-            { platform: 'linux', browserName: 'firefox', version: '34' }
-          ],
-          testname: 'libsignal-protocol tests',
-          'max-duration': 300,
-          statusCheckAttempts: 200
-        }
-      }
-    }
   });
 
   Object.keys(grunt.config.get('pkg').devDependencies).forEach(function(key) {
@@ -203,7 +188,7 @@ module.exports = function(grunt) {
   });
 
   grunt.registerTask('dev', ['connect', 'watch']);
-  grunt.registerTask('test', ['connect', 'saucelabs-mocha']);
+  grunt.registerTask('test', ['connect']);
   grunt.registerTask('default', ['concat']);
   grunt.registerTask('build', ['compile', 'concat']);
 

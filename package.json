@@ -19,7 +19,6 @@
     "grunt-contrib-sass": "^0.8.1",
     "grunt-contrib-watch": "^0.6.1",
     "grunt-preen": "^1.0.0",
-    "grunt-saucelabs": "^8.3.3",
     "jquery": "^2.2.3",
     "mocha": "^2.4.5"
   },
