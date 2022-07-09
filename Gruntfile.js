@@ -90,7 +90,6 @@ module.exports = function(grunt) {
           'node_modules/mocha/mocha.js',
           'node_modules/chai/chai.js',
           'node_modules/jquery/dist/jquery.js',
-          'node_modules/blanket/dist/mocha/blanket_mocha.js',
           'test/_test.js'
         ],
         dest: 'test/test.js',
