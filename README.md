@@ -1,12 +1,12 @@
-# lib-omemo
+# libomemo
+
+[![CI Tests](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml)
 
 This is a work-in-progress fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
 a Signal Protocol implementation for the browser.
 
 This fork modifies it to conform to the XMPP [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html)
 specification version 0.3.0.
-
-[![Build Status](https://travis-ci.org/signalapp/libsignal-protocol-javascript.svg?branch=master)](https://travis-ci.org/signalapp/libsignal-protocol-javascript)
 
 ```
 /dist       # Distributables
