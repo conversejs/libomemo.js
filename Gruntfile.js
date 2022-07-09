@@ -155,7 +155,6 @@ module.exports = function(grunt) {
           '-Qunused-arguments',
           '-o',  outfile,
           '-Inative/ed25519/nacl_includes -Inative/ed25519 -Inative/ed25519/sha512',
-          '-s', "WASM=0",
           '-s', "EXPORTED_FUNCTIONS=\"[" + exported_functions.join(',') + "]\""];
 
       const command = [].concat('emcc', this.data.src_files, flags).join(' ');

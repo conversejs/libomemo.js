@@ -22,6 +22,7 @@ module.exports = function(config) {
       'test/testvectors.js',
       'test/InMemorySignalProtocolStore.js',
 
+      { pattern: 'build/curve25519_compiled.wasm', served: true, type: "wasm", included: false },
       'build/curve25519_concat.js',
       'src/curve25519_worker_manager.js',
       'build/components_concat.js',

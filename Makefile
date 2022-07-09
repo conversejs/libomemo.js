@@ -15,7 +15,7 @@ eslint: node_modules
 
 
 .PHONY: check
-check: eslint
+check: eslint dist
 	$(KARMA) start karma.conf.js $(ARGS)
 
 dist/libsignal-protocol.js:: node_modules
