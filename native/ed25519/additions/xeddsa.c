@@ -2,7 +2,7 @@
 #include "ge.h"
 #include "crypto_additions.h"
 #include "zeroize.h"
-#include "xeddsa.h" 
+#include "xeddsa.h"
 #include "crypto_verify_32.h"
 
 int xed25519_sign(unsigned char* signature_out,
@@ -29,7 +29,7 @@ int xed25519_sign(unsigned char* signature_out,
   sign_bit = (A[31] & 0x80) >> 7;
   memcpy(a, curve25519_privkey, 32);
   sc_neg(aneg, a);
-  sc_cmov(a, aneg, sign_bit); 
+  sc_cmov(a, aneg, sign_bit);
   A[31] &= 0x7F;
 
   /* Perform an Ed25519 signature with explicit private key */
@@ -74,7 +74,7 @@ int xed25519_verify(const unsigned char* signature,
   /* Then perform a normal Ed25519 verification, return 0 on success */
   /* The below call has a strange API: */
   /* verifybuf = R || S || message */
-  /* verifybuf2 = internal to next call gets a copy of verifybuf, S gets 
+  /* verifybuf2 = internal to next call gets a copy of verifybuf, S gets
      replaced with pubkey for hashing */
   return crypto_sign_open_modified(verifybuf2, verifybuf, 64 + msg_len, ed_pubkey);
 }

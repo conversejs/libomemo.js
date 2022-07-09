@@ -89,9 +89,10 @@ module.exports = function(grunt) {
     compile: {
         curve25519_compiled: {
             src_files: [
-              'native/ed25519/additions/*.c',
-              'native/curve25519-donna.c',
               'native/ed25519/*.c',
+              'native/ed25519/additions/*.c',
+              'native/ed25519/nacl_sha512/*.c',
+              'native/curve25519-donna.c',
               'native/ed25519/sha512/sha2big.c'
             ],
             methods: [
@@ -101,6 +102,7 @@ module.exports = function(grunt) {
               'crypto_sign_ed25519_ref10_ge_scalarmult_base',
               'sph_sha512_init',
               'malloc',
+              'free',
               'xed25519_sign',
             ]
         }
@@ -153,6 +155,7 @@ module.exports = function(grunt) {
           '-Qunused-arguments',
           '-o',  outfile,
           '-Inative/ed25519/nacl_includes -Inative/ed25519 -Inative/ed25519/sha512',
+          '-s', "WASM=0",
           '-s', "EXPORTED_FUNCTIONS=\"[" + exported_functions.join(',') + "]\""];
 
       const command = [].concat('emcc', this.data.src_files, flags).join(' ');
