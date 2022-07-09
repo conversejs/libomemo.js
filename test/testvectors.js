@@ -1,4 +1,7 @@
-var TestVectors = function() {
+/* global hexToArrayBuffer */
+
+// eslint-disable-next-line no-unused-vars
+var TestVectors = (function() {
     // We're gonna throw the finalized tests in here:
     var tests = [];
 
@@ -48,7 +51,7 @@ var TestVectors = function() {
     // Now change the order and make 2 tests out of them:
     tests[tests.length] = {name: "Standard Signal Protocol Test Vectors as Alice", vectors: TwoPartyTestVectorsAlice};
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         var test = [];
         test[0] = TwoPartyTestVectorsAlice[0];
         test[1] = TwoPartyTestVectorsAlice[1];
@@ -63,7 +66,7 @@ var TestVectors = function() {
 
         test[4] = TwoPartyTestVectorsAlice[4];
         return {name: "Shuffled Signal Protocol Test Vectors as Alice", vectors: test};
-    }();
+    }());
 
     // The common-case BOB test vectors themselves...
     var TwoPartyTestVectorsBob = [
@@ -118,7 +121,7 @@ var TestVectors = function() {
         return v;
     }
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = TwoPartyTestVectorsBobCopy();
         var orig = TwoPartyTestVectorsBob;
@@ -135,9 +138,9 @@ var TestVectors = function() {
 
         v[1][1] = { message: orig[0][1].message, type: orig[0][1].type, expectedSmsText: orig[0][1].expectedSmsText };
         return {name: "Shuffled Signal Protocol Test Vectors as Bob I", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = TwoPartyTestVectorsBobCopy();
         var orig = TwoPartyTestVectorsBob;
@@ -147,9 +150,9 @@ var TestVectors = function() {
         v[2] = orig[1];
 
         return {name: "Shuffled Signal Protocol Test Vectors as Bob II", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = TwoPartyTestVectorsBobCopy();
         var orig = TwoPartyTestVectorsBob;
@@ -161,9 +164,9 @@ var TestVectors = function() {
         v[3] = orig[4];
 
         return {name: "Shuffled Signal Protocol Test Vectors as Bob III", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = TwoPartyTestVectorsBobCopy();
         var orig = TwoPartyTestVectorsBob;
@@ -188,7 +191,7 @@ var TestVectors = function() {
         v[3] = orig[4];
 
         return {name: "Shuffled Signal Protocol Test Vectors as Bob IV", vectors: v};
-    }();
+    }());
 
     // Test vectors around an end-session
     var EndSessionTestVectorsBob = [
@@ -231,7 +234,7 @@ var TestVectors = function() {
         ["receiveMessage",
             {
                 message: hexToArrayBuffer('3308dafeea011221051511a0c7e3fc2fd58e9fcd72649f2ca4f2efc894272e72b2e300b94b0d642e151a21050b2fe13f294b58baeaba8d43521f9dd4df9fb235a8bd860693dbf60e8f48301022d301330a2105814aa31d8ea5d547173dbf78d064157d72af63bf0a3f0afc141f1b020e7a2f481001180022a001daabfa33a904c2da99c91e81552a0e1951313a166f56a7533a57ad6f90938fb852ed0363a38ed21aa6252ed6f0d34264b8865eb0e9000b5c3bddbce025517f74de76e27116fa92d3f79fc65e87fa1503dc13bef6d3d9960e2f2f2cd0d1efe519d9b0409d30b1eeb32bbaf43c6c7abf8dcdd654f605ad838889ee426f244fa5ba054a10b3be5d2337de6ed92ae963a4386ddf462b8943f38bdbbf19aea1a05c0d8b71e50d8abd1804288c243095b4ff04'),
-				type: 3,
+                type: 3,
                 expectedSmsText: "D",
             }],
         ["sendMessage",
@@ -255,10 +258,9 @@ var TestVectors = function() {
         return v;
     }
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
 
         // Swap message 2 and 3, moving 2 after its session close
         var tmp = v[2][1];
@@ -266,12 +268,11 @@ var TestVectors = function() {
         v[1][1] = tmp;
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob I", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
 
         // Swap message 2 and 4, moving 2 after the new session
         var tmp = v[3][1];
@@ -279,12 +280,11 @@ var TestVectors = function() {
         v[1][1] = tmp;
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob II", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
 
         // Swap message 3 and 4, starting a new session before closing the last
         var tmp = v[3][1];
@@ -292,20 +292,19 @@ var TestVectors = function() {
         v[2][1] = tmp;
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob III", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
 
         // Swap message 3 and 4, starting a new session before closing the last
-        var tmp = v[3][1];
+        let tmp = v[3][1];
         v[3][1] = v[2][1];
         v[2][1] = tmp;
 
         // Swap message 4 and 5, continuing the new session before closing the last
-        var tmp = v[4][1];
+        tmp = v[4][1];
         v[4][1] = v[3][1];
         v[3][1] = tmp;
 
@@ -315,9 +314,9 @@ var TestVectors = function() {
         v[5] = ["receiveMessage", tmp];
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob IV", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
         var orig = EndSessionTestVectorsBob;
@@ -335,9 +334,9 @@ var TestVectors = function() {
         v[2][1] = { message: tmp.message, type: tmp.type, expectedSmsText: tmp.expectedSmsText };
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob V", vectors: v};
-    }();
+    }());
 
-    tests[tests.length] = function() {
+    tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
         var v = EndSessionTestVectorsBobCopy();
         var orig = EndSessionTestVectorsBob;
@@ -360,7 +359,7 @@ var TestVectors = function() {
         v[2][1] = tmp;
 
         return {name: "Shuffled End Session Signal Protocol Test Vectors as Bob VI", vectors: v};
-    }();
+    }());
 
     // Nearly same as above except as Alice
     var EndSessionTestVectorsAlice = [
@@ -488,4 +487,4 @@ var TestVectors = function() {
     //TODO: Sender changes identity key?
 
     return tests;
-}();
+}());
