@@ -20,9 +20,5 @@
     "grunt-preen": "^1.0.0",
     "jquery": "^2.2.3",
     "mocha": "^2.4.5"
-  },
-  "scripts": {
-    "test": "grunt test",
-    "lint": "grunt jshint"
   }
 }
