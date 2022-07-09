@@ -25134,6 +25134,8 @@ run();
 
 
 /* vim: ts=4:sw=4:expandtab */
+
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 (function() {
@@ -25174,6 +25176,9 @@ var Internal = Internal || {};
             var err = Module._curve25519_donna(publicKey_ptr,
                                             privateKey_ptr,
                                             basepoint_ptr);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(32);
             _readBytes(publicKey_ptr, 32, res);
@@ -25199,6 +25204,9 @@ var Internal = Internal || {};
             var err = Module._curve25519_donna(sharedKey_ptr,
                                                privateKey_ptr,
                                                basepoint_ptr);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(32);
             _readBytes(sharedKey_ptr, 32, res);
@@ -25223,6 +25231,9 @@ var Internal = Internal || {};
                                               privateKey_ptr,
                                               message_ptr,
                                               message.byteLength);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(64);
             _readBytes(signature_ptr, 64, res);
@@ -25285,6 +25296,7 @@ var Internal = Internal || {};
 
 })();
 
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 // I am the worker
 this.onmessage = function(e) {

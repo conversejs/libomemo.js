@@ -33,9 +33,11 @@ Internal.protoText = function() {
 	return protoText;
 }();
 /* vim: ts=4:sw=4 */
+
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
-Internal.protobuf = function() {
+Internal.protobuf = (function() {
     'use strict';
 
     function loadProtoBufs(filename) {
@@ -48,4 +50,4 @@ Internal.protobuf = function() {
         WhisperMessage            : protocolMessages.WhisperMessage,
         PreKeyWhisperMessage      : protocolMessages.PreKeyWhisperMessage
     };
-}();
+}());

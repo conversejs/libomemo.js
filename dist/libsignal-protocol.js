@@ -25134,6 +25134,8 @@ run();
 
 
 /* vim: ts=4:sw=4:expandtab */
+
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 (function() {
@@ -25174,6 +25176,9 @@ var Internal = Internal || {};
             var err = Module._curve25519_donna(publicKey_ptr,
                                             privateKey_ptr,
                                             basepoint_ptr);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(32);
             _readBytes(publicKey_ptr, 32, res);
@@ -25199,6 +25204,9 @@ var Internal = Internal || {};
             var err = Module._curve25519_donna(sharedKey_ptr,
                                                privateKey_ptr,
                                                basepoint_ptr);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(32);
             _readBytes(sharedKey_ptr, 32, res);
@@ -25223,6 +25231,9 @@ var Internal = Internal || {};
                                               privateKey_ptr,
                                               message_ptr,
                                               message.byteLength);
+            if (err) {
+                console.log(err);
+            }
 
             var res = new Uint8Array(64);
             _readBytes(signature_ptr, 64, res);
@@ -25285,7 +25296,7 @@ var Internal = Internal || {};
 
 })();
 
-;(function() {
+(function() {
 
 'use strict';
 
@@ -25327,6 +25338,7 @@ function Curve25519Worker(url) {
 
 Curve25519Worker.prototype = {
     constructor: Curve25519Worker,
+    // eslint-disable-next-line no-unused-vars
     postMessage: function(methodName, args, onsuccess, onerror) {
         return new Promise(function(resolve, reject) {
           this.jobs[this.jobId] = { onsuccess: resolve, onerror: reject };
@@ -35086,6 +35098,7 @@ Curve25519Worker.prototype = {
             throw new Error("Invalid private key");
         }
     }
+
     function validatePubKeyFormat(pubKey) {
         if (pubKey === undefined || ((pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) && pubKey.byteLength != 32)) {
             throw new Error("Invalid public key");
@@ -35192,6 +35205,7 @@ Curve25519Worker.prototype = {
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 (function() {
@@ -35326,6 +35340,7 @@ var Internal = Internal || {};
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var util = (function() {
     'use strict';
 
@@ -35348,10 +35363,7 @@ var util = (function() {
                 }
             }
 
-            var str;
-            if (typeof thing == "string") {
-                str = thing;
-            } else {
+            if (typeof thing !== "string") {
                 throw new Error("Tried to convert a non-string of type " + typeof thing + " to an array buffer");
             }
             return new dcodeIO.ByteBuffer.wrap(thing, 'binary').toArrayBuffer();
@@ -35458,9 +35470,11 @@ Internal.protoText = function() {
 	return protoText;
 }();
 /* vim: ts=4:sw=4 */
+
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
-Internal.protobuf = function() {
+Internal.protobuf = (function() {
     'use strict';
 
     function loadProtoBufs(filename) {
@@ -35473,12 +35487,13 @@ Internal.protobuf = function() {
         WhisperMessage            : protocolMessages.WhisperMessage,
         PreKeyWhisperMessage      : protocolMessages.PreKeyWhisperMessage
     };
-}();
+}());
 
 /*
  * vim: ts=4:sw=4
  */
 
+// eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
 Internal.BaseKeyType = {
@@ -35490,7 +35505,7 @@ Internal.ChainType = {
   RECEIVING: 2
 };
 
-Internal.SessionRecord = function() {
+Internal.SessionRecord = (function() {
     'use strict';
     var ARCHIVED_STATES_MAX_LENGTH = 40;
     var OLD_RATCHETS_MAX_LENGTH = 10;
@@ -35520,6 +35535,9 @@ Internal.SessionRecord = function() {
         } else if (thing === Object(thing)) {
             var obj = {};
             for (var key in thing) {
+                if (!Object.prototype.hasOwnProperty.call(thing, key)) {
+                    continue;
+                }
                 try {
                   obj[key] = ensureStringed(thing[key]);
                 } catch (ex) {
@@ -35542,6 +35560,7 @@ Internal.SessionRecord = function() {
     var migrations = [
       {
         version: 'v1',
+        // eslint-disable-next-line func-name-matching
         migrate: function migrateV1(data) {
           var sessions = data.sessions;
           var key;
@@ -35623,6 +35642,9 @@ Internal.SessionRecord = function() {
 
             var openSession;
             for (var key in sessions) {
+                if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
+                    continue;
+                }
                 if (sessions[key].indexInfo.closed == -1) {
                     openSession = sessions[key];
                 }
@@ -35729,6 +35751,9 @@ Internal.SessionRecord = function() {
             var oldestBaseKey, oldestSession;
             while (Object.keys(sessions).length > ARCHIVED_STATES_MAX_LENGTH) {
                 for (var key in sessions) {
+                    if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
+                        continue;
+                    }
                     var session = sessions[key];
                     if (session.indexInfo.closed > -1 && // session is closed
                         (!oldestSession || session.indexInfo.closed < oldestSession.indexInfo.closed)) {
@@ -35747,7 +35772,7 @@ Internal.SessionRecord = function() {
     };
 
     return SessionRecord;
-}();
+}());
 
 function SignalProtocolAddress(name, deviceId) {
   this.name = name;
@@ -35783,6 +35808,7 @@ libsignal.SignalProtocolAddress.fromString = function(encodedAddress) {
     throw new Error('Invalid SignalProtocolAddress string');
   }
   var parts = encodedAddress.split('.');
+  // eslint-disable-next-line radix
   return new libsignal.SignalProtocolAddress(parts[0], parseInt(parts[1]));
 };
 
@@ -36013,6 +36039,8 @@ libsignal.SessionBuilder = function (storage, remoteAddress) {
   this.processPreKey = builder.processPreKey.bind(builder);
   this.processV3 = builder.processV3.bind(builder);
 };
+
+/* global SessionBuilder */
 
 function SessionCipher(storage, remoteAddress) {
   this.remoteAddress = remoteAddress;
@@ -36446,7 +36474,7 @@ libsignal.SessionCipher = function(storage, remoteAddress) {
   * jobQueue manages multiple queues indexed by device to serialize
   * session io ops on the database.
   */
-;(function() {
+(function() {
 'use strict';
 
 Internal.SessionLock = {};
