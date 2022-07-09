@@ -100,7 +100,8 @@ module.exports = function(grunt) {
               'curve25519_verify',
               'crypto_sign_ed25519_ref10_ge_scalarmult_base',
               'sph_sha512_init',
-              'malloc'
+              'malloc',
+              'xed25519_sign',
             ]
         }
     },
@@ -147,13 +148,14 @@ module.exports = function(grunt) {
       var exported_functions = this.data.methods.map(function(name) {
         return "'_" + name + "'";
       });
-      var flags = [
+      const flags = [
           '-O1',
           '-Qunused-arguments',
           '-o',  outfile,
           '-Inative/ed25519/nacl_includes -Inative/ed25519 -Inative/ed25519/sha512',
           '-s', "EXPORTED_FUNCTIONS=\"[" + exported_functions.join(',') + "]\""];
-      var command = [].concat('emcc', this.data.src_files, flags).join(' ');
+
+      const command = [].concat('emcc', this.data.src_files, flags).join(' ');
       grunt.log.writeln('Compiling via emscripten to ' + outfile);
 
       var exitCode = 0;

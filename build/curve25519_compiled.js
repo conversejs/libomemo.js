@@ -1567,6 +1567,16 @@ var _sph_sha512_init = Module["_sph_sha512_init"] = function() {
 };
 
 /** @type {function(...*):?} */
+var _xed25519_sign = Module["_xed25519_sign"] = function() {
+  return (_xed25519_sign = Module["_xed25519_sign"] = Module["asm"]["xed25519_sign"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
+var _malloc = Module["_malloc"] = function() {
+  return (_malloc = Module["_malloc"] = Module["asm"]["malloc"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
 var _curve25519_donna = Module["_curve25519_donna"] = function() {
   return (_curve25519_donna = Module["_curve25519_donna"] = Module["asm"]["curve25519_donna"]).apply(null, arguments);
 };
@@ -1589,11 +1599,6 @@ var stackRestore = Module["stackRestore"] = function() {
 /** @type {function(...*):?} */
 var stackAlloc = Module["stackAlloc"] = function() {
   return (stackAlloc = Module["stackAlloc"] = Module["asm"]["stackAlloc"]).apply(null, arguments);
-};
-
-/** @type {function(...*):?} */
-var _malloc = Module["_malloc"] = function() {
-  return (_malloc = Module["_malloc"] = Module["asm"]["malloc"]).apply(null, arguments);
 };
 
 
