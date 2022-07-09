@@ -6,7 +6,7 @@ This is a work-in-progress fork of [libsignal-protocol-javascript](https://githu
 a Signal Protocol implementation for the browser.
 
 This fork modifies it to conform to the XMPP [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html)
-specification version 0.3.0.
+specification version 0.8.3.
 
 ```
 /dist       # Distributables
