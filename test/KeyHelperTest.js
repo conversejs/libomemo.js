@@ -20,7 +20,7 @@ describe('KeyHelper', function() {
 
     describe('generateRegistrationId', function() {
         it('generates a 14-bit integer', function() {
-            var registrationId = libsignal.KeyHelper.generateRegistrationId();
+            const registrationId = libsignal.KeyHelper.generateRegistrationId();
             assert.isNumber(registrationId);
             assert(registrationId >= 0);
             assert(registrationId < 16384);

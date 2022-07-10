@@ -11,7 +11,7 @@ node_modules: package.json package-lock.json
 
 .PHONY: eslint
 eslint: node_modules
-	$(ESLINT) src/**/*.js test/**/*.js
+	$(ESLINT) src/**/*.js test/**/*.js Gruntfile.js
 
 
 .PHONY: check

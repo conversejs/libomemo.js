@@ -1,15 +1,15 @@
 /* global before, assertEqualArrayBuffers */
 
-
 // eslint-disable-next-line no-unused-vars
 function testIdentityKeyStore(store, registrationId, identityKey) {
 
     const { assert } = chai;
 
     describe('IdentityKeyStore', function() {
-        var number = '+5558675309';
-        var address = new libsignal.SignalProtocolAddress('+5558675309', 1);
-        var testKey;
+        const number = '+5558675309';
+        const address = new libsignal.SignalProtocolAddress('+5558675309', 1);
+        let testKey;
+
         before(function(done) {
             Internal.crypto.createKeyPair().then(function(keyPair) {
                 testKey = keyPair;
@@ -23,6 +23,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 }).then(done, done);
             });
         });
+
         describe('getIdentityKeyPair', function() {
             it('retrieves my identity key', function(done) {
                 store.getIdentityKeyPair().then(function(key) {
@@ -31,6 +32,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 }).then(done,done);
             });
         });
+
         describe('saveIdentity', function() {
             it('stores identity keys', function(done) {
                 store.saveIdentity(address.toString(), testKey.pubKey).then(function() {
@@ -40,6 +42,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 }).then(done,done);
             });
         });
+
         describe('isTrustedIdentity', function() {
             it('returns true if a key is trusted', function(done) {
                 store.saveIdentity(address.toString(), testKey.pubKey).then(function() {
@@ -53,7 +56,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 });
             });
             it('returns false if a key is untrusted', function(done) {
-                var newIdentity = libsignal.crypto.getRandomBytes(33);
+                const newIdentity = libsignal.crypto.getRandomBytes(33);
                 store.saveIdentity(address.toString(), testKey.pubKey).then(function() {
                     store.isTrustedIdentity(number, newIdentity).then(function(trusted) {
                         if (trusted) {

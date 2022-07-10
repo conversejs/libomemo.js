@@ -8,7 +8,7 @@ var Internal = Internal || {};
 (function() {
     'use strict';
 
-    var crypto = window.crypto;
+    const crypto = window.crypto;
 
     if (!crypto || !crypto.subtle || typeof crypto.getRandomValues !== 'function') {
         throw new Error('WebCrypto not found');
@@ -16,7 +16,7 @@ var Internal = Internal || {};
 
     Internal.crypto = {
         getRandomBytes: function(size) {
-            var array = new Uint8Array(size);
+            const array = new Uint8Array(size);
             crypto.getRandomValues(array);
             return array.buffer;
         },
@@ -44,8 +44,8 @@ var Internal = Internal || {};
             // Specific implementation of RFC 5869 that only returns the first 3 32-byte chunks
             // TODO: We dont always need the third chunk, we might skip it
             return Internal.crypto.sign(salt, input).then(function(PRK) {
-                var infoBuffer = new ArrayBuffer(info.byteLength + 1 + 32);
-                var infoArray = new Uint8Array(infoBuffer);
+                const infoBuffer = new ArrayBuffer(info.byteLength + 1 + 32);
+                const infoArray = new Uint8Array(infoBuffer);
                 infoArray.set(new Uint8Array(info), 32);
                 infoArray[infoArray.length - 1] = 1;
                 return Internal.crypto.sign(PRK, infoBuffer.slice(32)).then(function(T1) {
@@ -95,10 +95,10 @@ var Internal = Internal || {};
             if (mac.byteLength != length  || calculated_mac.byteLength < length) {
                 throw new Error("Bad MAC length");
             }
-            var a = new Uint8Array(calculated_mac);
-            var b = new Uint8Array(mac);
-            var result = 0;
-            for (var i=0; i < mac.byteLength; ++i) {
+            const a = new Uint8Array(calculated_mac);
+            const b = new Uint8Array(mac);
+            let result = 0;
+            for (let i=0; i < mac.byteLength; ++i) {
                 result = result | (a[i] ^ b[i]);
             }
             if (result !== 0) {

@@ -21,8 +21,8 @@
 
     function processKeys(raw_keys) {
         // prepend version byte
-        var origPub = new Uint8Array(raw_keys.pubKey);
-        var pub = new Uint8Array(33);
+        const origPub = new Uint8Array(raw_keys.pubKey);
+        const pub = new Uint8Array(33);
         pub.set(origPub, 1);
         pub[0] = 5;
 
@@ -34,7 +34,7 @@
             // Curve 25519 crypto
             createKeyPair: function(privKey) {
                 validatePrivKey(privKey);
-                var raw_keys = curve25519.keyPair(privKey);
+                const raw_keys = curve25519.keyPair(privKey);
                 if (raw_keys instanceof Promise) {
                     return raw_keys.then(processKeys);
                 } else {
@@ -86,7 +86,7 @@
     function wrapCurve(curve) {
         return {
             generateKeyPair: function() {
-                var privKey = Internal.crypto.getRandomBytes(32);
+                const privKey = Internal.crypto.getRandomBytes(32);
                 return curve.createKeyPair(privKey);
             },
             createKeyPair: function(privKey) {

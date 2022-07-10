@@ -1,37 +1,39 @@
-function SignalProtocolAddress(name, deviceId) {
-  this.name = name;
-  this.deviceId = deviceId;
-}
 
-SignalProtocolAddress.prototype = {
-  getName: function() {
+class SignalProtocolAddress {
+
+  constructor (name, deviceId) {
+    this.name = name;
+    this.deviceId = deviceId;
+  }
+
+  getName () {
     return this.name;
-  },
-  getDeviceId: function() {
+  }
+
+  getDeviceId () {
     return this.deviceId;
-  },
-  toString: function() {
+  }
+
+  toString () {
     return this.name + '.' + this.deviceId;
-  },
-  equals: function(other) {
-    if (!(other instanceof SignalProtocolAddress)) { return false; }
+  }
+
+  equals (other) {
+    if (!(other instanceof SignalProtocolAddress)) {
+      return false;
+    }
     return other.name === this.name && other.deviceId === this.deviceId;
   }
-};
+}
 
-libsignal.SignalProtocolAddress = function(name, deviceId) {
-  var address = new SignalProtocolAddress(name, deviceId);
 
-  ['getName', 'getDeviceId', 'toString', 'equals'].forEach(function(method) {
-    this[method] = address[method].bind(address);
-  }.bind(this));
-};
+libsignal.SignalProtocolAddress = SignalProtocolAddress;
 
-libsignal.SignalProtocolAddress.fromString = function(encodedAddress) {
+libsignal.SignalProtocolAddress.fromString = function (encodedAddress) {
   if (typeof encodedAddress !== 'string' || !encodedAddress.match(/.*\.\d+/)) {
     throw new Error('Invalid SignalProtocolAddress string');
   }
-  var parts = encodedAddress.split('.');
+  const parts = encodedAddress.split('.');
   // eslint-disable-next-line radix
   return new libsignal.SignalProtocolAddress(parts[0], parseInt(parts[1]));
 };

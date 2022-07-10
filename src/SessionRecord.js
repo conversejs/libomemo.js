@@ -16,13 +16,13 @@ Internal.ChainType = {
 
 Internal.SessionRecord = (function() {
     'use strict';
-    var ARCHIVED_STATES_MAX_LENGTH = 40;
-    var OLD_RATCHETS_MAX_LENGTH = 10;
-    var SESSION_RECORD_VERSION = 'v1';
+    const ARCHIVED_STATES_MAX_LENGTH = 40;
+    const OLD_RATCHETS_MAX_LENGTH = 10;
+    const SESSION_RECORD_VERSION = 'v1';
 
-    var StaticByteBufferProto = new dcodeIO.ByteBuffer().__proto__;
-    var StaticArrayBufferProto = new ArrayBuffer().__proto__;
-    var StaticUint8ArrayProto = new Uint8Array().__proto__;
+    const StaticByteBufferProto = new dcodeIO.ByteBuffer().__proto__;
+    const StaticArrayBufferProto = new ArrayBuffer().__proto__;
+    const StaticUint8ArrayProto = new Uint8Array().__proto__;
 
     function isStringable(thing) {
         return (thing === Object(thing) &&
@@ -36,14 +36,14 @@ Internal.SessionRecord = (function() {
         } else if (isStringable(thing)) {
             return util.toString(thing);
         } else if (thing instanceof Array) {
-            var array = [];
-            for (var i = 0; i < thing.length; i++) {
+            const array = [];
+            for (let i = 0; i < thing.length; i++) {
                 array[i] = ensureStringed(thing[i]);
             }
             return array;
         } else if (thing === Object(thing)) {
-            var obj = {};
-            for (var key in thing) {
+            const obj = {};
+            for (let key in thing) {
                 if (!Object.prototype.hasOwnProperty.call(thing, key)) {
                     continue;
                 }
@@ -66,13 +66,13 @@ Internal.SessionRecord = (function() {
         return JSON.stringify(ensureStringed(thing)); //TODO: jquery???
     }
 
-    var migrations = [
+    const migrations = [
       {
         version: 'v1',
         // eslint-disable-next-line func-name-matching
         migrate: function migrateV1(data) {
-          var sessions = data.sessions;
-          var key;
+          const sessions = data.sessions;
+          let key;
           if (data.registrationId) {
               for (key in sessions) {
                   if (!sessions[key].registrationId) {
@@ -93,8 +93,8 @@ Internal.SessionRecord = (function() {
     ];
 
     function migrate(data) {
-      var run = (data.version === undefined);
-      for (var i=0; i < migrations.length; ++i) {
+      let run = (data.version === undefined);
+      for (let i=0; i < migrations.length; ++i) {
         if (run) {
           migrations[i].migrate(data);
         } else if (migrations[i].version === data.version) {
@@ -106,16 +106,16 @@ Internal.SessionRecord = (function() {
       }
     }
 
-    var SessionRecord = function() {
+    const SessionRecord = function() {
         this.sessions = {};
         this.version = SESSION_RECORD_VERSION;
     };
 
     SessionRecord.deserialize = function(serialized) {
-        var data = JSON.parse(serialized);
+        const data = JSON.parse(serialized);
         if (data.version !== SESSION_RECORD_VERSION) { migrate(data); }
 
-        var record = new SessionRecord();
+        const record = new SessionRecord();
         record.sessions = data.sessions;
         if (record.sessions === undefined || record.sessions === null || typeof record.sessions !== "object" || Array.isArray(record.sessions)) {
             throw new Error("Error deserializing SessionRecord");
@@ -131,12 +131,12 @@ Internal.SessionRecord = (function() {
             });
         },
         haveOpenSession: function() {
-            var openSession = this.getOpenSession();
+            const openSession = this.getOpenSession();
             return (!!openSession && typeof openSession.registrationId === 'number');
         },
 
         getSessionByBaseKey: function(baseKey) {
-            var session = this.sessions[util.toString(baseKey)];
+            const session = this.sessions[util.toString(baseKey)];
             if (session && session.indexInfo.baseKeyType === Internal.BaseKeyType.OURS) {
                 console.log("Tried to lookup a session using our basekey");
                 return undefined;
@@ -145,12 +145,12 @@ Internal.SessionRecord = (function() {
         },
         getSessionByRemoteEphemeralKey: function(remoteEphemeralKey) {
             this.detectDuplicateOpenSessions();
-            var sessions = this.sessions;
+            const sessions = this.sessions;
 
-            var searchKey = util.toString(remoteEphemeralKey);
+            const searchKey = util.toString(remoteEphemeralKey);
 
-            var openSession;
-            for (var key in sessions) {
+            let openSession;
+            for (let key in sessions) {
                 if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
                     continue;
                 }
@@ -168,14 +168,14 @@ Internal.SessionRecord = (function() {
             return undefined;
         },
         getOpenSession: function() {
-            var sessions = this.sessions;
+            const sessions = this.sessions;
             if (sessions === undefined) {
                 return undefined;
             }
 
             this.detectDuplicateOpenSessions();
 
-            for (var key in sessions) {
+            for (let key in sessions) {
                 if (sessions[key].indexInfo.closed == -1) {
                     return sessions[key];
                 }
@@ -183,9 +183,9 @@ Internal.SessionRecord = (function() {
             return undefined;
         },
         detectDuplicateOpenSessions: function() {
-            var openSession;
-            var sessions = this.sessions;
-            for (var key in sessions) {
+            let openSession;
+            const sessions = this.sessions;
+            for (let key in sessions) {
                 if (sessions[key].indexInfo.closed == -1) {
                     if (openSession !== undefined) {
                         throw new Error("Datastore inconsistensy: multiple open sessions");
@@ -195,7 +195,7 @@ Internal.SessionRecord = (function() {
             }
         },
         updateSessionState: function(session) {
-            var sessions = this.sessions;
+            const sessions = this.sessions;
 
             this.removeOldChains(session);
 
@@ -207,9 +207,9 @@ Internal.SessionRecord = (function() {
         getSessions: function() {
             // return an array of sessions ordered by time closed,
             // followed by the open session
-            var list = [];
-            var openSession;
-            for (var k in this.sessions) {
+            let list = [];
+            let openSession;
+            for (let k in this.sessions) {
                 if (this.sessions[k].indexInfo.closed === -1) {
                     openSession = this.sessions[k];
                 } else {
@@ -225,7 +225,7 @@ Internal.SessionRecord = (function() {
             return list;
         },
         archiveCurrentState: function() {
-            var open_session = this.getOpenSession();
+            const open_session = this.getOpenSession();
             if (open_session !== undefined) {
                 console.log('closing session');
                 open_session.indexInfo.closed = Date.now();
@@ -241,9 +241,9 @@ Internal.SessionRecord = (function() {
             // Receiving ratchets are added to the oldRatchetList, which we parse
             // here and remove all but the last ten.
             while (session.oldRatchetList.length > OLD_RATCHETS_MAX_LENGTH) {
-                var index = 0;
-                var oldest = session.oldRatchetList[0];
-                for (var i = 0; i < session.oldRatchetList.length; i++) {
+                let index = 0;
+                let oldest = session.oldRatchetList[0];
+                for (let i = 0; i < session.oldRatchetList.length; i++) {
                     if (session.oldRatchetList[i].added < oldest.added) {
                         oldest = session.oldRatchetList[i];
                         index = i;
@@ -256,14 +256,14 @@ Internal.SessionRecord = (function() {
         },
         removeOldSessions: function() {
             // Retain only the last 20 sessions
-            var sessions = this.sessions;
-            var oldestBaseKey, oldestSession;
+            const sessions = this.sessions;
+            let oldestBaseKey, oldestSession;
             while (Object.keys(sessions).length > ARCHIVED_STATES_MAX_LENGTH) {
-                for (var key in sessions) {
+                for (let key in sessions) {
                     if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
                         continue;
                     }
-                    var session = sessions[key];
+                    const session = sessions[key];
                     if (session.indexInfo.closed > -1 && // session is closed
                         (!oldestSession || session.indexInfo.closed < oldestSession.indexInfo.closed)) {
                         oldestBaseKey = key;

@@ -7,11 +7,11 @@
 
 Internal.SessionLock = {};
 
-var jobQueue = {};
+const jobQueue = {};
 
 Internal.SessionLock.queueJobForNumber = function queueJobForNumber(number, runJob) {
-     var runPrevious = jobQueue[number] || Promise.resolve();
-     var runCurrent = jobQueue[number] = runPrevious.then(runJob, runJob);
+     const runPrevious = jobQueue[number] || Promise.resolve();
+     const runCurrent = jobQueue[number] = runPrevious.then(runJob, runJob);
      runCurrent.then(function() {
          if (jobQueue[number] === runCurrent) {
              delete jobQueue[number];

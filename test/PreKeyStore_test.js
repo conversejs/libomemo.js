@@ -4,9 +4,9 @@
 function testPreKeyStore(store) {
 
     const { assert } = chai;
+    const number = '+5558675309';
+    let testKey;
 
-    var number = '+5558675309';
-    var testKey;
     describe('PreKeyStore', function() {
 
         before(function(done) {
@@ -17,7 +17,7 @@ function testPreKeyStore(store) {
 
         describe('storePreKey', function() {
             it('stores prekeys', function(done) {
-                var address = new SignalProtocolAddress(number, 1);
+                const address = new SignalProtocolAddress(number, 1);
                 store.storePreKey(address.toString(), testKey).then(function() {
                     return store.loadPreKey(address.toString()).then(function(key) {
                         assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
@@ -29,7 +29,7 @@ function testPreKeyStore(store) {
 
         describe('loadPreKey', function() {
             it('returns prekeys that exist', function(done) {
-                var address = new SignalProtocolAddress(number, 1);
+                const address = new SignalProtocolAddress(number, 1);
                 store.storePreKey(address.toString(), testKey).then(function() {
                     return store.loadPreKey(address.toString()).then(function(key) {
                         assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
@@ -38,7 +38,7 @@ function testPreKeyStore(store) {
                 }).then(done,done);
             });
             it('returns undefined for prekeys that do not exist', function() {
-                var address = new SignalProtocolAddress(number, 2);
+                const address = new SignalProtocolAddress(number, 2);
                 return store.loadPreKey(address.toString()).then(function(key) {
                     assert.isUndefined(key);
                 });
@@ -47,7 +47,7 @@ function testPreKeyStore(store) {
 
         describe('removePreKey', function() {
             it('deletes prekeys', function(done) {
-                var address = new SignalProtocolAddress(number, 2);
+                const address = new SignalProtocolAddress(number, 2);
                 before(function(done) {
                     store.storePreKey(address.toString(), testKey).then(done);
                 });

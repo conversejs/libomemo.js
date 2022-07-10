@@ -8,14 +8,14 @@ describe('SessionCipher', function() {
     const { SignalProtocolAddress } = libsignal;
 
     describe('getRemoteRegistrationId', function() {
-        var store = new SignalProtocolStore();
-        var registrationId = 1337;
-        var address = new libsignal.SignalProtocolAddress('foo', 1);
-        var sessionCipher = new libsignal.SessionCipher(store, address.toString());
+        const store = new SignalProtocolStore();
+        const registrationId = 1337;
+        const address = new libsignal.SignalProtocolAddress('foo', 1);
+        const sessionCipher = new libsignal.SessionCipher(store, address.toString());
         describe('when an open record exists', function() {
             before(function(done) {
-                var record = new Internal.SessionRecord(registrationId);
-                var session = {
+                const record = new Internal.SessionRecord(registrationId);
+                const session = {
                     registrationId: registrationId,
                     currentRatchet: {
                         rootKey                : new ArrayBuffer(32),
@@ -41,7 +41,7 @@ describe('SessionCipher', function() {
         });
         describe('when a record does not exist', function() {
             it('returns undefined', function(done) {
-                var sessionCipher = new libsignal.SessionCipher(store, 'bar.1');
+                const sessionCipher = new libsignal.SessionCipher(store, 'bar.1');
                 sessionCipher.getRemoteRegistrationId().then(function(value) {
                     assert.isUndefined(value);
                 }).then(done,done);
@@ -50,13 +50,13 @@ describe('SessionCipher', function() {
     });
 
     describe('hasOpenSession', function() {
-        var store = new SignalProtocolStore();
-        var address = new libsignal.SignalProtocolAddress('foo', 1);
-        var sessionCipher = new libsignal.SessionCipher(store, address.toString());
+        const store = new SignalProtocolStore();
+        const address = new libsignal.SignalProtocolAddress('foo', 1);
+        const sessionCipher = new libsignal.SessionCipher(store, address.toString());
         describe('open session exists', function() {
             before(function(done) {
-                var record = new Internal.SessionRecord();
-                var session = {
+                const record = new Internal.SessionRecord();
+                const session = {
                     registrationId: 1337,
                     currentRatchet: {
                         rootKey                : new ArrayBuffer(32),
@@ -82,7 +82,7 @@ describe('SessionCipher', function() {
         });
         describe('no open session exists', function() {
             before(function(done) {
-                var record = new Internal.SessionRecord();
+                const record = new Internal.SessionRecord();
                 store.storeSession(address.toString(), record.serialize()).then(done);
             });
             it('returns false', function(done) {
@@ -126,8 +126,8 @@ describe('SessionCipher', function() {
     }
 
     function getPaddedMessageLength(messageLength) {
-        var messageLengthWithTerminator = messageLength + 1;
-        var messagePartCount            = Math.floor(messageLengthWithTerminator / 160);
+        const messageLengthWithTerminator = messageLength + 1;
+        let messagePartCount = Math.floor(messageLengthWithTerminator / 160);
 
         if (messageLengthWithTerminator % 160 !== 0) {
             messagePartCount++;
@@ -136,7 +136,7 @@ describe('SessionCipher', function() {
         return messagePartCount * 160;
     }
     function pad(plaintext) {
-      var paddedPlaintext = new Uint8Array(
+      const paddedPlaintext = new Uint8Array(
           getPaddedMessageLength(plaintext.byteLength + 1) - 1
       );
       paddedPlaintext.set(new Uint8Array(plaintext));
@@ -147,8 +147,8 @@ describe('SessionCipher', function() {
 
     function unpad(paddedPlaintext) {
         paddedPlaintext = new Uint8Array(paddedPlaintext);
-        var plaintext;
-        for (var i = paddedPlaintext.length - 1; i >= 0; i--) {
+        let plaintext;
+        for (let i = paddedPlaintext.length - 1; i >= 0; i--) {
             if (paddedPlaintext[i] == 0x80) {
                 plaintext = new Uint8Array(i);
                 plaintext.set(paddedPlaintext.subarray(0, i));
@@ -163,7 +163,7 @@ describe('SessionCipher', function() {
 
     function doReceiveStep(store, data, privKeyQueue, address) {
         return setupReceiveStep(store, data, privKeyQueue).then(function() {
-            var sessionCipher = new libsignal.SessionCipher(store, address);
+            const sessionCipher = new libsignal.SessionCipher(store, address);
 
             if (data.type == textsecure.protobuf.IncomingPushMessageSignal.Type.CIPHERTEXT) {
                 return sessionCipher.decryptWhisperMessage(data.message).then(unpad);
@@ -175,7 +175,7 @@ describe('SessionCipher', function() {
             }
 
         }).then(function checkResult(plaintext) {
-            var content = textsecure.protobuf.PushMessageContent.decode(plaintext);
+            const content = textsecure.protobuf.PushMessageContent.decode(plaintext);
             if (data.expectTerminateSession) {
                 if (content.flags == textsecure.protobuf.PushMessageContent.Flags.END_SESSION) {
                     return true;
@@ -214,7 +214,7 @@ describe('SessionCipher', function() {
     function doSendStep(store, data, privKeyQueue, address) {
         return setupSendStep(store, data, privKeyQueue).then(function() {
             if (data.getKeys !== undefined) {
-                var deviceObject = {
+                const deviceObject = {
                     encodedNumber  : address.toString(),
                     identityKey    : data.getKeys.identityKey,
                     preKey         : data.getKeys.devices[0].preKey,
@@ -222,20 +222,20 @@ describe('SessionCipher', function() {
                     registrationId : data.getKeys.devices[0].registrationId
                 };
 
-                var builder = new libsignal.SessionBuilder(store, address);
+                const builder = new libsignal.SessionBuilder(store, address);
 
                 return builder.processPreKey(deviceObject);
             }
         }).then(function() {
 
-            var proto = new textsecure.protobuf.PushMessageContent();
+            const proto = new textsecure.protobuf.PushMessageContent();
             if (data.endSession) {
                 proto.flags = textsecure.protobuf.PushMessageContent.Flags.END_SESSION;
             } else {
                 proto.body = data.smsText;
             }
 
-            var sessionCipher = new SessionCipher(store, address);
+            const sessionCipher = new SessionCipher(store, address);
             return sessionCipher.encrypt(pad(proto.toArrayBuffer())).then(function(msg) {
                 //XXX: This should be all we do: isEqual(data.expectedCiphertext, encryptedMsg, false);
                 if (msg.type == 1) {
@@ -245,7 +245,7 @@ describe('SessionCipher', function() {
                         throw new Error("Bad version byte");
                     }
 
-                    var expected = Internal.protobuf.PreKeyWhisperMessage.decode(
+                    const expected = Internal.protobuf.PreKeyWhisperMessage.decode(
                         data.expectedCiphertext.slice(1)
                     ).encode();
 
@@ -267,8 +267,8 @@ describe('SessionCipher', function() {
     }
 
     function getDescription(step) {
-        var direction = step[0];
-        var data = step[1];
+        const direction = step[0];
+        const data = step[1];
         if (direction === "receiveMessage") {
             if (data.expectTerminateSession) {
                 return 'receive end session message';
@@ -292,8 +292,8 @@ describe('SessionCipher', function() {
         describe(test.name, function() {
             this.timeout(20000);
 
-            var privKeyQueue = [];
-            var origCreateKeyPair = Internal.crypto.createKeyPair;
+            const privKeyQueue = [];
+            const origCreateKeyPair = Internal.crypto.createKeyPair;
 
             before(function() {
                 // Shim createKeyPair to return predetermined keys from
@@ -305,7 +305,7 @@ describe('SessionCipher', function() {
                     if (privKeyQueue.length == 0) {
                         throw new Error('Out of private keys');
                     } else {
-                        var newPrivKey = privKeyQueue.shift();
+                        const newPrivKey = privKeyQueue.shift();
                         return Internal.crypto.createKeyPair(newPrivKey).then(function(keyPair) {
                             if (util.toString(keyPair.privKey) != util.toString(newPrivKey))
                                 throw new Error('Failed to rederive private key!');
@@ -326,8 +326,8 @@ describe('SessionCipher', function() {
             // XXX: not clear what this was used for
             // eslint-disable-next-line no-unused-vars
             function describeStep(step) {
-                var direction = step[0];
-                var data = step[1];
+                const direction = step[0];
+                const data = step[1];
                 if (direction === "receiveMessage") {
                     if (data.expectTerminateSession) {
                         return 'receive end session message';
@@ -347,12 +347,11 @@ describe('SessionCipher', function() {
                 }
             }
 
-            var store = new SignalProtocolStore();
-            var address = libsignal.SignalProtocolAddress.fromString("SNOWDEN.1");
+            const store = new SignalProtocolStore();
+            const address = libsignal.SignalProtocolAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function(step) {
                 it(getDescription(step), function(done) {
-                    var doStep;
-
+                    let doStep;
                     if (step[0] === "receiveMessage") {
                         doStep = doReceiveStep;
                     } else if (step[0] === "sendMessage") {
@@ -369,17 +368,17 @@ describe('SessionCipher', function() {
     });
 
     describe("key changes", function() {
-      var ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
-      var BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
-      var originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+      const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
+      const BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
+      const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
 
-      var aliceStore = new SignalProtocolStore();
+      const aliceStore = new SignalProtocolStore();
 
-      var bobStore = new SignalProtocolStore();
-      var bobPreKeyId = 1337;
-      var bobSignedKeyId = 1;
+      const bobStore = new SignalProtocolStore();
+      const bobPreKeyId = 1337;
+      const bobSignedKeyId = 1;
 
-      var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+      const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
       before(function(done) {
         Promise.all(
@@ -387,9 +386,9 @@ describe('SessionCipher', function() {
         ).then(function() {
             return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
         }).then(function(preKeyBundle) {
-            var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
             return builder.processPreKey(preKeyBundle).then(function() {
-              var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+              const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
               return aliceSessionCipher.encrypt(originalMessage);
             }).then(function(ciphertext) {
               return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, 'binary');
@@ -401,7 +400,7 @@ describe('SessionCipher', function() {
 
 
       describe("When bob's identity changes", function() {
-        var messageFromBob;
+        let messageFromBob;
         before(function() {
           return bobSessionCipher.encrypt(originalMessage).then(function(ciphertext) {
             messageFromBob = ciphertext;
@@ -413,14 +412,14 @@ describe('SessionCipher', function() {
         });
 
         it('alice cannot encrypt with the old session', function() {
-          var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+          const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
           return aliceSessionCipher.encrypt(originalMessage).catch(function(e) {
             assert.strictEqual(e.message, 'Identity key changed');
           });
         });
 
         it('alice cannot decrypt from the old session', function() {
-          var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+          const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
           return aliceSessionCipher.decryptWhisperMessage(messageFromBob.body, 'binary').catch(function(e) {
             assert.strictEqual(e.message, 'Identity key changed');
           });

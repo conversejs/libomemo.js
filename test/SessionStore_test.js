@@ -6,10 +6,10 @@ function testSessionStore(store) {
     const { assert } = chai;
 
     describe('SessionStore', function() {
-        var number = '+5558675309';
-        var testRecord = 'an opaque string';
+        const number = '+5558675309';
+        const testRecord = 'an opaque string';
         describe('storeSession', function() {
-            var address = new SignalProtocolAddress(number, 1);
+            const address = new SignalProtocolAddress(number, 1);
             it('stores sessions encoded as strings', function(done) {
                 store.storeSession(address.toString(), testRecord).then(function() {
                     return store.loadSession(address.toString()).then(function(record) {
@@ -18,7 +18,7 @@ function testSessionStore(store) {
                 }).then(done,done);
             });
             it('stores sessions encoded as array buffers', function(done) {
-                var testRecord = new Uint8Array([1,2,3]).buffer;
+                const testRecord = new Uint8Array([1,2,3]).buffer;
                 store.storeSession(address.toString(), testRecord).then(function() {
                     return store.loadSession(address.toString()).then(function(record) {
                         assertEqualArrayBuffers(testRecord, record);
@@ -28,8 +28,8 @@ function testSessionStore(store) {
         });
         describe('loadSession', function() {
             it('returns sessions that exist', function(done) {
-              var address = new SignalProtocolAddress(number, 1);
-                var testRecord = 'an opaque string';
+              const address = new SignalProtocolAddress(number, 1);
+                const testRecord = 'an opaque string';
                 store.storeSession(address.toString(), testRecord).then(function() {
                     return store.loadSession(address.toString()).then(function(record) {
                         assert.strictEqual(record, testRecord);
@@ -37,7 +37,7 @@ function testSessionStore(store) {
                 }).then(done,done);
             });
             it('returns undefined for sessions that do not exist', function() {
-                var address = new SignalProtocolAddress(number, 2);
+                const address = new SignalProtocolAddress(number, 2);
                 return store.loadSession(address.toString()).then(function(record) {
                     assert.isUndefined(record);
                 });
@@ -45,7 +45,7 @@ function testSessionStore(store) {
         });
         describe('removeSession', function() {
             it('deletes sessions', function(done) {
-                var address = new SignalProtocolAddress(number, 1);
+                const address = new SignalProtocolAddress(number, 1);
                 before(function(done) {
                     store.storeSession(address.toString(), testRecord).then(done);
                 });
@@ -58,11 +58,11 @@ function testSessionStore(store) {
         });
         describe('removeAllSessions', function() {
             it('removes all sessions for a number', function(done) {
-                var devices = [1, 2, 3].map(function(deviceId) {
-                    var address = new SignalProtocolAddress(number, deviceId);
+                const devices = [1, 2, 3].map(function(deviceId) {
+                    const address = new SignalProtocolAddress(number, deviceId);
                     return address.toString();
                 });
-                var promise = Promise.resolve();
+                let promise = Promise.resolve();
                 devices.forEach(function(encodedNumber) {
                     promise = promise.then(function() {
                         return store.storeSession(encodedNumber, testRecord + encodedNumber);
@@ -71,7 +71,7 @@ function testSessionStore(store) {
                 promise.then(function() {
                     return store.removeAllSessions(number).then(function() {
                         return Promise.all(devices.map(store.loadSession.bind(store))).then(function(records) {
-                            for (var i in records) {
+                            for (const i in records) {
                                 if (!Object.prototype.hasOwnProperty.call(records, i)) {
                                     continue;
                                 }

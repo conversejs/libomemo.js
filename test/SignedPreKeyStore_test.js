@@ -7,7 +7,7 @@ function testSignedPreKeyStore(store) {
     const { assert } = chai;
 
     describe('SignedPreKeyStore', function() {
-        var testKey;
+        let testKey;
         before(function(done) {
             Internal.crypto.createKeyPair().then(function(keyPair) {
                 testKey = keyPair;

@@ -1,5 +1,5 @@
-var child_process = require('child_process');
-var util = require('util');
+const child_process = require('child_process');
+const util = require('util');
 
 module.exports = function(grunt) {
   'use strict';
@@ -31,9 +31,9 @@ module.exports = function(grunt) {
           banner: 'var Internal = Internal || {};\n\nInternal.protoText = function() {\n\tvar protoText = {};\n\n',
           footer: '\n\treturn protoText;\n}();',
           process: function(src, file) {
-            var res = "\tprotoText['" + file + "'] = \n";
-            var lines = src.match(/[^\r\n]+/g);
-            for (var i in lines) {
+            let res = "\tprotoText['" + file + "'] = \n";
+            const lines = src.match(/[^\r\n]+/g);
+            for (const i in lines) {
               res += "\t\t'" + lines[i] + "\\n' +\n";
             }
             return res + "''\t;\n";
@@ -144,10 +144,10 @@ module.exports = function(grunt) {
   });
 
   grunt.registerMultiTask('compile', 'Compile the C libraries with emscripten.', function() {
-      var callback = this.async();
-      var outfile = 'build/' + this.target + '.js';
+      const callback = this.async();
+      const outfile = 'build/' + this.target + '.js';
 
-      var exported_functions = this.data.methods.map(function(name) {
+      const exported_functions = this.data.methods.map(function(name) {
         return "'_" + name + "'";
       });
       const flags = [
@@ -160,11 +160,11 @@ module.exports = function(grunt) {
       const command = [].concat('emcc', this.data.src_files, flags).join(' ');
       grunt.log.writeln('Compiling via emscripten to ' + outfile);
 
-      var exitCode = 0;
+      const exitCode = 0;
       grunt.verbose.subhead(command);
       grunt.verbose.writeln(util.format('Expecting exit code %d', exitCode));
 
-      var child = child_process.exec(command);
+      const child = child_process.exec(command);
       child.stdout.on('data', function (d) { grunt.log.write(d); });
       child.stderr.on('data', function (d) { grunt.log.error(d); });
       child.on('exit', function(code) {

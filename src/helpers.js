@@ -2,11 +2,10 @@
  * vim: ts=4:sw=4
  */
 
-// eslint-disable-next-line no-redeclare
-var util = libsignal.util = (function() {
+const util = libsignal.util = (function() {
     'use strict';
 
-    var StaticArrayBufferProto = new ArrayBuffer().__proto__;
+    const StaticArrayBufferProto = new ArrayBuffer().__proto__;
 
     return {
         toString: function(thing) {
@@ -15,6 +14,7 @@ var util = libsignal.util = (function() {
             }
             return new dcodeIO.ByteBuffer.wrap(thing).toString('binary');
         },
+
         toArrayBuffer: function(thing) {
             if (thing === undefined) {
                 return undefined;
@@ -30,6 +30,7 @@ var util = libsignal.util = (function() {
             }
             return new dcodeIO.ByteBuffer.wrap(thing, 'binary').toArrayBuffer();
         },
+
         isEqual: function(a, b) {
             // TODO: Special-case arraybuffers, etc
             if (a === undefined || b === undefined) {
@@ -37,11 +38,12 @@ var util = libsignal.util = (function() {
             }
             a = util.toString(a);
             b = util.toString(b);
-            var maxLength = Math.max(a.length, b.length);
+            const maxLength = Math.max(a.length, b.length);
             if (maxLength < 5) {
                 throw new Error("a/b compare too short");
             }
             return a.substring(0, Math.min(maxLength, a.length)) == b.substring(0, Math.min(maxLength, b.length));
         }
     };
+
 })();

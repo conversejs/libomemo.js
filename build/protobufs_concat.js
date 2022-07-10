@@ -44,7 +44,7 @@ Internal.protobuf = (function() {
         return dcodeIO.ProtoBuf.loadProto(Internal.protoText['protos/' + filename]).build('textsecure');
     }
 
-    var protocolMessages = loadProtoBufs('WhisperTextProtocol.proto');
+    const protocolMessages = loadProtoBufs('WhisperTextProtocol.proto');
 
     return {
         WhisperMessage            : protocolMessages.WhisperMessage,

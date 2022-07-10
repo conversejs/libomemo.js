@@ -4,6 +4,7 @@ module.exports = {
         "es2021": true
     },
     "globals": {
+        "module": true,
         "Internal": true,
         "Module": true,
         "chai": true,
@@ -12,6 +13,7 @@ module.exports = {
         "it": true,
         "libsignal": true,
         "parseInt": true,
+        "require": true,
         "util": true,
     },
     "extends": "eslint:recommended",
@@ -21,5 +23,6 @@ module.exports = {
     },
     "rules": {
         "no-proto": "off",
-    }
+        "no-var": "warn",
+   }
 }

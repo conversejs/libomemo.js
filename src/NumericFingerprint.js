@@ -1,5 +1,5 @@
 (function() {
-    var VERSION = 0;
+    const VERSION = 0;
 
     function iterateHash(data, key, count) {
         data = dcodeIO.ByteBuffer.concat([data, key]).toArrayBuffer();
@@ -17,12 +17,12 @@
     }
 
     function getEncodedChunk(hash, offset) {
-        var chunk = ( hash[offset]   * Math.pow(2,32) +
+        const chunk = ( hash[offset]   * Math.pow(2,32) +
                       hash[offset+1] * Math.pow(2,24) +
                       hash[offset+2] * Math.pow(2,16) +
                       hash[offset+3] * Math.pow(2,8) +
                       hash[offset+4] ) % 100000;
-        var s = chunk.toString();
+        let s = chunk.toString();
         while (s.length < 5) {
             s = '0' + s;
         }
@@ -30,7 +30,7 @@
     }
 
     function getDisplayStringFor(identifier, key, iterations) {
-        var bytes = dcodeIO.ByteBuffer.concat([
+        const bytes = dcodeIO.ByteBuffer.concat([
             shortToArrayBuffer(VERSION), key, identifier
         ]).toArrayBuffer();
         return iterateHash(bytes, key, iterations).then(function(output) {
@@ -47,6 +47,7 @@
     libsignal.FingerprintGenerator = function(iterations) {
         this.iterations = iterations;
     };
+
     libsignal.FingerprintGenerator.prototype = {
         createFor: function(localIdentifier, localIdentityKey,
                             remoteIdentifier, remoteIdentityKey) {
@@ -68,4 +69,3 @@
     };
 
 })();
-

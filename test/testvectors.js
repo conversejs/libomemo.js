@@ -1,12 +1,12 @@
 /* global hexToArrayBuffer */
 
 // eslint-disable-next-line no-unused-vars
-var TestVectors = (function() {
+const TestVectors = (function() {
     // We're gonna throw the finalized tests in here:
-    var tests = [];
+    const tests = [];
 
     // The common-case ALICE test vectors themselves...
-    var TwoPartyTestVectorsAlice = [
+    const TwoPartyTestVectorsAlice = [
         ["sendMessage",
             {
                 smsText: "A",
@@ -52,7 +52,7 @@ var TestVectors = (function() {
     tests[tests.length] = {name: "Standard Signal Protocol Test Vectors as Alice", vectors: TwoPartyTestVectorsAlice};
 
     tests[tests.length] = (function() {
-        var test = [];
+        const test = [];
         test[0] = TwoPartyTestVectorsAlice[0];
         test[1] = TwoPartyTestVectorsAlice[1];
 
@@ -69,7 +69,7 @@ var TestVectors = (function() {
     }());
 
     // The common-case BOB test vectors themselves...
-    var TwoPartyTestVectorsBob = [
+    const TwoPartyTestVectorsBob = [
         ["receiveMessage",
             {
                 message: hexToArrayBuffer('3308c7b899021221058a49fa8a94224aaa8f5873404e01710ff9ef02169a75f90af4fbbc600796e0521a21050a6cf5e075c9970f14862db8a703a6c761f50b5182d17874908940556a22372222d301330a2105883ab58b3eb6db93b32bf91899a5b5175e7b21e96fff2cec02c83dff16ba1b271000180022a0013c5d070d1b75c418cef769bd7378a58969537a00e0ff60cbb99defb486fcfb43384264da4ea9821c1336f02d988da38944453331c4b30181704cbcec5a792ab87c5ccff256e0b4d61ba6a30a6964783875018882e66bfbd9445ac44fee9dc67edc2ad9de78adbe0eb7e9cb990272183ce5fac682ee5106f67d732cd16dfb731239590ba67dc827e849c49a9fb5ed8eed41d85d5e6de3294e74f3524c6489c2f25482ff52f9ea29c928b25030bec09207'),
@@ -110,10 +110,10 @@ var TestVectors = (function() {
     // Now change the order and make 5 tests out of them:
     tests[tests.length] = {name: "Standard Signal Protocol Test Vectors as Bob", vectors: TwoPartyTestVectorsBob};
 
-    var TwoPartyTestVectorsBobCopy = function() {
-        var orig = TwoPartyTestVectorsBob;
-        var v = [];
-        for (var i = 0; i < TwoPartyTestVectorsBob.length; i++) {
+    const TwoPartyTestVectorsBobCopy = function() {
+        const orig = TwoPartyTestVectorsBob;
+        const v = [];
+        for (let i = 0; i < TwoPartyTestVectorsBob.length; i++) {
             v[i] = [];
             v[i][0] = orig[i][0];
             v[i][1] = orig[i][1];
@@ -123,8 +123,8 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = TwoPartyTestVectorsBobCopy();
-        var orig = TwoPartyTestVectorsBob;
+        const v = TwoPartyTestVectorsBobCopy();
+        const orig = TwoPartyTestVectorsBob;
 
         // Swap first and second received prekey messages
         v[0][1] = { message: orig[1][1].message, type: orig[1][1].type, expectedSmsText: orig[1][1].expectedSmsText };
@@ -142,8 +142,8 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = TwoPartyTestVectorsBobCopy();
-        var orig = TwoPartyTestVectorsBob;
+        const v = TwoPartyTestVectorsBobCopy();
+        const orig = TwoPartyTestVectorsBob;
 
         // Swap second received prekey msg with the first send
         v[1] = orig[2];
@@ -154,8 +154,8 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = TwoPartyTestVectorsBobCopy();
-        var orig = TwoPartyTestVectorsBob;
+        const v = TwoPartyTestVectorsBobCopy();
+        const orig = TwoPartyTestVectorsBob;
 
         // Move second received prekey msg to the end (incl after the first received message in the second chain)
         v[4] = orig[1];
@@ -168,8 +168,8 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = TwoPartyTestVectorsBobCopy();
-        var orig = TwoPartyTestVectorsBob;
+        const v = TwoPartyTestVectorsBobCopy();
+        const orig = TwoPartyTestVectorsBob;
 
         // Move first received prekey msg to the end (incl after the first received message in the second chain)
         // ... by first swapping first and second received prekey msg
@@ -194,7 +194,7 @@ var TestVectors = (function() {
     }());
 
     // Test vectors around an end-session
-    var EndSessionTestVectorsBob = [
+    const EndSessionTestVectorsBob = [
         ["receiveMessage",
             {
                 message: hexToArrayBuffer('3308d9feea0112210594b31fff73bbbed5975e98779715700b5fc0293fbeb0901895274ca0ef07a8481a21050b2fe13f294b58baeaba8d43521f9dd4df9fb235a8bd860693dbf60e8f48301022d301330a2105cb8e40652635bbd5859c8d592d80a93e2b72bc5691966ce58ecfc9478849976e1000180022a001a33a6395c75e2754ab5bf45d99c464770fb09d584009be373d965435d7abec5deaafbf63b52010c2d477422da8b4118c4d5055d89232eccbe82c744cfa5bf6ba3562ada59dd60fa111983ec03ea5f02715090071e386001feeac9d22705cb571629e8d2627ca0702ddfcc977b4e8231baea72ea2fb8eb6845fb38479960a44098e09bb2182737dbe4284e8149a36c6ac38dd438875eeeffe7b59bfd760c988385ad5dcf77f1cdad1288c243095b4ff04'),
@@ -247,10 +247,10 @@ var TestVectors = (function() {
     // Now shuffle them around and make 6 tests
     tests[tests.length] = {name: "Signal Protocol End Session Test Vectors as Bob", vectors: EndSessionTestVectorsBob};
 
-    var EndSessionTestVectorsBobCopy = function() {
-        var orig = EndSessionTestVectorsBob;
-        var v = [];
-        for (var i = 0; i < EndSessionTestVectorsBob.length; i++) {
+    const EndSessionTestVectorsBobCopy = function() {
+        const orig = EndSessionTestVectorsBob;
+        const v = [];
+        for (let i = 0; i < EndSessionTestVectorsBob.length; i++) {
             v[i] = [];
             v[i][0] = orig[i][0];
             v[i][1] = orig[i][1];
@@ -260,10 +260,10 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
+        const v = EndSessionTestVectorsBobCopy();
 
         // Swap message 2 and 3, moving 2 after its session close
-        var tmp = v[2][1];
+        const tmp = v[2][1];
         v[2][1] = v[1][1];
         v[1][1] = tmp;
 
@@ -272,10 +272,10 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
+        const v = EndSessionTestVectorsBobCopy();
 
         // Swap message 2 and 4, moving 2 after the new session
-        var tmp = v[3][1];
+        const tmp = v[3][1];
         v[3][1] = v[1][1];
         v[1][1] = tmp;
 
@@ -284,10 +284,10 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
+        const v = EndSessionTestVectorsBobCopy();
 
         // Swap message 3 and 4, starting a new session before closing the last
-        var tmp = v[3][1];
+        const tmp = v[3][1];
         v[3][1] = v[2][1];
         v[2][1] = tmp;
 
@@ -296,7 +296,7 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
+        const v = EndSessionTestVectorsBobCopy();
 
         // Swap message 3 and 4, starting a new session before closing the last
         let tmp = v[3][1];
@@ -318,11 +318,11 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
+        const v = EndSessionTestVectorsBobCopy();
+        const orig = EndSessionTestVectorsBob;
 
         // Put the end session message before all the cooresponding messages
-        var tmp = v[0][1];
+        const tmp = v[0][1];
         v[0][1] = { message: orig[2][1].message, type: orig[2][1].type, expectTerminateSession: orig[2][1].expectTerminateSession };
         v[0][1].ourPreKey = orig[0][1].ourPreKey;
         v[0][1].preKeyId = orig[0][1].preKeyId;
@@ -338,11 +338,11 @@ var TestVectors = (function() {
 
     tests[tests.length] = (function() {
         // Copy TwoPartyTestVectorsBob into v
-        var v = EndSessionTestVectorsBobCopy();
-        var orig = EndSessionTestVectorsBob;
+        const v = EndSessionTestVectorsBobCopy();
+        const orig = EndSessionTestVectorsBob;
 
         // Put the end session message before all the cooresponding messages
-        var tmp = v[0][1];
+        let tmp = v[0][1];
         v[0][1] = { message: orig[2][1].message, type: orig[2][1].type, expectTerminateSession: orig[2][1].expectTerminateSession };
         v[0][1].ourPreKey = orig[0][1].ourPreKey;
         v[0][1].preKeyId = orig[0][1].preKeyId;
@@ -362,7 +362,7 @@ var TestVectors = (function() {
     }());
 
     // Nearly same as above except as Alice
-    var EndSessionTestVectorsAlice = [
+    const EndSessionTestVectorsAlice = [
         ["sendMessage",
             {
                 smsText: "A",
@@ -424,7 +424,7 @@ var TestVectors = (function() {
     tests[tests.length] = {name: "Standard End Session Signal Protocol Test Vectors as Alice", vectors: EndSessionTestVectorsAlice};
 
     // Nearly same as above except as Alice
-    /*var NoPreKeyEndSessionTestVectorsBob = [
+    /*const NoPreKeyEndSessionTestVectorsBob = [
         ["receiveMessage",
             {
                 message: hexToArrayBuffer('3308ffffffff0f1221050a1fe3a769c05c50e8f09747969099d072f4c343b09ceae56543391349b5bc701a21053841429a37322af3f786be4df3dd8cea5403a79f258e254d4738970acbbe633422d301330a2105896760e61f619db748eb761225b49890aa4e5b286ff8d0575a06660158e40d4e1000180022a0010ced8428b53359fcf2f3dbb6f8be97e77309481df1013a86db4bd41aebc94f7c9d0077c81f53b96501caeece31bd8171f25255ebfe774a981f007849aa38da51904c57a1334a5a11d983205c4cb49e9dd7f308678e34734e6eb9a9297cf03abc8bdd1b1a07c9445474136656ac38cf5ddf41606cf511e20c002fd74bf4b1f8cec738c380b8d4dae0afa0ffc7e091ef5382787eb678b2d9c61dd6fa4ec146c8c30aade6666ee4325228ac3930a0b68d01'),

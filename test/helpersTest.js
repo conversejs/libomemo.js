@@ -9,18 +9,18 @@ describe('util', function() {
             assert.isFalse(util.isEqual(undefined, "defined value"));
         });
         it('returns true when a and b are equal', function(){
-            var a = "same value";
-            var b = "same value";
+            const a = "same value";
+            const b = "same value";
             assert.isTrue(util.isEqual(a, b));
         });
         it('returns false when a and b are not equal', function(){
-            var a = "same value";
-            var b = "diferent value";
+            const a = "same value";
+            const b = "diferent value";
             assert.isFalse(util.isEqual(a, b));
         });
         it('throws an error when a/b compare is too short', function(){
-            var a = "1234";
-            var b = "1234";
+            const a = "1234";
+            const b = "1234";
             assert.throw(function() { util.isEqual(a, b) },
                         Error, /a\/b compare too short/);
         });

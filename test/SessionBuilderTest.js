@@ -7,15 +7,15 @@ describe('SessionBuilder', function() {
     const { assert } = chai;
     const { util, SignalProtocolAddress, KeyHelper } = libsignal;
 
-    var ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
-    var BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
+    const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
+    const BOB_ADDRESS   = new SignalProtocolAddress("+14152222222", 1);
 
     describe("basic prekey v3", function() {
-        var aliceStore = new SignalProtocolStore();
+        const aliceStore = new SignalProtocolStore();
 
-        var bobStore = new SignalProtocolStore();
-        var bobPreKeyId = 1337;
-        var bobSignedKeyId = 1;
+        const bobStore = new SignalProtocolStore();
+        const bobPreKeyId = 1337;
+        const bobSignedKeyId = 1;
 
         before(function(done) {
             Promise.all([
@@ -24,21 +24,21 @@ describe('SessionBuilder', function() {
             ]).then(function() {
                 return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
             }).then(function(preKeyBundle) {
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey(preKeyBundle).then(function() {
                     done();
                 });
             }).catch(done);
         });
 
-        var originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
-        var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
         it('creates a session', function() {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                 assert.isDefined(record);
-                var sessionRecord = Internal.SessionRecord.deserialize(record);
+                const sessionRecord = Internal.SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
             });
@@ -72,11 +72,11 @@ describe('SessionBuilder', function() {
 
         it('accepts a new preKey with the same identity', function(done) {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1).then(function(preKeyBundle) {
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey(preKeyBundle).then(function() {
                     return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                         assert.isDefined(record);
-                        var sessionRecord = Internal.SessionRecord.deserialize(record);
+                        const sessionRecord = Internal.SessionRecord.deserialize(record);
                         assert.isTrue(sessionRecord.haveOpenSession());
                         assert.isDefined(sessionRecord.getOpenSession());
                         done();
@@ -87,7 +87,7 @@ describe('SessionBuilder', function() {
 
         it('rejects untrusted identity keys', function(done) {
             KeyHelper.generateIdentityKeyPair().then(function(newIdentity) {
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId : 12356
@@ -102,11 +102,11 @@ describe('SessionBuilder', function() {
     });
 
     describe("basic v3 NO PREKEY", function() {
-        var aliceStore = new SignalProtocolStore();
+        const aliceStore = new SignalProtocolStore();
 
-        var bobStore = new SignalProtocolStore();
-        var bobPreKeyId = 1337;
-        var bobSignedKeyId = 1;
+        const bobStore = new SignalProtocolStore();
+        const bobPreKeyId = 1337;
+        const bobSignedKeyId = 1;
 
         before(function(done) {
             Promise.all([
@@ -116,21 +116,21 @@ describe('SessionBuilder', function() {
                 return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
             }).then(function(preKeyBundle) {
                 delete preKeyBundle.preKey;
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey(preKeyBundle).then(function() {
                     done();
                 });
             }).catch(done);
         });
 
-        var originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        var aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
-        var bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
 
         it('creates a session', function() {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                 assert.isDefined(record);
-                var sessionRecord = Internal.SessionRecord.deserialize(record);
+                const sessionRecord = Internal.SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
             });
@@ -165,11 +165,11 @@ describe('SessionBuilder', function() {
         it('accepts a new preKey with the same identity', function(done) {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1).then(function(preKeyBundle) {
                 delete preKeyBundle.preKey;
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey(preKeyBundle).then(function() {
                     return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function(record) {
                         assert.isDefined(record);
-                        var sessionRecord = Internal.SessionRecord.deserialize(record);
+                        const sessionRecord = Internal.SessionRecord.deserialize(record);
                         assert.isTrue(sessionRecord.haveOpenSession());
                         assert.isDefined(sessionRecord.getOpenSession());
                         done();
@@ -180,7 +180,7 @@ describe('SessionBuilder', function() {
 
         it('rejects untrusted identity keys', function(done) {
             KeyHelper.generateIdentityKeyPair().then(function(newIdentity) {
-                var builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId : 12356

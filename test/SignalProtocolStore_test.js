@@ -4,9 +4,9 @@
 'use strict';
 
 describe("SignalProtocolStore", function() {
-    var store = new SignalProtocolStore();
-    var registrationId = 1337;
-    var identityKey = {
+    const store = new SignalProtocolStore();
+    const registrationId = 1337;
+    const identityKey = {
         pubKey: Internal.crypto.getRandomBytes(33),
         privKey: Internal.crypto.getRandomBytes(32),
     };

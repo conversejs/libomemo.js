@@ -1,4 +1,4 @@
-  function SignalProtocolStore() {
+function SignalProtocolStore() {
   this.store = {};
 }
 
@@ -41,7 +41,7 @@ SignalProtocolStore.prototype = {
     if (!(identityKey instanceof ArrayBuffer)) {
       throw new Error("Expected identityKey to be an ArrayBuffer");
     }
-    var trusted = this.get('identityKey' + identifier);
+    const trusted = this.get('identityKey' + identifier);
     if (trusted === undefined) {
       return Promise.resolve(true);
     }
@@ -58,9 +58,9 @@ SignalProtocolStore.prototype = {
     if (identifier === null || identifier === undefined)
       throw new Error("Tried to put identity key for undefined/null key");
 
-    var address = new libsignal.SignalProtocolAddress.fromString(identifier);
+    const address = new libsignal.SignalProtocolAddress.fromString(identifier);
 
-    var existing = this.get('identityKey' + address.getName());
+    const existing = this.get('identityKey' + address.getName());
     this.put('identityKey' + address.getName(), identityKey)
 
     if (existing && util.toString(identityKey) !== util.toString(existing)) {
@@ -73,7 +73,7 @@ SignalProtocolStore.prototype = {
 
   /* Returns a prekeypair object or undefined */
   loadPreKey: function(keyId) {
-    var res = this.get('25519KeypreKey' + keyId);
+    let res = this.get('25519KeypreKey' + keyId);
     if (res !== undefined) {
       res = { pubKey: res.pubKey, privKey: res.privKey };
     }
@@ -88,7 +88,7 @@ SignalProtocolStore.prototype = {
 
   /* Returns a signed keypair object or undefined */
   loadSignedPreKey: function(keyId) {
-    var res = this.get('25519KeysignedKey' + keyId);
+    let res = this.get('25519KeysignedKey' + keyId);
     if (res !== undefined) {
       res = { pubKey: res.pubKey, privKey: res.privKey };
     }
@@ -111,7 +111,7 @@ SignalProtocolStore.prototype = {
     return Promise.resolve(this.remove('session' + identifier));
   },
   removeAllSessions: function(identifier) {
-    for (var id in this.store) {
+    for (const id in this.store) {
       if (id.startsWith('session' + identifier)) {
         delete this.store[id];
       }
