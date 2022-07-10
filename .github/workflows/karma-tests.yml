@@ -30,4 +30,4 @@ jobs:
     - name: Run Karma tests
       uses: GabrielBB/xvfb-action@v1
       with:
-          run: make check ARGS=--single-run
+          run: make test ARGS=--single-run

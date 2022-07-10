@@ -13,10 +13,11 @@ node_modules: package.json package-lock.json
 eslint: node_modules
 	$(ESLINT) src/**/*.js test/**/*.js Gruntfile.js
 
+test: eslint
+	$(KARMA) start karma.conf.js $(ARGS)
 
 .PHONY: check
-check: eslint dist
-	$(KARMA) start karma.conf.js $(ARGS)
+check: dist test
 
 dist/libsignal-protocol.js:: node_modules
 	$(GRUNT) build
