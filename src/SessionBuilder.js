@@ -68,15 +68,18 @@ class SessionBuilder {
         return;
     }
 
+    // https://github.com/protobufjs/protobuf.js/issues/852#issuecomment-369895366
+    const identityKeyAB = message.identityKey.slice().buffer;
+
     const trusted = await this.storage.isTrustedIdentity(
         this.remoteAddress.getName(),
-        message.identityKey.toArrayBuffer(),
+        identityKeyAB,
         this.storage.Direction.RECEIVING
     );
 
     if (!trusted) {
         const e = new Error('Unknown identity key');
-        e.identityKey = message.identityKey.toArrayBuffer();
+        e.identityKey = identityKeyAB;
         throw e;
     }
 
@@ -90,9 +93,9 @@ class SessionBuilder {
     const session = record.getOpenSession();
 
     if (signedPreKeyPair === undefined) {
-        // Session may or may not be the right one, but if it's not,
-        // we can't do anything about it...
-        // fall through and let decryptWhisperMessage handle that case
+        // Session may or may not be the right one, but if its not, we;
+        // can't do anything about it ...fall through and let
+        // decryptWhisperMessage handle that case
         if (session !== undefined && session.currentRatchet !== undefined) {
             return;
         } else {
@@ -108,23 +111,18 @@ class SessionBuilder {
         console.log('Invalid prekey id', message.preKeyId);
     }
 
-    const new_session = await this.initSession(
-        false, preKeyPair, signedPreKeyPair,
-        message.identityKey.toArrayBuffer(),
-        message.baseKey.toArrayBuffer(),
-        undefined, message.registrationId
+    const baseKeyAB = message.baseKey.slice().buffer;
+    const newSession = await this.initSession(
+        false, preKeyPair, signedPreKeyPair, identityKeyAB,
+        baseKeyAB, undefined, message.registrationId
     );
 
     // Note that the session is not actually saved until the very
     // end of decryptWhisperMessage ... to ensure that the sender
     // actually holds the private keys for all reported pubkeys
-    record.updateSessionState(new_session);
+    record.updateSessionState(newSession);
 
-    await this.storage.saveIdentity(
-        this.remoteAddress.toString(),
-        message.identityKey.toArrayBuffer()
-    );
-
+    await this.storage.saveIdentity(this.remoteAddress.toString(), identityKeyAB);
     return message.preKeyId;
   }
 

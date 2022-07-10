@@ -14,12 +14,20 @@ function assertEqualArrayBuffers(ab1, ab2) {
 
 // eslint-disable-next-line no-unused-vars
 function hexToArrayBuffer(str) {
-  const ret = new ArrayBuffer(str.length / 2);
-  const array = new Uint8Array(ret);
-  for (let i = 0; i < str.length/2; i++) {
-    array[i] = parseInt(str.substr(i*2, 2), 16);
+  const view = new Uint8Array(str.length / 2);
+  for (let i = 0; i < str.length; i += 2) {
+    view[i / 2] = parseInt(str.substr(i, 2), 16);
   }
-  return ret;
+  return view.buffer;
+}
+
+// eslint-disable-next-line no-unused-vars
+function hexToUint8Array(str) {
+  const view = new Uint8Array(str.length / 2);
+  for (let i = 0; i < str.length; i += 2) {
+    view[i / 2] = parseInt(str.substr(i, 2), 16);
+  }
+  return view;
 }
 
 // eslint-disable-next-line no-unused-vars

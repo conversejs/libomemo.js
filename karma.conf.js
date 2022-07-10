@@ -22,13 +22,12 @@ module.exports = function(config) {
       'test/testvectors.js',
       'test/InMemorySignalProtocolStore.js',
 
-      { pattern: 'build/curve25519_compiled.wasm', served: true, type: "wasm", included: false },
+      { pattern: 'protos/WhisperTextProtocol.proto', served: true, type: 'proto', included: false },
+      { pattern: 'protos/push.proto', served: true, type: 'proto', included: false },
+      { pattern: 'build/curve25519_compiled.wasm', served: true, type: 'wasm', included: false },
       'build/curve25519_concat.js',
       'src/curve25519_worker_manager.js',
       'build/components_concat.js',
-
-      // TODO: should be removed
-      'test/temp_helpers.js',
 
       "src/Curve.js",
       "src/crypto.js",

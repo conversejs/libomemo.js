@@ -24,5 +24,6 @@ module.exports = {
     "rules": {
         "no-proto": "off",
         "no-var": "warn",
+        "no-debugger": "warn",
    }
 }

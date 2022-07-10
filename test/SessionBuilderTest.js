@@ -44,18 +44,11 @@ describe('SessionBuilder', function() {
             });
         });
 
-        it('the session can encrypt', function(done) {
-            aliceSessionCipher.encrypt(originalMessage).then(function(ciphertext) {
-
-                assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
-
-                return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, 'binary');
-
-            }).then(function(plaintext) {
-
-                assertEqualArrayBuffers(plaintext, originalMessage);
-
-            }).then(done, done);
+        it('the session can encrypt', async function() {
+            const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
+            assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
+            const plaintext = await bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, 'binary');
+            assertEqualArrayBuffers(plaintext, originalMessage);
         });
 
         it('the session can decrypt', function(done) {
