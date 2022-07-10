@@ -126,15 +126,6 @@ module.exports = function(grunt) {
         tasks: ['concat:protos_concat']
       }
     },
-
-    connect: {
-      server: {
-        options: {
-          base: '.',
-          port: 9998
-        }
-      }
-    },
   });
 
   Object.keys(grunt.config.get('pkg').devDependencies).forEach(function(key) {
@@ -178,7 +169,7 @@ module.exports = function(grunt) {
       });
   });
 
-  grunt.registerTask('dev', ['connect', 'watch']);
+  grunt.registerTask('dev', ['watch']);
   grunt.registerTask('default', ['concat']);
   grunt.registerTask('build', ['compile', 'concat']);
 
