@@ -6,7 +6,7 @@
   "dependencies": {
     "bytebuffer": "^3.5.5",
     "long": "^3.1.0",
-    "protobufjs": "^5.0.3"
+    "protobufjs": "^6.10.3"
   },
   "devDependencies": {
     "chai": "^3.5.0",
