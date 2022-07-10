@@ -1,4 +1,4 @@
-# libomemo
+# libomemo.js
 
 [![CI Tests](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml)
 
