@@ -1,5 +1,5 @@
 /* vim: ts=4:sw=4 */
-/* global after, before, SignalProtocolStore, generateIdentity, generatePreKeyBundle, TestVectors, textsecure, SessionCipher */
+/* global after, before, SignalProtocolStore, generateIdentity, generatePreKeyBundle, TestVectors, SessionCipher */
 
 'use strict';
 describe('SessionCipher', function() {
@@ -162,22 +162,23 @@ describe('SessionCipher', function() {
     }
 
     function doReceiveStep(store, data, privKeyQueue, address) {
-        return setupReceiveStep(store, data, privKeyQueue).then(function() {
+        return setupReceiveStep(store, data, privKeyQueue).then(async () => {
             const sessionCipher = new libsignal.SessionCipher(store, address);
-
-            if (data.type == textsecure.protobuf.IncomingPushMessageSignal.Type.CIPHERTEXT) {
+            const pushMessages = await Internal.protobuf.loadPushMessages();
+            if (data.type == pushMessages.IncomingPushMessageSignal.Type.CIPHERTEXT) {
                 return sessionCipher.decryptWhisperMessage(data.message).then(unpad);
             }
-            else if (data.type == textsecure.protobuf.IncomingPushMessageSignal.Type.PREKEY_BUNDLE) {
+            else if (data.type == pushMessages.IncomingPushMessageSignal.Type.PREKEY_BUNDLE) {
                 return sessionCipher.decryptPreKeyWhisperMessage(data.message).then(unpad);
             } else {
                 throw new Error("Unknown data type in test vector");
             }
 
-        }).then(function checkResult(plaintext) {
-            const content = textsecure.protobuf.PushMessageContent.decode(plaintext);
+        }).then(async (plaintext) => { // Check result
+            const pushMessages = await Internal.protobuf.loadPushMessages();
+            const content = pushMessages.PushMessageContent.decode(plaintext);
             if (data.expectTerminateSession) {
-                if (content.flags == textsecure.protobuf.PushMessageContent.Flags.END_SESSION) {
+                if (content.flags == pushMessages.PushMessageContent.Flags.END_SESSION) {
                     return true;
                 } else {
                     return false;
@@ -226,17 +227,17 @@ describe('SessionCipher', function() {
 
                 return builder.processPreKey(deviceObject);
             }
-        }).then(function() {
-
-            const proto = new textsecure.protobuf.PushMessageContent();
+        }).then(async () => {
+            const pushMessages = await Internal.protobuf.loadPushMessages();
+            const proto = new pushMessages.PushMessageContent();
             if (data.endSession) {
-                proto.flags = textsecure.protobuf.PushMessageContent.Flags.END_SESSION;
+                proto.flags = pushMessages.PushMessageContent.Flags.END_SESSION;
             } else {
                 proto.body = data.smsText;
             }
 
             const sessionCipher = new SessionCipher(store, address);
-            return sessionCipher.encrypt(pad(proto.toArrayBuffer())).then(function(msg) {
+            return sessionCipher.encrypt(pad(proto.toArrayBuffer())).then(async (msg) => {
                 //XXX: This should be all we do: isEqual(data.expectedCiphertext, encryptedMsg, false);
                 if (msg.type == 1) {
                     return util.isEqual(data.expectedCiphertext, msg.body);
@@ -245,7 +246,9 @@ describe('SessionCipher', function() {
                         throw new Error("Bad version byte");
                     }
 
-                    const expected = Internal.protobuf.PreKeyWhisperMessage.decode(
+                    const protocolMessages = await Internal.protobuf.loadProtocolMessages();
+
+                    const expected = protocolMessages.PreKeyWhisperMessage.decode(
                         data.expectedCiphertext.slice(1)
                     ).encode();
 

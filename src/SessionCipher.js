@@ -21,13 +21,14 @@ class SessionCipher {
      */
     encrypt (buffer, encoding) {
         buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding).toArrayBuffer();
-        return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), () => {
+        return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             if (!(buffer instanceof ArrayBuffer)) {
                 throw new Error("Expected buffer to be an ArrayBuffer");
             }
 
             const address = this.remoteAddress.toString();
-            const msg = new Internal.protobuf.WhisperMessage();
+            const protocolMessages = await Internal.protobuf.loadProtocolMessages();
+            const msg = protocolMessages.WhisperMessage.create();
 
             let ourIdentityKey, myRegistrationId, record, session, chain;
 
@@ -71,6 +72,7 @@ class SessionCipher {
                     keys[0], buffer, keys[2].slice(0, 16)
                 ).then((ciphertext) => {
                     msg.ciphertext = ciphertext;
+                    debugger;
                     const encodedMsg = msg.toArrayBuffer();
 
                     const macInput = new Uint8Array(encodedMsg.byteLength + 33*2 + 1);
@@ -100,9 +102,10 @@ class SessionCipher {
                         });
                     });
                 });
-            }).then((message) => {
+            }).then(async (message) => {
                 if (session.pendingPreKey !== undefined) {
-                    const preKeyMsg = new Internal.protobuf.PreKeyWhisperMessage();
+                    const protocolMessages = await Internal.protobuf.loadProtocolMessages();
+                    const preKeyMsg = protocolMessages.PreKeyWhisperMessage.create();
                     preKeyMsg.identityKey = util.toArrayBuffer(ourIdentityKey.pubKey);
                     preKeyMsg.registrationId = myRegistrationId;
 
@@ -202,8 +205,9 @@ class SessionCipher {
         }
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), () => {
             const address = this.remoteAddress.toString();
-            return this.getRecord(address).then((record) => {
-                const preKeyProto = Internal.protobuf.PreKeyWhisperMessage.decode(buffer);
+            return this.getRecord(address).then(async (record) => {
+                const protocolMessages = await Internal.protobuf.loadProtocolMessages();
+                const preKeyProto = protocolMessages.PreKeyWhisperMessage.decode(buffer);
                 if (!record) {
                     if (preKeyProto.registrationId === undefined) {
                         throw new Error("No registrationId");
@@ -231,7 +235,7 @@ class SessionCipher {
         });
     }
 
-    doDecryptWhisperMessage (messageBytes, session) {
+    async doDecryptWhisperMessage (messageBytes, session) {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
         }
@@ -242,7 +246,8 @@ class SessionCipher {
         const messageProto = messageBytes.slice(1, messageBytes.byteLength- 8);
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
-        const message = Internal.protobuf.WhisperMessage.decode(messageProto);
+        const protocolMessages = await Internal.protobuf.loadProtocolMessages();
+        const message = protocolMessages.WhisperMessage.decode(messageProto);
         const remoteEphemeralKey = message.ephemeralKey.toArrayBuffer();
 
         if (session === undefined) {
