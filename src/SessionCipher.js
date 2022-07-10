@@ -3,8 +3,8 @@
 class SessionCipher {
 
     constructor (storage, remoteAddress) {
-        this.remoteAddress = remoteAddress;
         this.storage = storage;
+        this.remoteAddress = remoteAddress;
     }
 
     getRecord (encodedNumber) {
@@ -17,18 +17,21 @@ class SessionCipher {
     }
 
     /**
-     * returns a Promise that resolves to a ciphertext object
+     * Returns a Promise that resolves to a ciphertext object
      */
     encrypt (buffer, encoding) {
-        buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding).toArrayBuffer();
+        if (!(buffer instanceof ArrayBuffer)) {
+            buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding).toArrayBuffer();
+        }
+
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             if (!(buffer instanceof ArrayBuffer)) {
                 throw new Error("Expected buffer to be an ArrayBuffer");
             }
 
             const address = this.remoteAddress.toString();
-            const protocolMessages = await Internal.protobuf.loadProtocolMessages();
-            const msg = protocolMessages.WhisperMessage.create();
+            const protobufMessages = await Internal.protobuf.loadProtocolMessages();
+            const msg = protobufMessages.WhisperMessage.create();
 
             let ourIdentityKey, myRegistrationId, record, session, chain;
 
@@ -48,9 +51,10 @@ class SessionCipher {
                     throw new Error("No session to encrypt message for " + address);
                 }
 
-                msg.ephemeralKey = util.toArrayBuffer(
+                msg.ephemeralKey = new Uint8Array(util.toArrayBuffer(
                     session.currentRatchet.ephemeralKeyPair.pubKey
-                );
+                ));
+
                 chain = session[util.toString(msg.ephemeralKey)];
                 if (chain.chainType === Internal.ChainType.RECEIVING) {
                     throw new Error("Tried to encrypt on a receiving chain");
@@ -63,6 +67,7 @@ class SessionCipher {
                     new ArrayBuffer(32),
                     "WhisperMessageKeys"
                 );
+
             }).then((keys) => {
                 delete chain.messageKeys[chain.chainKey.counter];
                 msg.counter = chain.chainKey.counter;
@@ -71,20 +76,19 @@ class SessionCipher {
                 return Internal.crypto.encrypt(
                     keys[0], buffer, keys[2].slice(0, 16)
                 ).then((ciphertext) => {
-                    msg.ciphertext = ciphertext;
-                    debugger;
-                    const encodedMsg = msg.toArrayBuffer();
+                    msg.ciphertext = new Uint8Array(ciphertext);
 
+                    const encodedMsg = protobufMessages.WhisperMessage.encode(msg).finish();
                     const macInput = new Uint8Array(encodedMsg.byteLength + 33*2 + 1);
                     macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)));
                     macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)), 33);
                     macInput[33*2] = (3 << 4) | 3;
-                    macInput.set(new Uint8Array(encodedMsg), 33*2 + 1);
+                    macInput.set(encodedMsg, 33*2 + 1);
 
                     return Internal.crypto.sign(keys[1], macInput.buffer).then((mac) => {
                         const result = new Uint8Array(encodedMsg.byteLength + 9);
                         result[0] = (3 << 4) | 3;
-                        result.set(new Uint8Array(encodedMsg), 1);
+                        result.set(encodedMsg, 1);
                         result.set(new Uint8Array(mac, 0, 8), encodedMsg.byteLength + 1);
 
                         return this.storage.isTrustedIdentity(
@@ -104,19 +108,21 @@ class SessionCipher {
                 });
             }).then(async (message) => {
                 if (session.pendingPreKey !== undefined) {
-                    const protocolMessages = await Internal.protobuf.loadProtocolMessages();
-                    const preKeyMsg = protocolMessages.PreKeyWhisperMessage.create();
-                    preKeyMsg.identityKey = util.toArrayBuffer(ourIdentityKey.pubKey);
+                    const protobufMessages = await Internal.protobuf.loadProtocolMessages();
+                    const preKeyMsg = protobufMessages.PreKeyWhisperMessage.create();
+                    preKeyMsg.identityKey = new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey));
                     preKeyMsg.registrationId = myRegistrationId;
 
-                    preKeyMsg.baseKey = util.toArrayBuffer(session.pendingPreKey.baseKey);
+                    preKeyMsg.baseKey = new Uint8Array(util.toArrayBuffer(session.pendingPreKey.baseKey));
                     if (session.pendingPreKey.preKeyId) {
                         preKeyMsg.preKeyId = session.pendingPreKey.preKeyId;
                     }
                     preKeyMsg.signedPreKeyId = session.pendingPreKey.signedKeyId;
 
                     preKeyMsg.message = message;
-                    const result = String.fromCharCode((3 << 4) | 3) + util.toString(preKeyMsg.encode());
+                    const encodedPreKeyMsg = protobufMessages.PreKeyWhisperMessage.encode(preKeyMsg).finish();
+
+                    const result = String.fromCharCode((3 << 4) | 3) + util.toString(encodedPreKeyMsg);
                     return {
                         type           : 3,
                         body           : result,
@@ -198,40 +204,42 @@ class SessionCipher {
      * to a decrypted plaintext array buffer
      */
     decryptPreKeyWhisperMessage (buffer, encoding) {
-        buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding);
-        const version = buffer.readUint8();
+        const bytebuffer = dcodeIO.ByteBuffer.wrap(buffer, encoding);
+        const version = bytebuffer.readUint8();
         if ((version & 0xF) > 3 || (version >> 4) < 3) {  // min version > 3 or max version < 3
             throw new Error("Incompatible version number on PreKeyWhisperMessage");
         }
-        return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), () => {
+
+        const arrayBuffer = bytebuffer.toArrayBuffer();
+
+        return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             const address = this.remoteAddress.toString();
-            return this.getRecord(address).then(async (record) => {
-                const protocolMessages = await Internal.protobuf.loadProtocolMessages();
-                const preKeyProto = protocolMessages.PreKeyWhisperMessage.decode(buffer);
-                if (!record) {
-                    if (preKeyProto.registrationId === undefined) {
-                        throw new Error("No registrationId");
-                    }
-                    record = new Internal.SessionRecord(
-                        preKeyProto.registrationId
-                    );
+            const protobufMessages = await Internal.protobuf.loadProtocolMessages();
+            const preKeyProto = protobufMessages.PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer));
+
+            let record = await this.getRecord(address);
+            if (!record) {
+                if (preKeyProto.registrationId === undefined) {
+                    throw new Error("No registrationId");
                 }
-                const builder = new SessionBuilder(this.storage, this.remoteAddress);
-                // isTrustedIdentity is called within processV3, no need to call it here
-                return builder.processV3(record, preKeyProto).then((preKeyId) => {
-                    const session = record.getSessionByBaseKey(preKeyProto.baseKey);
-                    return this.doDecryptWhisperMessage(
-                        preKeyProto.message.toArrayBuffer(), session
-                    ).then((plaintext) => {
-                        record.updateSessionState(session);
-                        return this.storage.storeSession(address, record.serialize()).then(() => {
-                            if (preKeyId !== undefined && preKeyId !== null) {
-                                return this.storage.removePreKey(preKeyId);
-                            }
-                        }).then(() => plaintext);
-                    });
-                });
-            });
+                record = new Internal.SessionRecord(
+                    preKeyProto.registrationId
+                );
+            }
+            const builder = new SessionBuilder(this.storage, this.remoteAddress);
+
+            // isTrustedIdentity is called within processV3, no need to call it here
+            const preKeyId = await builder.processV3(record, preKeyProto);
+
+            const session = record.getSessionByBaseKey(preKeyProto.baseKey);
+            const plaintext = await this.doDecryptWhisperMessage(preKeyProto.message.slice().buffer, session);
+            record.updateSessionState(session);
+            await this.storage.storeSession(address, record.serialize());
+
+            if (preKeyId !== undefined && preKeyId !== null) {
+                this.storage.removePreKey(preKeyId);
+            }
+            return plaintext;
         });
     }
 
@@ -243,12 +251,12 @@ class SessionCipher {
         if ((version & 0xF) > 3 || (version >> 4) < 3) {  // min version > 3 or max version < 3
             throw new Error("Incompatible version number on WhisperMessage");
         }
-        const messageProto = messageBytes.slice(1, messageBytes.byteLength- 8);
+        const messageProto = new Uint8Array(messageBytes.slice(1, messageBytes.byteLength- 8));
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
-        const protocolMessages = await Internal.protobuf.loadProtocolMessages();
-        const message = protocolMessages.WhisperMessage.decode(messageProto);
-        const remoteEphemeralKey = message.ephemeralKey.toArrayBuffer();
+        const protobufMessages = await Internal.protobuf.loadProtocolMessages();
+        const message = protobufMessages.WhisperMessage.decode(messageProto);
+        const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
 
         if (session === undefined) {
             return Promise.reject(new Error("No session found to decrypt message from " + this.remoteAddress.toString()));
@@ -273,19 +281,16 @@ class SessionCipher {
                 delete chain.messageKeys[message.counter];
                 return Internal.HKDF(util.toArrayBuffer(messageKey), new ArrayBuffer(32), "WhisperMessageKeys");
             });
-        }).then((keys) => {
-            return this.storage.getIdentityKeyPair().then((ourIdentityKey) => {
+        }).then(async (keys) => {
+            const ourIdentityKey = await this.storage.getIdentityKeyPair();
 
-                const macInput = new Uint8Array(messageProto.byteLength + 33*2 + 1);
-                macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)));
-                macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)), 33);
-                macInput[33*2] = (3 << 4) | 3;
-                macInput.set(new Uint8Array(messageProto), 33*2 + 1);
-
-                return Internal.verifyMAC(macInput.buffer, keys[1], mac, 8);
-            }).then(() => Internal.crypto.decrypt(keys[0], message.ciphertext.toArrayBuffer(), keys[2].slice(0, 16)));
-
-        }).then((plaintext) => {
+            const macInput = new Uint8Array(messageProto.byteLength + 33*2 + 1);
+            macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)));
+            macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)), 33);
+            macInput[33*2] = (3 << 4) | 3;
+            macInput.set(new Uint8Array(messageProto), 33*2 + 1);
+            await Internal.verifyMAC(macInput.buffer, keys[1], mac, 8);
+            const plaintext = await Internal.crypto.decrypt(keys[0], message.ciphertext.slice().buffer, keys[2].slice(0, 16));
             delete session.pendingPreKey;
             return plaintext;
         });

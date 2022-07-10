@@ -229,7 +229,7 @@ describe('SessionCipher', function() {
             }
         }).then(async () => {
             const pushMessages = await Internal.protobuf.loadPushMessages();
-            const proto = new pushMessages.PushMessageContent();
+            const proto = pushMessages.PushMessageContent.create();
             if (data.endSession) {
                 proto.flags = pushMessages.PushMessageContent.Flags.END_SESSION;
             } else {
