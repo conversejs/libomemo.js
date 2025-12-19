@@ -11,7 +11,7 @@ lint: node_modules
 
 .PHONY: test
 test: lint
-	npm test
+	npm test -- $(ARGS)
 
 .PHONY: check
 check: lint dist test
