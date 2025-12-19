@@ -3,6 +3,16 @@
   "repository": "https://github.com/WhisperSystems/libsignal-protocol-javascript.git",
   "version": "1.3.0",
   "license": "GPL-3.0",
+  "scripts": {
+    "clean": "rm -rf node_modules",
+    "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
+    "test": "karma start karma.conf.js",
+    "check": "npm run dist && npm run lint && npm run test",
+    "dist": "grunt concat:libsignalprotocol",
+    "compile": "grunt compile",
+    "build": "grunt build",
+    "dev": "grunt dev"
+  },
   "dependencies": {
     "bytebuffer": "^3.5.5",
     "long": "^3.1.0",

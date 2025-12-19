@@ -1,30 +1,27 @@
-ESLINT		?= ./node_modules/.bin/eslint
-GRUNT 		?= ./node_modules/.bin/grunt
-KARMA		?= ./node_modules/.bin/karma
-
 .PHONY: clean
 clean:
-	rm -rf node_modules
+	npm run clean
 
 node_modules: package.json package-lock.json
-	npm i
+	npm install
 
-.PHONY: eslint
-eslint: node_modules
-	$(ESLINT) src/**/*.js test/**/*.js Gruntfile.js
+.PHONY: lint
+lint: node_modules
+	npm run lint
 
-test: eslint
-	$(KARMA) start karma.conf.js $(ARGS)
+.PHONY: test
+test: lint
+	npm test
 
 .PHONY: check
-check: dist test
+check: lint dist test
 
 dist/libsignal-protocol.js:: node_modules
-	$(GRUNT) build
+	npm run build
 
 dist: dist/libsignal-protocol.js
 
 build/curve25519_compiled.js:: node_modules Gruntfile.js
-	$(GRUNT) compile
+	npm run compile
 
 compile: build/curve25519_compiled.js

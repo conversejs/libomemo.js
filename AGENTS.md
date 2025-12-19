@@ -37,42 +37,36 @@ This is a fork of [libsignal-protocol-javascript](https://github.com/signalapp/l
 ```bash
 # Install dependencies
 npm install
-
-# Or using Makefile
-make node_modules
 ```
 
 ### Building
 ```bash
 # Compile native C code (requires Emscripten)
-make compile
+npm run compile
 
 # Build JavaScript distribution
-make dist
+npm run dist
 
 # Full build (compile + dist)
-make build
+npm run build
 
 # Watch mode for development
-grunt dev
+npm run dev
 ```
 
 ### Testing
 ```bash
 # Run tests with Karma
-make test
-
-# Run tests with custom arguments
-make test ARGS="--single-run"
+npm test
 
 # Lint source files
-make eslint
+npm run lint
 ```
 
 ### Code Quality
 ```bash
 # Run ESLint on source and test files
-./node_modules/.bin/eslint src/**/*.js test/**/*.js Gruntfile.js
+npm run lint
 ```
 
 ## Code Patterns and Conventions
