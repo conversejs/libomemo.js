@@ -2,18 +2,16 @@
     const VERSION = 0;
 
     function iterateHash(data, key, count) {
-        data = dcodeIO.ByteBuffer.concat([data, key]).toArrayBuffer();
-        return Internal.crypto.hash(data).then(function(result) {
+        const combinedData = new Uint8Array(data.byteLength + key.byteLength);
+        combinedData.set(new Uint8Array(data), 0);
+        combinedData.set(new Uint8Array(key), data.byteLength);
+        return Internal.crypto.hash(combinedData.buffer).then((result) => {
             if (--count === 0) {
                 return result;
             } else {
                 return iterateHash(result, key, count);
             }
         });
-    }
-
-    function shortToArrayBuffer(number) {
-        return new Uint16Array([number]).buffer;
     }
 
     function getEncodedChunk(hash, offset) {
@@ -30,10 +28,24 @@
     }
 
     function getDisplayStringFor(identifier, key, iterations) {
-        const bytes = dcodeIO.ByteBuffer.concat([
-            shortToArrayBuffer(VERSION), key, identifier
-        ]).toArrayBuffer();
-        return iterateHash(bytes, key, iterations).then(function(output) {
+        const versionUint16Array= new Uint16Array([VERSION]);
+        const versionLength = versionUint16Array.buffer.byteLength;
+
+        const keyUint8Array = new Uint8Array(key);
+        const keyLength = keyUint8Array.buffer.byteLength;
+
+        const identifierUint8Array = new TextEncoder().encode(identifier);
+        const identifierLength = identifierUint8Array.buffer.byteLength;
+
+        const combinedBuffer = new Uint8Array(
+            versionLength +
+            keyLength +
+            identifierLength
+        );
+        combinedBuffer.set(versionUint16Array, 0);
+        combinedBuffer.set(keyUint8Array, versionLength);
+        combinedBuffer.set(identifierUint8Array, versionLength + keyLength);
+        return iterateHash(combinedBuffer.buffer, key, iterations).then((output) => {
             output = new Uint8Array(output);
             return getEncodedChunk(output, 0) +
                 getEncodedChunk(output, 5) +
@@ -49,7 +61,7 @@
     };
 
     libsignal.FingerprintGenerator.prototype = {
-        createFor: function(localIdentifier, localIdentityKey,
+        createFor(localIdentifier, localIdentityKey,
                             remoteIdentifier, remoteIdentityKey) {
             if (typeof localIdentifier !== 'string' ||
                 typeof remoteIdentifier !== 'string' ||

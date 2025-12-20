@@ -3,8 +3,8 @@
 class SessionCipher {
 
     constructor (storage, remoteAddress) {
-        this.storage = storage;
         this.remoteAddress = remoteAddress;
+        this.storage = storage;
     }
 
     getRecord (encodedNumber) {
@@ -19,19 +19,21 @@ class SessionCipher {
     /**
      * Returns a Promise that resolves to a ciphertext object
      */
-    encrypt (buffer, encoding) {
+    encrypt (buffer) {
         if (!(buffer instanceof ArrayBuffer)) {
-            buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding).toArrayBuffer();
+            if (typeof buffer === 'string') {
+                buffer = new TextEncoder().encode(buffer).buffer;
+            } else if (buffer instanceof Uint8Array) {
+                buffer = buffer.buffer;
+            } else {
+                throw new Error("Expected buffer to be an ArrayBuffer, string, or Uint8Array");
+            }
         }
 
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
-            if (!(buffer instanceof ArrayBuffer)) {
-                throw new Error("Expected buffer to be an ArrayBuffer");
-            }
-
             const address = this.remoteAddress.toString();
-            const protobufMessages = await Internal.protobuf.loadProtocolMessages();
-            const msg = protobufMessages.WhisperMessage.create();
+            const { WhisperMessage }= await Internal.protobuf.loadProtocolMessages();
+            const msg = WhisperMessage.create();
 
             let ourIdentityKey, myRegistrationId, record, session, chain;
 
@@ -67,7 +69,6 @@ class SessionCipher {
                     new ArrayBuffer(32),
                     "WhisperMessageKeys"
                 );
-
             }).then((keys) => {
                 delete chain.messageKeys[chain.chainKey.counter];
                 msg.counter = chain.chainKey.counter;
@@ -78,7 +79,7 @@ class SessionCipher {
                 ).then((ciphertext) => {
                     msg.ciphertext = new Uint8Array(ciphertext);
 
-                    const encodedMsg = protobufMessages.WhisperMessage.encode(msg).finish();
+                    const encodedMsg = WhisperMessage.encode(msg).finish();
                     const macInput = new Uint8Array(encodedMsg.byteLength + 33*2 + 1);
                     macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)));
                     macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)), 33);
@@ -214,8 +215,8 @@ class SessionCipher {
 
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             const address = this.remoteAddress.toString();
-            const protobufMessages = await Internal.protobuf.loadProtocolMessages();
-            const preKeyProto = protobufMessages.PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer));
+            const { PreKeyWhisperMessage }= await Internal.protobuf.loadProtocolMessages();
+            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer));
 
             let record = await this.getRecord(address);
             if (!record) {
@@ -254,8 +255,8 @@ class SessionCipher {
         const messageProto = new Uint8Array(messageBytes.slice(1, messageBytes.byteLength- 8));
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
-        const protobufMessages = await Internal.protobuf.loadProtocolMessages();
-        const message = protobufMessages.WhisperMessage.decode(messageProto);
+        const { WhisperMessage } = await Internal.protobuf.loadProtocolMessages();
+        const message = WhisperMessage.decode(messageProto);
         const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
 
         if (session === undefined) {
@@ -435,7 +436,7 @@ class SessionCipher {
 
 libsignal.SessionCipher = function (storage, remoteAddress) {
     const cipher = new SessionCipher(storage, remoteAddress);
-    this.encrypt = (buffer, encoding) => cipher.encrypt(buffer, encoding);
+    this.encrypt = (buffer) => cipher.encrypt(buffer);
     this.decryptPreKeyWhisperMessage = (buffer, encoding) => cipher.decryptPreKeyWhisperMessage(buffer, encoding);
     this.decryptWhisperMessage = (buffer, encoding) => cipher.decryptWhisperMessage(buffer, encoding);
     this.getRemoteRegistrationId = () => cipher.getRemoteRegistrationId();
