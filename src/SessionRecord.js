@@ -20,27 +20,13 @@ Internal.SessionRecord = (function() {
     const OLD_RATCHETS_MAX_LENGTH = 10;
     const SESSION_RECORD_VERSION = 'v1';
 
-    const StaticByteBufferProto = new dcodeIO.ByteBuffer().__proto__;
-    const StaticArrayBufferProto = new ArrayBuffer().__proto__;
-    const StaticUint8ArrayProto = new Uint8Array().__proto__;
-
-    function isStringable(thing) {
-        return (thing === Object(thing) &&
-                (thing.__proto__ == StaticArrayBufferProto ||
-                    thing.__proto__ == StaticUint8ArrayProto ||
-                    thing.__proto__ == StaticByteBufferProto));
-    }
     function ensureStringed(thing) {
         if (typeof thing == "string" || typeof thing == "number" || typeof thing == "boolean") {
             return thing;
-        } else if (isStringable(thing)) {
+        } else if (thing instanceof ArrayBuffer || thing instanceof Uint8Array) {
             return util.toString(thing);
-        } else if (thing instanceof Array) {
-            const array = [];
-            for (let i = 0; i < thing.length; i++) {
-                array[i] = ensureStringed(thing[i]);
-            }
-            return array;
+        } else if (Array.isArray(thing)) {
+            return thing.map(ensureStringed);
         } else if (thing === Object(thing)) {
             const obj = {};
             for (let key in thing) {

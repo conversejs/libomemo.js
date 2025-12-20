@@ -5,8 +5,6 @@
 const util = libsignal.util = (function() {
     'use strict';
 
-    const StaticArrayBufferProto = new ArrayBuffer().__proto__;
-
     return {
         toString: function(thing) {
             if (typeof thing == 'string') {
@@ -19,12 +17,12 @@ const util = libsignal.util = (function() {
             if (thing === undefined) {
                 return undefined;
             }
-            if (thing === Object(thing)) {
-                if (thing.__proto__ == StaticArrayBufferProto) {
-                    return thing;
-                }
+            if (thing instanceof ArrayBuffer) {
+                return thing;
             }
-
+            if (thing instanceof Uint8Array) {
+                return thing.buffer;
+            }
             if (typeof thing !== "string") {
                 throw new Error("Tried to convert a non-string of type " + typeof thing + " to an array buffer");
             }

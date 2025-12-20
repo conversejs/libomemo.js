@@ -14,7 +14,7 @@
     "dev": "grunt dev"
   },
   "dependencies": {
-    "bytebuffer": "^3.5.5",
+    "bytebuffer": "^5.0.1",
     "protobufjs": "^8.0.0"
   },
   "devDependencies": {

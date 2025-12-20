@@ -2,13 +2,21 @@
     'use strict';
 
     function validatePrivKey(privKey) {
-        if (privKey === undefined || !(privKey instanceof ArrayBuffer) || privKey.byteLength != 32) {
+        if (!(privKey instanceof ArrayBuffer)) {
+            throw new Error("Invalid private key: expected ArrayBuffer");
+        }
+
+        if (!(privKey instanceof ArrayBuffer) || privKey.byteLength != 32) {
             throw new Error("Invalid private key");
         }
     }
 
     function validatePubKeyFormat(pubKey) {
-        if (pubKey === undefined || ((pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) && pubKey.byteLength != 32)) {
+        if (!(pubKey instanceof ArrayBuffer)) {
+            throw new Error("Invalid public key: expected ArrayBuffer");
+        }
+
+        if ((pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) && pubKey.byteLength != 32) {
             throw new Error("Invalid public key");
         }
         if (pubKey.byteLength == 33) {

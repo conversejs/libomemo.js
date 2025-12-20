@@ -10,7 +10,7 @@ module.exports = function(grunt) {
       components: {
         src: [
           'node_modules/long/dist/long.js',
-          'node_modules/bytebuffer/dist/ByteBufferAB.js',
+          'node_modules/bytebuffer/dist/bytebuffer.js',
           'node_modules/protobufjs/dist/protobuf.js'
         ],
         dest: 'build/components_concat.js',
