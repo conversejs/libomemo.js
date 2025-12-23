@@ -5,29 +5,29 @@
 var Internal = Internal || {};
 
 Internal.protobuf = {
-    async loadProtocolMessages () {
+    async loadProtocolMessages() {
         let root;
-        if (Internal.protoText && Internal.protoText['protos/WhisperTextProtocol.proto']) {
-            root = protobuf.parse(Internal.protoText['protos/WhisperTextProtocol.proto']).root;
+        if (Internal.protoText && Internal.protoText["protos/WhisperTextProtocol.proto"]) {
+            root = protobuf.parse(Internal.protoText["protos/WhisperTextProtocol.proto"]).root;
         } else {
-            root = await protobuf.load('base/protos/WhisperTextProtocol.proto');
+            root = await protobuf.load("base/protos/WhisperTextProtocol.proto");
         }
         return {
-            WhisperMessage: root.lookupType('textsecure.WhisperMessage'),
-            PreKeyWhisperMessage: root.lookupType('textsecure.PreKeyWhisperMessage')
+            WhisperMessage: root.lookupType("textsecure.WhisperMessage"),
+            PreKeyWhisperMessage: root.lookupType("textsecure.PreKeyWhisperMessage"),
         };
     },
 
-    async loadPushMessages () {
+    async loadPushMessages() {
         let root;
-        if (Internal.protoText && Internal.protoText['protos/push.proto']) {
-            root = protobuf.parse(Internal.protoText['protos/push.proto']).root;
+        if (Internal.protoText && Internal.protoText["protos/push.proto"]) {
+            root = protobuf.parse(Internal.protoText["protos/push.proto"]).root;
         } else {
-            root = await protobuf.load('base/protos/push.proto');
+            root = await protobuf.load("base/protos/push.proto");
         }
         return {
-            IncomingPushMessageSignal: root.lookupType('textsecure.IncomingPushMessageSignal'),
-            PushMessageContent: root.lookupType('textsecure.PushMessageContent'),
+            IncomingPushMessageSignal: root.lookupType("textsecure.IncomingPushMessageSignal"),
+            PushMessageContent: root.lookupType("textsecure.PushMessageContent"),
         };
-    }
-}
+    },
+};

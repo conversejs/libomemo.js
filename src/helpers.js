@@ -2,18 +2,18 @@
  * vim: ts=4:sw=4
  */
 
-const util = libsignal.util = (function() {
-    'use strict';
+const util = (libsignal.util = (function () {
+    "use strict";
 
     return {
-        toString: function(thing) {
-            if (typeof thing == 'string') {
+        toString: function (thing) {
+            if (typeof thing == "string") {
                 return thing;
             }
-            return new dcodeIO.ByteBuffer.wrap(thing).toString('binary');
+            return new dcodeIO.ByteBuffer.wrap(thing).toString("binary");
         },
 
-        toArrayBuffer: function(thing) {
+        toArrayBuffer: function (thing) {
             if (thing === undefined) {
                 return undefined;
             }
@@ -24,12 +24,14 @@ const util = libsignal.util = (function() {
                 return thing.buffer;
             }
             if (typeof thing !== "string") {
-                throw new Error("Tried to convert a non-string of type " + typeof thing + " to an array buffer");
+                throw new Error(
+                    "Tried to convert a non-string of type " + typeof thing + " to an array buffer"
+                );
             }
-            return new dcodeIO.ByteBuffer.wrap(thing, 'binary').toArrayBuffer();
+            return new dcodeIO.ByteBuffer.wrap(thing, "binary").toArrayBuffer();
         },
 
-        isEqual: function(a, b) {
+        isEqual: function (a, b) {
             // TODO: Special-case arraybuffers, etc
             if (a === undefined || b === undefined) {
                 return false;
@@ -40,8 +42,10 @@ const util = libsignal.util = (function() {
             if (maxLength < 5) {
                 throw new Error("a/b compare too short");
             }
-            return a.substring(0, Math.min(maxLength, a.length)) == b.substring(0, Math.min(maxLength, b.length));
-        }
+            return (
+                a.substring(0, Math.min(maxLength, a.length)) ==
+                b.substring(0, Math.min(maxLength, b.length))
+            );
+        },
     };
-
-})();
+})());

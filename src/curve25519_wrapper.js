@@ -3,8 +3,8 @@
 // eslint-disable-next-line no-redeclare
 var Internal = Internal || {};
 
-(function() {
-    'use strict';
+(function () {
+    "use strict";
 
     // Insert some bytes into the emscripten memory and return a pointer
     function _allocate(bytes) {
@@ -22,9 +22,9 @@ var Internal = Internal || {};
     basepoint[0] = 9;
 
     Internal.curve25519 = {
-        keyPair: function(privKey) {
+        keyPair: function (privKey) {
             const priv = new Uint8Array(privKey);
-            priv[0]  &= 248;
+            priv[0] &= 248;
             priv[31] &= 127;
             priv[31] |= 64;
 
@@ -38,9 +38,7 @@ var Internal = Internal || {};
             const basepoint_ptr = _allocate(basepoint);
 
             // The return value is just 0, the operation is done in place
-            const err = Module._curve25519_donna(publicKey_ptr,
-                                            privateKey_ptr,
-                                            basepoint_ptr);
+            const err = Module._curve25519_donna(publicKey_ptr, privateKey_ptr, basepoint_ptr);
             if (err) {
                 console.log(err);
             }
@@ -55,7 +53,7 @@ var Internal = Internal || {};
             return { pubKey: res.buffer, privKey: priv.buffer };
         },
 
-        sharedSecret: function(pubKey, privKey) {
+        sharedSecret: function (pubKey, privKey) {
             // Where to store the result
             const sharedKey_ptr = Module._malloc(32);
 
@@ -67,9 +65,7 @@ var Internal = Internal || {};
             const basepoint_ptr = _allocate(new Uint8Array(pubKey));
 
             // Return value is 0 here too of course
-            const err = Module._curve25519_donna(sharedKey_ptr,
-                                               privateKey_ptr,
-                                               basepoint_ptr);
+            const err = Module._curve25519_donna(sharedKey_ptr, privateKey_ptr, basepoint_ptr);
             if (err) {
                 console.log(err);
             }
@@ -84,7 +80,7 @@ var Internal = Internal || {};
             return res.buffer;
         },
 
-        sign: function(privKey, message) {
+        sign: function (privKey, message) {
             // Where to store the result
             const signature_ptr = Module._malloc(64);
 
@@ -94,10 +90,12 @@ var Internal = Internal || {};
             // Get a pointer to the message
             const message_ptr = _allocate(new Uint8Array(message));
 
-            const err = Module._xed25519_sign(signature_ptr,
-                                              privateKey_ptr,
-                                              message_ptr,
-                                              message.byteLength);
+            const err = Module._xed25519_sign(
+                signature_ptr,
+                privateKey_ptr,
+                message_ptr,
+                message.byteLength
+            );
             if (err) {
                 console.log(err);
             }
@@ -112,7 +110,7 @@ var Internal = Internal || {};
             return res.buffer;
         },
 
-        verify: function(pubKey, message, sig) {
+        verify: function (pubKey, message, sig) {
             // Get a pointer to their public key
             const publicKey_ptr = _allocate(new Uint8Array(pubKey));
 
@@ -122,37 +120,39 @@ var Internal = Internal || {};
             // Get a pointer to the message
             const message_ptr = _allocate(new Uint8Array(message));
 
-            const res = Module._curve25519_verify(signature_ptr,
-                                                publicKey_ptr,
-                                                message_ptr,
-                                                message.byteLength);
+            const res = Module._curve25519_verify(
+                signature_ptr,
+                publicKey_ptr,
+                message_ptr,
+                message.byteLength
+            );
 
             Module._free(publicKey_ptr);
             Module._free(signature_ptr);
             Module._free(message_ptr);
 
             return res !== 0;
-        }
+        },
     };
 
     Internal.curve25519_async = {
-        keyPair: function(privKey) {
-            return new Promise(function(resolve) {
+        keyPair: function (privKey) {
+            return new Promise(function (resolve) {
                 resolve(Internal.curve25519.keyPair(privKey));
             });
         },
-        sharedSecret: function(pubKey, privKey) {
-            return new Promise(function(resolve) {
+        sharedSecret: function (pubKey, privKey) {
+            return new Promise(function (resolve) {
                 resolve(Internal.curve25519.sharedSecret(pubKey, privKey));
             });
         },
-        sign: function(privKey, message) {
-            return new Promise(function(resolve) {
+        sign: function (privKey, message) {
+            return new Promise(function (resolve) {
                 resolve(Internal.curve25519.sign(privKey, message));
             });
         },
-        verify: function(pubKey, message, sig) {
-            return new Promise(function(resolve, reject) {
+        verify: function (pubKey, message, sig) {
+            return new Promise(function (resolve, reject) {
                 if (Internal.curve25519.verify(pubKey, message, sig)) {
                     reject(new Error("Invalid signature"));
                 } else {
@@ -161,5 +161,4 @@ var Internal = Internal || {};
             });
         },
     };
-
 })();

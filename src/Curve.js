@@ -1,5 +1,5 @@
-(function() {
-    'use strict';
+(function () {
+    "use strict";
 
     function validatePrivKey(privKey) {
         if (!(privKey instanceof ArrayBuffer)) {
@@ -16,13 +16,18 @@
             throw new Error("Invalid public key: expected ArrayBuffer");
         }
 
-        if ((pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) && pubKey.byteLength != 32) {
+        if (
+            (pubKey.byteLength != 33 || new Uint8Array(pubKey)[0] != 5) &&
+            pubKey.byteLength != 32
+        ) {
             throw new Error("Invalid public key");
         }
         if (pubKey.byteLength == 33) {
             return pubKey.slice(1);
         } else {
-            console.error("WARNING: Expected pubkey of length 33, please report the ST and client that generated the pubkey");
+            console.error(
+                "WARNING: Expected pubkey of length 33, please report the ST and client that generated the pubkey"
+            );
             return pubKey;
         }
     }
@@ -40,7 +45,7 @@
     function wrapCurve25519(curve25519) {
         return {
             // Curve 25519 crypto
-            createKeyPair: function(privKey) {
+            createKeyPair: function (privKey) {
                 validatePrivKey(privKey);
                 const raw_keys = curve25519.keyPair(privKey);
                 if (raw_keys instanceof Promise) {
@@ -49,7 +54,7 @@
                     return processKeys(raw_keys);
                 }
             },
-            ECDHE: function(pubKey, privKey) {
+            ECDHE: function (pubKey, privKey) {
                 pubKey = validatePubKeyFormat(pubKey);
                 validatePrivKey(privKey);
 
@@ -59,7 +64,7 @@
 
                 return curve25519.sharedSecret(pubKey, privKey);
             },
-            Ed25519Sign: function(privKey, message) {
+            Ed25519Sign: function (privKey, message) {
                 validatePrivKey(privKey);
 
                 if (message === undefined) {
@@ -68,7 +73,7 @@
 
                 return curve25519.sign(privKey, message);
             },
-            Ed25519Verify: function(pubKey, msg, sig) {
+            Ed25519Verify: function (pubKey, msg, sig) {
                 pubKey = validatePubKeyFormat(pubKey);
 
                 if (pubKey === undefined || pubKey.byteLength != 32) {
@@ -84,35 +89,34 @@
                 }
 
                 return curve25519.verify(pubKey, msg, sig);
-            }
+            },
         };
     }
 
-    Internal.Curve       = wrapCurve25519(Internal.curve25519);
+    Internal.Curve = wrapCurve25519(Internal.curve25519);
     Internal.Curve.async = wrapCurve25519(Internal.curve25519_async);
 
     function wrapCurve(curve) {
         return {
-            generateKeyPair: function() {
+            generateKeyPair: function () {
                 const privKey = Internal.crypto.getRandomBytes(32);
                 return curve.createKeyPair(privKey);
             },
-            createKeyPair: function(privKey) {
+            createKeyPair: function (privKey) {
                 return curve.createKeyPair(privKey);
             },
-            calculateAgreement: function(pubKey, privKey) {
+            calculateAgreement: function (pubKey, privKey) {
                 return curve.ECDHE(pubKey, privKey);
             },
-            verifySignature: function(pubKey, msg, sig) {
+            verifySignature: function (pubKey, msg, sig) {
                 return curve.Ed25519Verify(pubKey, msg, sig);
             },
-            calculateSignature: function(privKey, message) {
+            calculateSignature: function (privKey, message) {
                 return curve.Ed25519Sign(privKey, message);
-            }
+            },
         };
     }
 
-    libsignal.Curve       = wrapCurve(Internal.Curve);
+    libsignal.Curve = wrapCurve(Internal.Curve);
     libsignal.Curve.async = wrapCurve(Internal.Curve.async);
-
 })();

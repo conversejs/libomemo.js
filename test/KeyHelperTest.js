@@ -1,5 +1,4 @@
-describe('KeyHelper', function() {
-
+describe("KeyHelper", function () {
     const { assert } = chai;
 
     function validateKeyPair(keyPair) {
@@ -10,16 +9,16 @@ describe('KeyHelper', function() {
         assert.strictEqual(new Uint8Array(keyPair.pubKey)[0], 5);
     }
 
-    describe('generateIdentityKeyPair', function() {
-        it ('works', function() {
-            libsignal.KeyHelper.generateIdentityKeyPair().then(function(keyPair) {
+    describe("generateIdentityKeyPair", function () {
+        it("works", function () {
+            libsignal.KeyHelper.generateIdentityKeyPair().then(function (keyPair) {
                 validateKeyPair(keyPair);
             });
         });
     });
 
-    describe('generateRegistrationId', function() {
-        it('generates a 14-bit integer', function() {
+    describe("generateRegistrationId", function () {
+        it("generates a 14-bit integer", function () {
             const registrationId = libsignal.KeyHelper.generateRegistrationId();
             assert.isNumber(registrationId);
             assert(registrationId >= 0);
@@ -28,33 +27,39 @@ describe('KeyHelper', function() {
         });
     });
 
-    describe("generatePreKey", function() {
-        it('generates a preKey', function(done) {
-            libsignal.KeyHelper.generatePreKey(1337).then(function(result) {
-                validateKeyPair(result.keyPair);
-                assert.strictEqual(result.keyId, 1337);
-            }).then(done, done);
+    describe("generatePreKey", function () {
+        it("generates a preKey", function (done) {
+            libsignal.KeyHelper.generatePreKey(1337)
+                .then(function (result) {
+                    validateKeyPair(result.keyPair);
+                    assert.strictEqual(result.keyId, 1337);
+                })
+                .then(done, done);
         });
-        it('throws on bad keyId', function() {
-            assert.throws(function() {
-                libsignal.KeyHelper.generatePreKey('bad');
+        it("throws on bad keyId", function () {
+            assert.throws(function () {
+                libsignal.KeyHelper.generatePreKey("bad");
             }, TypeError);
         });
     });
 
-    describe("generateSignedPreKey", function() {
-        it('generates a preKey', function(done) {
-            libsignal.KeyHelper.generateIdentityKeyPair().then(function(identityKey) {
-                libsignal.KeyHelper.generateSignedPreKey(identityKey, 1337).then(function(result) {
-                    validateKeyPair(result.keyPair);
-                    assert.strictEqual(result.keyId, 1337);
-                    //todo: validate result.signature
-                });
-            }).then(done, done);
+    describe("generateSignedPreKey", function () {
+        it("generates a preKey", function (done) {
+            libsignal.KeyHelper.generateIdentityKeyPair()
+                .then(function (identityKey) {
+                    libsignal.KeyHelper.generateSignedPreKey(identityKey, 1337).then(
+                        function (result) {
+                            validateKeyPair(result.keyPair);
+                            assert.strictEqual(result.keyId, 1337);
+                            //todo: validate result.signature
+                        }
+                    );
+                })
+                .then(done, done);
         });
-        it('throws on bad keyId', function() {
-            assert.throws(function() {
-                libsignal.KeyHelper.generateSignedPreKey('bad');
+        it("throws on bad keyId", function () {
+            assert.throws(function () {
+                libsignal.KeyHelper.generateSignedPreKey("bad");
             }, TypeError);
         });
     });
