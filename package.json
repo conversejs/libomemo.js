@@ -4,14 +4,15 @@
   "version": "1.3.0",
   "license": "GPL-3.0",
   "scripts": {
-    "clean": "rm -rf node_modules",
-    "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
-    "test": "karma start karma.conf.js",
-    "check": "npm run dist && npm run lint && npm run test",
-    "dist": "grunt concat:libsignalprotocol",
-    "compile": "grunt compile",
     "build": "grunt build",
-    "dev": "grunt dev"
+    "check": "npm run dist && npm run lint && npm run test",
+    "clean": "rm -rf node_modules",
+    "compile": "grunt compile",
+    "dev": "grunt dev",
+    "dist": "grunt concat:libsignalprotocol",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" Gruntfile.js",
+    "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
+    "test": "karma start karma.conf.js"
   },
   "dependencies": {
     "bytebuffer": "^5.0.1",
@@ -28,6 +29,7 @@
     "karma": "^6.4.0",
     "karma-chrome-launcher": "^3.1.1",
     "karma-mocha": "^2.0.1",
-    "mocha": "^10.0.0"
+    "mocha": "^10.0.0",
+    "prettier": "^3.7.4"
   }
 }
