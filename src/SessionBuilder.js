@@ -1,9 +1,56 @@
+/**
+ * Establishes a new Signal Protocol session from a PreKey bundle.
+ *
+ * On the sending side, {@link SessionBuilder#processPreKey} consumes the
+ * recipient's PreKey bundle (identity key, signed PreKey, optional one-time
+ * PreKey) and runs the triple Diffie-Hellman key agreement to produce an
+ * initial session state, which is persisted via the provided
+ * {@link SignalProtocolStore}.
+ *
+ * On the receiving side, {@link SessionBuilder#processV3} processes an
+ * incoming PreKeyWhisperMessage, retrieves the corresponding local PreKey
+ * records, performs the shared-secret derivation, and updates the session
+ * record so the message can subsequently be decrypted by
+ * {@link SessionCipher}.
+ *
+ * @param {SignalProtocolStore} storage  Storage backend for identity keys,
+ *                                       PreKeys, and session records.
+ * @param {SignalProtocolAddress} remoteAddress  Address of the remote party
+ *                                               (name + device ID) with whom
+ *                                               the session is being established.
+ */
 class SessionBuilder {
+    /**
+     * @param {SignalProtocolStore} storage  Storage backend for identity keys,
+     *                                       PreKeys, and session records.
+     * @param {SignalProtocolAddress} remoteAddress  Address of the remote party.
+     */
     constructor(storage, remoteAddress) {
         this.remoteAddress = remoteAddress;
         this.storage = storage;
     }
 
+    /**
+     * Processes a remote PreKey bundle to establish a session as the initiator.
+     *
+     * Validates the identity key and signed PreKey signature, then performs the
+     * X3DH key agreement.  The resulting session state is archived into the
+     * session record and persisted to storage.  The base key and PreKey /
+     * signed PreKey IDs are recorded as a pending PreKey so the session can be
+     * identified on the receiving end.
+     *
+     * @param {Object} device                 Remote PreKey bundle.
+     * @param {ArrayBuffer} device.identityKey       Remote identity public key.
+     * @param {Object} device.signedPreKey           Remote signed PreKey.
+     * @param {number} device.signedPreKey.keyId     ID of the signed PreKey.
+     * @param {ArrayBuffer} device.signedPreKey.publicKey  Public key data.
+     * @param {ArrayBuffer} device.signedPreKey.signature  Ed25519 signature.
+     * @param {Object} [device.preKey]               Remote one-time PreKey.
+     * @param {number} device.preKey.keyId           ID of the one-time PreKey.
+     * @param {ArrayBuffer} device.preKey.publicKey  Public key data.
+     * @param {number} device.registrationId         Remote registration ID.
+     * @returns {Promise<void>}
+     */
     processPreKey(device) {
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             const trusted = await this.storage.isTrustedIdentity(
@@ -63,6 +110,29 @@ class SessionBuilder {
         });
     }
 
+    /**
+     * Processes an incoming PreKeyWhisperMessage as the session responder.
+     *
+     * Verifies the sender's identity key, loads the corresponding local PreKey
+     * and signed PreKey records, then performs the X3DH key agreement to
+     * derive a new session state.  The session record is updated in memory;
+     * the caller is responsible for persisting it after the associated
+     * WhisperMessage has been successfully decrypted.
+     *
+     * @param {Internal.SessionRecord} record   Current session record for the
+     *                                          remote address.
+     * @param {Object} message                  Deserialised PreKeyWhisperMessage.
+     * @param {number} [message.preKeyId]       ID of the consumed one-time PreKey.
+     * @param {number} message.signedPreKeyId   ID of the consumed signed PreKey.
+     * @param {Uint8Array} message.baseKey      Ephemeral base key from the sender.
+     * @param {Uint8Array} message.identityKey  Sender's identity public key.
+     * @param {number} message.registrationId   Sender's registration ID.
+     * @returns {Promise<number|undefined>}     The consumed PreKey ID, or
+     *                                          undefined if a duplicate message
+     *                                          was received.
+     * @throws {Error} If the identity key is not trusted or the required
+     *                 signed PreKey cannot be found.
+     */
     async processV3(record, message) {
         if (record.getSessionByBaseKey(message.baseKey)) {
             console.log("Duplicate PreKeyMessage for session");
@@ -132,6 +202,26 @@ class SessionBuilder {
         return message.preKeyId;
     }
 
+    /**
+     * Performs the core X3DH key agreement and returns a new session state.
+     *
+     * Computes up to four ECDH shared secrets (3DH + optional 4th) and feeds
+     * them through HKDF to derive the initial root key.  On the initiator side
+     * the first sending ratchet is advanced immediately.
+     *
+     * @param {boolean} isInitiator         Whether we initiated the session.
+     * @param {KeyPair} ourEphemeralKey     Our ephemeral key pair (initiator: baseKey,
+     *                                      responder: one-time PreKey).
+     * @param {KeyPair} ourSignedKey        Our signed PreKey key pair
+     *                                      (responder only; initiator passes undefined).
+     * @param {ArrayBuffer} theirIdentityPubKey   Remote identity public key.
+     * @param {ArrayBuffer} theirEphemeralPubKey  Remote ephemeral public key (initiator:
+     *                                            one-time PreKey; responder: baseKey).
+     * @param {ArrayBuffer} theirSignedPubKey     Remote signed PreKey public key.
+     * @param {number} registrationId             Remote registration ID.
+     * @returns {Promise<Object>}   The new session state object.
+     * @private
+     */
     async initSession(
         isInitiator,
         ourEphemeralKey,
@@ -225,6 +315,20 @@ class SessionBuilder {
         return session;
     }
 
+    /**
+     * Advances the sending ratchet using the remote party's signed PreKey.
+     *
+     * Performs an ECDH between our initial ephemeral key pair and the remote
+     * signed PreKey, then HKDF-expands the result together with the current
+     * root key to produce a new root key and a sending chain key.  The
+     * sending chain and its initial message-keys placeholder are attached to
+     * the session object keyed by our ephemeral public key.
+     *
+     * @param {Object} session       Session state returned by {@link initSession}.
+     * @param {ArrayBuffer} remoteKey   Remote signed PreKey public key.
+     * @returns {Promise<void>}
+     * @private
+     */
     async calculateSendingRatchet(session, remoteKey) {
         const ratchet = session.currentRatchet;
 
