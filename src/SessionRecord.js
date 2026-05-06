@@ -49,7 +49,7 @@ Internal.SessionRecord = (function () {
     }
 
     function jsonThing(thing) {
-        return JSON.stringify(ensureStringed(thing)); //TODO: jquery???
+        return JSON.stringify(ensureStringed(thing));
     }
 
     const migrations = [
