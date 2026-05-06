@@ -58,9 +58,6 @@ npm run dev
 ```bash
 # Run tests with Karma
 npm test
-
-# Lint source files
-npm run lint
 ```
 
 ### Code Quality
