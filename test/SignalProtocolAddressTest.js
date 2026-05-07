@@ -28,12 +28,12 @@ describe("SignalProtocolAddress", function () {
         it("throws on a bad inputs", function () {
             ["", null, {}].forEach(function (input) {
                 assert.throws(function () {
-                    libsignal.SignalProtocolAddress.fromString(input);
+                    libomemo.SignalProtocolAddress.fromString(input);
                 });
             });
         });
         it("constructs the address", function () {
-            const address = libsignal.SignalProtocolAddress.fromString(string);
+            const address = libomemo.SignalProtocolAddress.fromString(string);
             assert.strictEqual(deviceId, address.getDeviceId());
             assert.strictEqual(name, address.getName());
         });

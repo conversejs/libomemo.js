@@ -58,7 +58,7 @@ SignalProtocolStore.prototype = {
         if (identifier === null || identifier === undefined)
             throw new Error("Tried to put identity key for undefined/null key");
 
-        const address = new libsignal.SignalProtocolAddress.fromString(identifier);
+        const address = new libomemo.SignalProtocolAddress.fromString(identifier);
 
         const existing = this.get("identityKey" + address.getName());
         this.put("identityKey" + address.getName(), identityKey);

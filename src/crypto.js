@@ -120,13 +120,13 @@ var Internal = Internal || {};
         });
     };
 
-    libsignal.HKDF = {
+    libomemo.HKDF = {
         deriveSecrets: function (input, salt, info) {
             return Internal.HKDF(input, salt, info);
         },
     };
 
-    libsignal.crypto = {
+    libomemo.crypto = {
         encrypt: function (key, data, iv) {
             return Internal.crypto.encrypt(key, data, iv);
         },

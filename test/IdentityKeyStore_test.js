@@ -6,7 +6,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
 
     describe("IdentityKeyStore", function () {
         const number = "+5558675309";
-        const address = new libsignal.SignalProtocolAddress("+5558675309", 1);
+        const address = new libomemo.SignalProtocolAddress("+5558675309", 1);
         let testKey;
 
         before(function (done) {
@@ -70,7 +70,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 });
             });
             it("returns false if a key is untrusted", function (done) {
-                const newIdentity = libsignal.crypto.getRandomBytes(33);
+                const newIdentity = libomemo.crypto.getRandomBytes(33);
                 store.saveIdentity(address.toString(), testKey.pubKey).then(function () {
                     store
                         .isTrustedIdentity(number, newIdentity)

@@ -24,13 +24,13 @@ class SignalProtocolAddress {
     }
 }
 
-libsignal.SignalProtocolAddress = SignalProtocolAddress;
+libomemo.SignalProtocolAddress = SignalProtocolAddress;
 
-libsignal.SignalProtocolAddress.fromString = function (encodedAddress) {
+libomemo.SignalProtocolAddress.fromString = function (encodedAddress) {
     if (typeof encodedAddress !== "string" || !encodedAddress.match(/.*\.\d+/)) {
         throw new Error("Invalid SignalProtocolAddress string");
     }
     const parts = encodedAddress.split(".");
     // eslint-disable-next-line radix
-    return new libsignal.SignalProtocolAddress(parts[0], parseInt(parts[1]));
+    return new libomemo.SignalProtocolAddress(parts[0], parseInt(parts[1]));
 };

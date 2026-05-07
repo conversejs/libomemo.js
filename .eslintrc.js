@@ -11,7 +11,7 @@ module.exports = {
         "dcodeIO": true,
         "describe": true,
         "it": true,
-        "libsignal": true,
+        "libomemo": true,
         "parseInt": true,
         "require": true,
         "util": true,

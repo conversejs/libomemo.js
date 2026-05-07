@@ -29,7 +29,7 @@ describe("NumericFingerprint", function () {
     };
 
     it("returns the correct fingerprint", function (done) {
-        const generator = new libsignal.FingerprintGenerator(5200);
+        const generator = new libomemo.FingerprintGenerator(5200);
         generator
             .createFor(alice.identifier, alice.key, bob.identifier, bob.key)
             .then(function (fingerprint) {
@@ -39,7 +39,7 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and bob results match", function (done) {
-        const generator = new libsignal.FingerprintGenerator(1024);
+        const generator = new libomemo.FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
@@ -51,7 +51,7 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and !bob results mismatch", function (done) {
-        const generator = new libsignal.FingerprintGenerator(1024);
+        const generator = new libomemo.FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, "+15558675309", bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
@@ -63,8 +63,8 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and mitm results mismatch", function (done) {
-        const mitm = libsignal.crypto.getRandomBytes(33);
-        const generator = new libsignal.FingerprintGenerator(1024);
+        const mitm = libomemo.crypto.getRandomBytes(33);
+        const generator = new libomemo.FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, mitm),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),

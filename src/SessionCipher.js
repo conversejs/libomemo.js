@@ -503,7 +503,7 @@ class SessionCipher {
     }
 }
 
-libsignal.SessionCipher = function (storage, remoteAddress) {
+libomemo.SessionCipher = function (storage, remoteAddress) {
     const cipher = new SessionCipher(storage, remoteAddress);
     this.encrypt = (buffer) => cipher.encrypt(buffer);
     this.decryptPreKeyWhisperMessage = (buffer, encoding) =>

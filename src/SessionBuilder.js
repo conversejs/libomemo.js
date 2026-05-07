@@ -248,7 +248,7 @@ class SessionBuilder {
     }
 }
 
-libsignal.SessionBuilder = function (storage, remoteAddress) {
+libomemo.SessionBuilder = function (storage, remoteAddress) {
     const builder = new SessionBuilder(storage, remoteAddress);
     this.processPreKey = (device) => builder.processPreKey(device);
     this.processV3 = (record, message) => builder.processV3(record, message);

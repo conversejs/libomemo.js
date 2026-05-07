@@ -42,13 +42,13 @@ module.exports = function (grunt) {
 
             worker: {
                 src: ["build/curve25519_concat.js", "src/curve25519_worker.js"],
-                dest: "dist/libsignal-protocol-worker.js",
+                dest: "dist/libomemo-worker.js",
                 options: {
-                    banner: ";(function(){\nvar Internal = {};\nvar libsignal = {};\n",
+                    banner: ";(function(){\nvar Internal = {};\nvar libomemo = {};\n",
                     footer: "\n})();",
                 },
             },
-            libsignalprotocol: {
+            libomemo: {
                 src: [
                     "build/curve25519_concat.js",
                     "src/curve25519_worker_manager.js",
@@ -66,9 +66,9 @@ module.exports = function (grunt) {
                     "src/SessionLock.js",
                     "src/NumericFingerprint.js",
                 ],
-                dest: "dist/libsignal-protocol.js",
+                dest: "dist/libomemo.js",
                 options: {
-                    banner: ";(function(){\nvar Internal = {};\nwindow.libsignal = {};\n",
+                    banner: ";(function(){\nvar Internal = {};\nwindow.libomemo = {};\n",
                     footer: "\n})();",
                 },
             },
@@ -100,9 +100,9 @@ module.exports = function (grunt) {
                 files: ["<%= concat.worker.src %>"],
                 tasks: ["concat:worker"],
             },
-            libsignalprotocol: {
-                files: ["<%= concat.libsignalprotocol.src %>"],
-                tasks: ["concat:libsignalprotocol"],
+            libomemo: {
+                files: ["<%= concat.libomemo.src %>"],
+                tasks: ["concat:libomemo"],
             },
             protos: {
                 files: ["<%= concat.protos.src %>"],

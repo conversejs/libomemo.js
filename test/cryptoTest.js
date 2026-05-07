@@ -219,10 +219,10 @@ describe("Crypto", function () {
     });
     describe("curve25519 in a worker", function () {
         before(function () {
-            libsignal.worker.startWorker("../../dist/libsignal-protocol-worker.js");
+            libomemo.worker.startWorker("../dist/libomemo-worker.js");
         });
         after(function () {
-            libsignal.worker.stopWorker();
+            libomemo.worker.stopWorker();
         });
         this.timeout(5000);
         testCurve25519();

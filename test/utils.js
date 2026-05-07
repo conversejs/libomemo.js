@@ -1,6 +1,6 @@
 /* global KeyHelper */
 
-window.libsignal = {};
+window.libomemo = {};
 window.Internal = {};
 
 /*

@@ -3,10 +3,7 @@
 [![CI Tests](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml)
 
 This is a work-in-progress fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
-a Signal Protocol implementation for the browser.
-
-This fork modifies it to conform to the XMPP [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html)
-specification version 0.8.3.
+to provide an [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol implementation for the browser.
 
 ```
 /dist       # Distributables
@@ -33,7 +30,7 @@ list of unsigned PreKeys, and transmit all of them to the server.
 
 ### Sessions
 
-Signal Protocol is session-oriented. Clients establish a "session," which is
+The OMEMO protocol is session-oriented. Clients establish a "session," which is
 then used for all subsequent encrypt/decrypt operations. There is no need to
 ever tear down a session once one has been established.
 
@@ -76,17 +73,17 @@ types/interfaces, which are available in most modern browsers.
 
 ## Usage
 
-Include `dist/libsignal-protocol.js` in your webpage.
+Include `dist/libomemo.js` in your webpage.
 
 ### Install time
 
-At install time, a libsignal client needs to generate its identity keys,
+At install time, an OMEMO client needs to generate its identity keys,
 registration id, and prekeys.
 
 ```js
-var KeyHelper = libsignal.KeyHelper;
+const KeyHelper = libomemo.KeyHelper;
 
-var registrationId = KeyHelper.generateRegistrationId();
+const registrationId = KeyHelper.generateRegistrationId();
 // Store registrationId somewhere durable and safe.
 
 KeyHelper.generateIdentityKeyPair().then(function(identityKeyPair) {
@@ -107,23 +104,23 @@ KeyHelper.generateSignedPreKey(identityKeyPair, keyId).then(function(signedPreKe
 
 ### Building a session
 
-A libsignal client needs to implement a storage interface that will manage
+An OMEMO client needs to implement a storage interface that will manage
 loading and storing of identity, prekeys, signed prekeys, and session state.
-See `test/InMemorySignalProtocolStore.js` for an example.
+See `test/InMemoryOMEMOProtocolStore.js` for an example.
 
 Once this is implemented, building a session is fairly straightforward:
 
 ```js
-var store   = new MySignalProtocolStore();
-var address = new libsignal.SignalProtocolAddress(recipientId, deviceId);
+const store   = new MyOMEMOProtocolStore();
+const address = new libomemo.OMEMOProtocolAddress(recipientId, deviceId);
 
 // Instantiate a SessionBuilder for a remote recipientId + deviceId tuple.
-var sessionBuilder = new libsignal.SessionBuilder(store, address);
+const sessionBuilder = new libomemo.SessionBuilder(store, address);
 
 // Process a prekey fetched from the server. Returns a promise that resolves
 // once a session is created and saved in the store, or rejects if the
 // identityKey differs from a previously seen identity for this address.
-var promise = sessionBuilder.processPreKey({
+const promise = sessionBuilder.processPreKey({
     registrationId: <Number>,
     identityKey: <ArrayBuffer>,
     signedPreKey: {
@@ -152,8 +149,8 @@ Once you have a session established with an address, you can encrypt messages
 using SessionCipher.
 
 ```js
-var plaintext = "Hello world";
-var sessionCipher = new libsignal.SessionCipher(store, address);
+const plaintext = "Hello world";
+const sessionCipher = new libomemo.SessionCipher(store, address);
 sessionCipher.encrypt(plaintext).then(function(ciphertext) {
     // ciphertext -> { type: <Number>, body: <string> }
     handle(ciphertext.type, ciphertext.body);
@@ -165,8 +162,8 @@ sessionCipher.encrypt(plaintext).then(function(ciphertext) {
 Ciphertexts come in two flavors: WhisperMessage and PreKeyWhisperMessage.
 
 ```js
-var address = new SignalProtocolAddress(recipientId, deviceId);
-var sessionCipher = new SessionCipher(store, address);
+const address = new OMEMOProtocolAddress(recipientId, deviceId);
+const sessionCipher = new SessionCipher(store, address);
 
 // Decrypt a PreKeyWhisperMessage by first establishing a new session.
 // Returns a promise that resolves when the message is decrypted or
@@ -179,7 +176,7 @@ sessionCipher.decryptPreKeyWhisperMessage(ciphertext).then(function(plaintext) {
 });
 
 // Decrypt a normal message using an existing session
-var sessionCipher = new SessionCipher(store, address);
+const sessionCipher = new SessionCipher(store, address);
 sessionCipher.decryptWhisperMessage(ciphertext).then(function(plaintext) {
     // handle plaintext ArrayBuffer
 });

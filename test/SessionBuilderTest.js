@@ -4,7 +4,7 @@ describe("SessionBuilder", function () {
     this.timeout(5000);
 
     const { assert } = chai;
-    const { util, SignalProtocolAddress, KeyHelper } = libsignal;
+    const { util, SignalProtocolAddress, KeyHelper } = libomemo;
 
     const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
     const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
@@ -22,7 +22,7 @@ describe("SessionBuilder", function () {
                     return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
                 })
                 .then(function (preKeyBundle) {
-                    const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         done();
                     });
@@ -31,8 +31,8 @@ describe("SessionBuilder", function () {
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", function () {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
@@ -68,7 +68,7 @@ describe("SessionBuilder", function () {
         it("accepts a new preKey with the same identity", function (done) {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
                 .then(function (preKeyBundle) {
-                    const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         return aliceStore
                             .loadSession(BOB_ADDRESS.toString())
@@ -86,7 +86,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", function (done) {
             KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder
                     .processPreKey({
                         identityKey: newIdentity.pubKey,
@@ -118,7 +118,7 @@ describe("SessionBuilder", function () {
                 })
                 .then(function (preKeyBundle) {
                     delete preKeyBundle.preKey;
-                    const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         done();
                     });
@@ -127,8 +127,8 @@ describe("SessionBuilder", function () {
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", function () {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
@@ -169,7 +169,7 @@ describe("SessionBuilder", function () {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
                 .then(function (preKeyBundle) {
                     delete preKeyBundle.preKey;
-                    const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         return aliceStore
                             .loadSession(BOB_ADDRESS.toString())
@@ -187,7 +187,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", function (done) {
             KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder
                     .processPreKey({
                         identityKey: newIdentity.pubKey,
