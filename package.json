@@ -1,35 +1,35 @@
 {
-  "name": "libomemo.js",
-  "repository": "github:conversejs/libomemo.js",
-  "version": "2.0.0",
-  "license": "GPL-3.0",
-  "scripts": {
-    "build": "grunt build",
-    "check": "npm run dist && npm run lint && npm run test",
-    "clean": "rm -rf node_modules",
-    "compile": "grunt compile",
-    "dev": "grunt dev",
-    "dist": "grunt concat:libomemo",
-    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" Gruntfile.js",
-    "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
-    "test": "karma start karma.conf.js --single-run",
-    "test:browser": "karma start karma.conf --browsers Chrome"
-  },
-  "dependencies": {
-    "bytebuffer": "^5.0.1",
-    "protobufjs": "^8.0.0"
-  },
-  "devDependencies": {
-    "chai": "^3.5.0",
-    "eslint": "^8.19.0",
-    "grunt": "^0.4.5",
-    "grunt-cli": "^0.1.13",
-    "grunt-contrib-concat": "^0.5.0",
-    "grunt-contrib-watch": "^0.6.1",
-    "karma": "^6.4.0",
-    "karma-chrome-launcher": "^3.1.1",
-    "karma-mocha": "^2.0.1",
-    "mocha": "^10.0.0",
-    "prettier": "^3.7.4"
-  }
+    "name": "libomemo.js",
+    "repository": "github:conversejs/libomemo.js",
+    "version": "2.0.0",
+    "license": "GPL-3.0",
+    "scripts": {
+        "build": "grunt build",
+        "check": "npm run dist && npm run lint && npm run test",
+        "clean": "rm -rf node_modules",
+        "compile": "grunt compile",
+        "dev": "grunt dev",
+        "dist": "grunt concat:libomemo",
+        "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" Gruntfile.js",
+        "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
+        "test": "karma start karma.conf.js --single-run",
+        "test:browser": "karma start karma.conf --browsers Chrome"
+    },
+    "dependencies": {
+        "bytebuffer": "^5.0.1",
+        "protobufjs": "^8.0.0"
+    },
+    "devDependencies": {
+        "chai": "^3.5.0",
+        "eslint": "^8.19.0",
+        "grunt": "^0.4.5",
+        "grunt-cli": "^0.1.13",
+        "grunt-contrib-concat": "^0.5.0",
+        "grunt-contrib-watch": "^0.6.1",
+        "karma": "^6.4.0",
+        "karma-chrome-launcher": "^3.1.1",
+        "karma-mocha": "^2.0.1",
+        "mocha": "^10.0.0",
+        "prettier": "^3.7.4"
+    }
 }
