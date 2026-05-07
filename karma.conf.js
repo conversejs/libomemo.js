@@ -54,7 +54,10 @@ module.exports = function (config) {
             "test/SessionCipherTest.js",
             "test/SignalProtocolAddressTest.js",
             "test/cryptoTest.js",
+            "test/CurveTest.js",
             "test/helpersTest.js",
+            "test/SessionRecordTest.js",
+            "test/SessionLockTest.js",
 
             "test/SessionStore_test.js",
             "test/SignedPreKeyStore_test.js",
