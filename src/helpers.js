@@ -2,7 +2,7 @@
  * vim: ts=4:sw=4
  */
 
-const util = (libsignal.util = (function () {
+const util = (libomemo.util = (function () {
     "use strict";
 
     return {

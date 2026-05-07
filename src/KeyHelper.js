@@ -49,4 +49,4 @@ const KeyHelper = {
     },
 };
 
-libsignal.KeyHelper = KeyHelper;
+libomemo.KeyHelper = KeyHelper;

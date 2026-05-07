@@ -4,13 +4,13 @@
 "use strict";
 describe("SessionCipher", function () {
     const { assert } = chai;
-    const { SignalProtocolAddress } = libsignal;
+    const { SignalProtocolAddress } = libomemo;
 
     describe("getRemoteRegistrationId", function () {
         const store = new SignalProtocolStore();
         const registrationId = 1337;
-        const address = new libsignal.SignalProtocolAddress("foo", 1);
-        const sessionCipher = new libsignal.SessionCipher(store, address.toString());
+        const address = new libomemo.SignalProtocolAddress("foo", 1);
+        const sessionCipher = new libomemo.SessionCipher(store, address.toString());
         describe("when an open record exists", function () {
             before(function (done) {
                 const record = new Internal.SessionRecord(registrationId);
@@ -43,7 +43,7 @@ describe("SessionCipher", function () {
         });
         describe("when a record does not exist", function () {
             it("returns undefined", function (done) {
-                const sessionCipher = new libsignal.SessionCipher(store, "bar.1");
+                const sessionCipher = new libomemo.SessionCipher(store, "bar.1");
                 sessionCipher
                     .getRemoteRegistrationId()
                     .then(function (value) {
@@ -56,8 +56,8 @@ describe("SessionCipher", function () {
 
     describe("hasOpenSession", function () {
         const store = new SignalProtocolStore();
-        const address = new libsignal.SignalProtocolAddress("foo", 1);
-        const sessionCipher = new libsignal.SessionCipher(store, address.toString());
+        const address = new libomemo.SignalProtocolAddress("foo", 1);
+        const sessionCipher = new libomemo.SessionCipher(store, address.toString());
         describe("open session exists", function () {
             before(function (done) {
                 const record = new Internal.SessionRecord();
@@ -180,7 +180,7 @@ describe("SessionCipher", function () {
     function doReceiveStep(store, data, privKeyQueue, address) {
         return setupReceiveStep(store, data, privKeyQueue)
             .then(async () => {
-                const sessionCipher = new libsignal.SessionCipher(store, address);
+                const sessionCipher = new libomemo.SessionCipher(store, address);
                 const pushMessages = await Internal.protobuf.loadPushMessages();
                 if (data.type == pushMessages.IncomingPushMessageSignal.Type.CIPHERTEXT) {
                     return sessionCipher.decryptWhisperMessage(data.message).then(unpad);
@@ -242,7 +242,7 @@ describe("SessionCipher", function () {
                         registrationId: data.getKeys.devices[0].registrationId,
                     };
 
-                    const builder = new libsignal.SessionBuilder(store, address);
+                    const builder = new libomemo.SessionBuilder(store, address);
 
                     return builder.processPreKey(deviceObject);
                 }
@@ -372,7 +372,7 @@ describe("SessionCipher", function () {
             }
 
             const store = new SignalProtocolStore();
-            const address = libsignal.SignalProtocolAddress.fromString("SNOWDEN.1");
+            const address = libomemo.SignalProtocolAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
                 it(getDescription(step), function (done) {
                     let doStep;
@@ -401,7 +401,7 @@ describe("SessionCipher", function () {
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        const bobSessionCipher = new libsignal.SessionCipher(bobStore, ALICE_ADDRESS);
+        const bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
 
         before(function (done) {
             Promise.all([aliceStore, bobStore].map(generateIdentity))
@@ -409,11 +409,11 @@ describe("SessionCipher", function () {
                     return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
                 })
                 .then(function (preKeyBundle) {
-                    const builder = new libsignal.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder
                         .processPreKey(preKeyBundle)
                         .then(function () {
-                            const aliceSessionCipher = new libsignal.SessionCipher(
+                            const aliceSessionCipher = new libomemo.SessionCipher(
                                 aliceStore,
                                 BOB_ADDRESS
                             );
@@ -452,14 +452,14 @@ describe("SessionCipher", function () {
             });
 
             it("alice cannot encrypt with the old session", function () {
-                const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+                const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
                 return aliceSessionCipher.encrypt(originalMessage).catch(function (e) {
                     assert.strictEqual(e.message, "Identity key changed");
                 });
             });
 
             it("alice cannot decrypt from the old session", function () {
-                const aliceSessionCipher = new libsignal.SessionCipher(aliceStore, BOB_ADDRESS);
+                const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
                 return aliceSessionCipher
                     .decryptWhisperMessage(messageFromBob.body, "binary")
                     .catch(function (e) {

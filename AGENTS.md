@@ -89,7 +89,7 @@ npm run lint
 ### Module System
 - Uses IIFE (Immediately Invoked Function Expression) pattern
 - Internal functions in `Internal` namespace
-- Public API exposed through `libsignal` global object
+- Public API exposed through `libomemo` global object
 
 ### Naming Conventions
 - CamelCase for functions and variables

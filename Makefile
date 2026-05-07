@@ -16,10 +16,10 @@ test: lint
 .PHONY: check
 check: lint dist test
 
-dist/libsignal-protocol.js:: node_modules
+dist/libomemo.js:: node_modules
 	npm run build
 
-dist: dist/libsignal-protocol.js
+dist: dist/libomemo.js
 
 build/curve25519_compiled.js:: node_modules Gruntfile.js
 	npm run compile

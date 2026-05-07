@@ -17,7 +17,7 @@
         }
     };
 
-    libsignal.worker = {
+    libomemo.worker = {
         startWorker: Internal.startWorker,
         stopWorker: Internal.stopWorker,
     };

@@ -117,6 +117,6 @@
         };
     }
 
-    libsignal.Curve = wrapCurve(Internal.Curve);
-    libsignal.Curve.async = wrapCurve(Internal.Curve.async);
+    libomemo.Curve = wrapCurve(Internal.Curve);
+    libomemo.Curve.async = wrapCurve(Internal.Curve.async);
 })();

@@ -56,11 +56,11 @@
         });
     }
 
-    libsignal.FingerprintGenerator = function (iterations) {
+    libomemo.FingerprintGenerator = function (iterations) {
         this.iterations = iterations;
     };
 
-    libsignal.FingerprintGenerator.prototype = {
+    libomemo.FingerprintGenerator.prototype = {
         createFor(localIdentifier, localIdentityKey, remoteIdentifier, remoteIdentityKey) {
             if (
                 typeof localIdentifier !== "string" ||
