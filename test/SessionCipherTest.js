@@ -11,8 +11,9 @@ describe("SessionCipher", function () {
         const registrationId = 1337;
         const address = new libomemo.SignalProtocolAddress("foo", 1);
         const sessionCipher = new libomemo.SessionCipher(store, address.toString());
+
         describe("when an open record exists", function () {
-            before(function (done) {
+            before(async () => {
                 const record = new Internal.SessionRecord(registrationId);
                 const session = {
                     registrationId: registrationId,
@@ -30,26 +31,20 @@ describe("SessionCipher", function () {
                     oldRatchetList: [],
                 };
                 record.updateSessionState(session);
-                store.storeSession(address.toString(), record.serialize()).then(done);
+                await store.storeSession(address.toString(), record.serialize());
             });
-            it("returns a valid registrationId", function (done) {
-                sessionCipher
-                    .getRemoteRegistrationId()
-                    .then(function (value) {
-                        assert.strictEqual(value, registrationId);
-                    })
-                    .then(done, done);
+
+            it("returns a valid registrationId", async function () {
+                const value = await sessionCipher.getRemoteRegistrationId();
+                assert.strictEqual(value, registrationId);
             });
         });
+
         describe("when a record does not exist", function () {
-            it("returns undefined", function (done) {
+            it("returns undefined", async function () {
                 const sessionCipher = new libomemo.SessionCipher(store, "bar.1");
-                sessionCipher
-                    .getRemoteRegistrationId()
-                    .then(function (value) {
-                        assert.isUndefined(value);
-                    })
-                    .then(done, done);
+                const value = await sessionCipher.getRemoteRegistrationId();
+                assert.isUndefined(value);
             });
         });
     });
@@ -58,8 +53,9 @@ describe("SessionCipher", function () {
         const store = new SignalProtocolStore();
         const address = new libomemo.SignalProtocolAddress("foo", 1);
         const sessionCipher = new libomemo.SessionCipher(store, address.toString());
+
         describe("open session exists", function () {
-            before(function (done) {
+            before(async function () {
                 const record = new Internal.SessionRecord();
                 const session = {
                     registrationId: 1337,
@@ -77,44 +73,35 @@ describe("SessionCipher", function () {
                     oldRatchetList: [],
                 };
                 record.updateSessionState(session);
-                store.storeSession(address.toString(), record.serialize()).then(done);
+                await store.storeSession(address.toString(), record.serialize());
             });
-            it("returns true", function (done) {
-                sessionCipher
-                    .hasOpenSession(address.toString())
-                    .then(function (value) {
-                        assert.isTrue(value);
-                    })
-                    .then(done, done);
+
+            it("returns true", async function () {
+                const value = await sessionCipher.hasOpenSession(address.toString());
+                assert.isTrue(value);
             });
         });
+
         describe("no open session exists", function () {
             before(function (done) {
                 const record = new Internal.SessionRecord();
                 store.storeSession(address.toString(), record.serialize()).then(done);
             });
-            it("returns false", function (done) {
-                sessionCipher
-                    .hasOpenSession(address.toString())
-                    .then(function (value) {
-                        assert.isFalse(value);
-                    })
-                    .then(done, done);
+
+            it("returns false", async function () {
+                const value = await sessionCipher.hasOpenSession(address.toString());
+                assert.isFalse(value);
             });
         });
         describe("when there is no session", function () {
-            it("returns false", function (done) {
-                sessionCipher
-                    .hasOpenSession("bar")
-                    .then(function (value) {
-                        assert.isFalse(value);
-                    })
-                    .then(done, done);
+            it("returns false", async function () {
+                const value = await sessionCipher.hasOpenSession("bar");
+                assert.isFalse(value);
             });
         });
     });
 
-    function setupReceiveStep(store, data, privKeyQueue) {
+    async function setupReceiveStep(store, data, privKeyQueue) {
         if (data.newEphemeralKey !== undefined) {
             privKeyQueue.push(data.newEphemeralKey);
         }
@@ -123,24 +110,16 @@ describe("SessionCipher", function () {
             return Promise.resolve();
         }
 
-        return Internal.crypto
-            .createKeyPair(data.ourIdentityKey)
-            .then(function (keyPair) {
-                store.put("identityKey", keyPair);
-            })
-            .then(function () {
-                return Internal.crypto.createKeyPair(data.ourSignedPreKey);
-            })
-            .then(function (signedKeyPair) {
-                store.storeSignedPreKey(data.signedPreKeyId, signedKeyPair);
-            })
-            .then(function () {
-                if (data.ourPreKey !== undefined) {
-                    return Internal.crypto.createKeyPair(data.ourPreKey).then(function (keyPair) {
-                        store.storePreKey(data.preKeyId, keyPair);
-                    });
-                }
-            });
+        const keyPair = await Internal.crypto.createKeyPair(data.ourIdentityKey);
+        store.put("identityKey", keyPair);
+
+        const signedKeyPair = await Internal.crypto.createKeyPair(data.ourSignedPreKey);
+        store.storeSignedPreKey(data.signedPreKeyId, signedKeyPair);
+
+        if (data.ourPreKey !== undefined) {
+            const keyPair = await Internal.crypto.createKeyPair(data.ourPreKey);
+            store.storePreKey(data.preKeyId, keyPair);
+        }
     }
 
     function getPaddedMessageLength(messageLength) {
@@ -153,6 +132,7 @@ describe("SessionCipher", function () {
 
         return messagePartCount * 160;
     }
+
     function pad(plaintext) {
         const paddedPlaintext = new Uint8Array(
             getPaddedMessageLength(plaintext.byteLength + 1) - 1
@@ -211,7 +191,7 @@ describe("SessionCipher", function () {
             });
     }
 
-    function setupSendStep(store, data, privKeyQueue) {
+    async function setupSendStep(store, data, privKeyQueue) {
         if (data.registrationId !== undefined) {
             store.put("registrationId", data.registrationId);
         }
@@ -223,9 +203,8 @@ describe("SessionCipher", function () {
         }
 
         if (data.ourIdentityKey !== undefined) {
-            return Internal.crypto.createKeyPair(data.ourIdentityKey).then(function (keyPair) {
-                store.put("identityKey", keyPair);
-            });
+            const keyPair = await Internal.crypto.createKeyPair(data.ourIdentityKey);
+            store.put("identityKey", keyPair);
         }
         return Promise.resolve();
     }
@@ -347,30 +326,6 @@ describe("SessionCipher", function () {
                 }
             });
 
-            // XXX: not clear what this was used for
-            // eslint-disable-next-line no-unused-vars
-            function describeStep(step) {
-                const direction = step[0];
-                const data = step[1];
-                if (direction === "receiveMessage") {
-                    if (data.expectTerminateSession) {
-                        return "receive end session message";
-                    } else if (data.type === 3) {
-                        return "receive prekey message " + data.expectedSmsText;
-                    } else {
-                        return "receive message " + data.expectedSmsText;
-                    }
-                } else if (direction === "sendMessage") {
-                    if (data.endSession) {
-                        return "send end session message";
-                    } else if (data.ourIdentityKey) {
-                        return "send prekey message " + data.smsText;
-                    } else {
-                        return "send message " + data.smsText;
-                    }
-                }
-            }
-
             const store = new SignalProtocolStore();
             const address = libomemo.SignalProtocolAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
@@ -386,6 +341,78 @@ describe("SessionCipher", function () {
 
                     doStep(store, step[1], privKeyQueue, address).then(assert).then(done, done);
                 });
+            });
+        });
+    });
+
+    describe("encoding parameter", function () {
+        const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
+        const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
+        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const aliceStore = new SignalProtocolStore();
+        const bobStore = new SignalProtocolStore();
+        const bobPreKeyId = 1337;
+        const bobSignedKeyId = 1;
+
+        let bobSessionCipher, aliceSessionCipher;
+
+        before(function (done) {
+            Promise.all([aliceStore, bobStore].map(generateIdentity))
+                .then(function () {
+                    return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
+                })
+                .then(function (preKeyBundle) {
+                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    return builder.processPreKey(preKeyBundle);
+                })
+                .then(function () {
+                    aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
+                    bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
+                    return aliceSessionCipher.encrypt(originalMessage);
+                })
+                .then(function (ciphertext) {
+                    return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
+                })
+                .then(function () {
+                    done();
+                })
+                .catch(done);
+        });
+
+        function hexEncode(str) {
+            return Array.from(str)
+                .map(function (c) {
+                    return ("0" + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join("");
+        }
+
+        describe("decryptWhisperMessage", function () {
+            it("accepts encoding='binary'", async function () {
+                const ciphertext = await bobSessionCipher.encrypt(originalMessage);
+                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                    ciphertext.body,
+                    "binary"
+                );
+                assert.equal(util.toString(plaintext), util.toString(originalMessage));
+            });
+
+            it("accepts encoding='base64'", async function () {
+                const ciphertext = await bobSessionCipher.encrypt(originalMessage);
+                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                    btoa(ciphertext.body),
+                    "base64"
+                );
+                assert.equal(util.toString(plaintext), util.toString(originalMessage));
+            });
+
+            it("accepts encoding='hex'", async function () {
+                const ciphertext = await bobSessionCipher.encrypt(originalMessage);
+                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                    hexEncode(ciphertext.body),
+                    "hex"
+                );
+                assert.equal(util.toString(plaintext), util.toString(originalMessage));
             });
         });
     });
@@ -434,21 +461,16 @@ describe("SessionCipher", function () {
 
         describe("When bob's identity changes", function () {
             let messageFromBob;
-            before(function () {
-                return bobSessionCipher
-                    .encrypt(originalMessage)
-                    .then(function (ciphertext) {
-                        messageFromBob = ciphertext;
-                    })
-                    .then(function () {
-                        return generateIdentity(bobStore);
-                    })
-                    .then(function () {
-                        return aliceStore.saveIdentity(
-                            BOB_ADDRESS.toString(),
-                            bobStore.get("identityKey").pubKey
-                        );
-                    });
+
+            before(async function () {
+                messageFromBob = await bobSessionCipher.encrypt(originalMessage);
+
+                generateIdentity(bobStore);
+
+                return aliceStore.saveIdentity(
+                    BOB_ADDRESS.toString(),
+                    bobStore.get("identityKey").pubKey
+                );
             });
 
             it("alice cannot encrypt with the old session", function () {
