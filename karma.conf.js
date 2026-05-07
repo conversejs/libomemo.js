@@ -94,6 +94,12 @@ module.exports = function (config) {
         // available browser launchers: https://www.npmjs.com/search?q=keywords:karma-launcher
         browsers: ["ChromeHeadless"],
 
+        processKillTimeout: 2000,
+        captureTimeout: 60000,
+        browserDisconnectTimeout: 2000,
+        browserDisconnectTolerance: 0,
+        browserNoActivityTimeout: 30000,
+
         // Continuous Integration mode
         // if true, Karma captures browsers, runs the tests and exits
         singleRun: false,

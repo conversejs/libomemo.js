@@ -12,8 +12,8 @@
         "dist": "grunt concat:libomemo",
         "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" Gruntfile.js",
         "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
-        "test": "karma start karma.conf.js --single-run",
-        "test:browser": "karma start karma.conf --browsers Chrome"
+        "test": "karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
+        "test:browser": "karma start karma.conf --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
     },
     "dependencies": {
         "bytebuffer": "^5.0.1",
