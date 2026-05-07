@@ -187,7 +187,7 @@ class SessionCipher {
      * returns a Promise that resolves to decrypted plaintext array buffer
      */
     decryptWhisperMessage(buffer, encoding) {
-        buffer = dcodeIO.ByteBuffer.wrap(buffer, encoding).toArrayBuffer();
+        buffer = util.normalizeBuffer(buffer, encoding).buffer;
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), () => {
             const address = this.remoteAddress.toString();
             return this.getRecord(address).then((record) => {
@@ -241,14 +241,14 @@ class SessionCipher {
      * to a decrypted plaintext array buffer
      */
     decryptPreKeyWhisperMessage(buffer, encoding) {
-        const bytebuffer = dcodeIO.ByteBuffer.wrap(buffer, encoding);
-        const version = bytebuffer.readUint8();
+        const bytes = util.normalizeBuffer(buffer, encoding);
+        const version = bytes[0];
         if ((version & 0xf) > 3 || version >> 4 < 3) {
             // min version > 3 or max version < 3
             throw new Error("Incompatible version number on PreKeyWhisperMessage");
         }
 
-        const arrayBuffer = bytebuffer.toArrayBuffer();
+        const arrayBuffer = bytes.buffer.slice(1);
 
         return Internal.SessionLock.queueJobForNumber(this.remoteAddress.toString(), async () => {
             const address = this.remoteAddress.toString();

@@ -16,7 +16,6 @@
         "test:browser": "karma start karma.conf --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
     },
     "dependencies": {
-        "bytebuffer": "^5.0.1",
         "protobufjs": "^8.0.0"
     },
     "devDependencies": {

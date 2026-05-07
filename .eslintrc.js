@@ -8,7 +8,6 @@ module.exports = {
         "Internal": true,
         "Module": true,
         "chai": true,
-        "dcodeIO": true,
         "describe": true,
         "it": true,
         "libomemo": true,
