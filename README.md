@@ -1,17 +1,19 @@
 # libomemo.js
 
-[![CI Tests](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo/actions/workflows/karma-tests.yml)
+[![CI Tests](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml)
+A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
+modified to provide an [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol implementation in TypeScript.
 
-This is a work-in-progress fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
-to provide an [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol implementation for the browser.
+## Installation
 
+```bash
+npm install libomemo.js
 ```
-/dist       # Distributables
-/build      # Intermediate build files
-/src        # JS source files
-/native     # C source files for curve25519
-/protos     # Protobuf definitions
-/test       # Tests
+
+Or include the UMD build directly in your webpage:
+
+```html
+<script src="dist/libomemo.umd.js"></script>
 ```
 
 ## Overview
@@ -50,13 +52,13 @@ the session.
 
 State is kept in the following places:
 
-* Identity State. Clients will need to maintain the state of their own identity
+- Identity State. Clients will need to maintain the state of their own identity
   key pair, as well as identity keys received from other clients.
-* PreKey State. Clients will need to maintain the state of their generated
+- PreKey State. Clients will need to maintain the state of their generated
   PreKeys.
-* Signed PreKey States. Clients will need to maintain the state of their signed
+- Signed PreKey States. Clients will need to maintain the state of their signed
   PreKeys.
-* Session State. Clients will need to maintain the state of the sessions they
+- Session State. Clients will need to maintain the state of the sessions they
   have established.
 
 ## Requirements
@@ -64,18 +66,53 @@ State is kept in the following places:
 This implementation currently depends on the presence of the following
 types/interfaces, which are available in most modern browsers.
 
-* [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
-* [TypedArray](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray)
-* [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-* [WebCrypto](https://developer.mozilla.org/en-US/docs/Web/API/Crypto) with support for:
-  - AES-CBC
-  - HMAC SHA-256
+- [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
+- [TypedArray](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray)
+- [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+- [WebCrypto](https://developer.mozilla.org/en-US/docs/Web/API/Crypto) with support for:
+    - AES-CBC
+    - HMAC SHA-256
 
 ## Usage
 
-Include `dist/libomemo.js` in your webpage.
+### ES Module
 
-### Install time
+```js
+import { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } from "libomemo.js";
+```
+
+### CommonJS
+
+```js
+const { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } = require("libomemo.js");
+```
+
+### CommonJS
+
+```js
+const { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } = require("libomemo.js");
+```
+
+### Browser (UMD)
+
+When loaded via `<script>`, the library is available as the global `libomemo` object.
+
+## Exports
+
+The library exports the following:
+
+- **KeyHelper** – Key generation utilities
+- **Curve25519** – Curve25519 operations
+- **OMEMOAddress** – Address class for identifying recipients
+- **SessionBuilder** – Session establishment
+- **SessionCipher** – Encryption/decryption
+- **FingerprintGenerator** – Fingerprint generation
+- **util** – General utility helpers
+- **crypto** functions – `getRandomBytes`, `encrypt`, `decrypt`, `sign`, `hash`, `HKDF`, `HKDFInternal`, `verifyMAC`, `internalCrypto`, `createKeyPair`, `ECDHE`, `Ed25519Sign`, `Ed25519Verify`
+- **BaseKeyType**, **ChainType** – Enum types
+- **SessionRecord** – Type export
+
+### Setup
 
 At install time, an OMEMO client needs to generate its identity keys,
 registration id, and prekeys.
@@ -86,18 +123,15 @@ const KeyHelper = libomemo.KeyHelper;
 const registrationId = KeyHelper.generateRegistrationId();
 // Store registrationId somewhere durable and safe.
 
-KeyHelper.generateIdentityKeyPair().then(function(identityKeyPair) {
-    // keyPair -> { pubKey: ArrayBuffer, privKey: ArrayBuffer }
-    // Store identityKeyPair somewhere durable and safe.
-});
+const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
+// keyPair -> { pubKey: ArrayBuffer, privKey: ArrayBuffer }
+// Store identityKeyPair somewhere durable and safe.
 
-KeyHelper.generatePreKey(keyId).then(function(preKey) {
-    store.storePreKey(preKey.keyId, preKey.keyPair);
-});
+const preKey = await KeyHelper.generatePreKey(keyId);
+store.storePreKey(preKey.keyId, preKey.keyPair);
 
-KeyHelper.generateSignedPreKey(identityKeyPair, keyId).then(function(signedPreKey) {
-    store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
-});
+const signedPreKey = await KeyHelper.generateSignedPreKey(identityKeyPair, keyId);
+store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
 
 // Register preKeys and signedPreKey with the server
 ```
@@ -106,41 +140,38 @@ KeyHelper.generateSignedPreKey(identityKeyPair, keyId).then(function(signedPreKe
 
 An OMEMO client needs to implement a storage interface that will manage
 loading and storing of identity, prekeys, signed prekeys, and session state.
-See `test/InMemoryOMEMOProtocolStore.js` for an example.
+See `test/omemo-store.ts` for an example.
 
 Once this is implemented, building a session is fairly straightforward:
 
 ```js
 const store   = new MyOMEMOProtocolStore();
-const address = new libomemo.OMEMOProtocolAddress(recipientId, deviceId);
+const address = new libomemo.OMEMOAddress(recipientId, deviceId);
 
 // Instantiate a SessionBuilder for a remote recipientId + deviceId tuple.
 const sessionBuilder = new libomemo.SessionBuilder(store, address);
 
-// Process a prekey fetched from the server. Returns a promise that resolves
-// once a session is created and saved in the store, or rejects if the
-// identityKey differs from a previously seen identity for this address.
-const promise = sessionBuilder.processPreKey({
-    registrationId: <Number>,
-    identityKey: <ArrayBuffer>,
-    signedPreKey: {
-        keyId     : <Number>,
-        publicKey : <ArrayBuffer>,
-        signature : <ArrayBuffer>
-    },
-    preKey: {
-        keyId     : <Number>,
-        publicKey : <ArrayBuffer>
-    }
-});
-
-promise.then(function onsuccess() {
-  // encrypt messages
-});
-
-promise.catch(function onerror(error) {
-  // handle identity key conflict
-});
+// Process a prekey fetched from the server. Resolves once a session is created
+// and saved in the store, or rejects if the identityKey differs from a
+// previously seen identity for this address.
+try {
+    await sessionBuilder.processPreKey({
+        registrationId: <Number>,
+        identityKey: <ArrayBuffer>,
+        signedPreKey: {
+            keyId     : <Number>,
+            publicKey : <ArrayBuffer>,
+            signature : <ArrayBuffer>
+        },
+        preKey: {
+            keyId     : <Number>,
+            publicKey : <ArrayBuffer>
+        }
+    });
+    // encrypt messages
+} catch (error) {
+    // handle identity key conflict
+}
 ```
 
 ### Encrypting
@@ -151,35 +182,37 @@ using SessionCipher.
 ```js
 const plaintext = "Hello world";
 const sessionCipher = new libomemo.SessionCipher(store, address);
-sessionCipher.encrypt(plaintext).then(function(ciphertext) {
-    // ciphertext -> { type: <Number>, body: <string> }
-    handle(ciphertext.type, ciphertext.body);
-});
+const ciphertext = await sessionCipher.encrypt(plaintext);
+// ciphertext -> { type: <Number>, body: <string> }
+handle(ciphertext.type, ciphertext.body);
 ```
 
 ### Decrypting
 
-Ciphertexts come in two flavors: WhisperMessage and PreKeyWhisperMessage.
+Ciphertexts come in two flavors:
+
+- WhisperMessage
+- PreKeyWhisperMessage.
+  Like a WhisperMessage but it also contains a prekey with which to create a
+  new session.
 
 ```js
-const address = new OMEMOProtocolAddress(recipientId, deviceId);
-const sessionCipher = new SessionCipher(store, address);
+const address = new libomemo.OMEMOAddress(recipientId, deviceId);
+const sessionCipher = new libomemo.SessionCipher(store, address);
 
 // Decrypt a PreKeyWhisperMessage by first establishing a new session.
-// Returns a promise that resolves when the message is decrypted or
-// rejects if the identityKey differs from a previously seen identity for this
-// address.
-sessionCipher.decryptPreKeyWhisperMessage(ciphertext).then(function(plaintext) {
+// Resolves when the message is decrypted or rejects if the identityKey
+// differs from a previously seen identity for this address.
+try {
+    const plaintext = await sessionCipher.decryptPreKeyWhisperMessage(ciphertext);
     // handle plaintext ArrayBuffer
-}).catch(function(error) {
+} catch (error) {
     // handle identity key conflict
-});
+}
 
 // Decrypt a normal message using an existing session
-const sessionCipher = new SessionCipher(store, address);
-sessionCipher.decryptWhisperMessage(ciphertext).then(function(plaintext) {
-    // handle plaintext ArrayBuffer
-});
+const plaintext = await sessionCipher.decryptWhisperMessage(ciphertext);
+// handle plaintext ArrayBuffer
 ```
 
 ## Building
@@ -187,12 +220,25 @@ sessionCipher.decryptWhisperMessage(ciphertext).then(function(plaintext) {
 To compile curve25519 from C source files in `/native`, install
 [emscripten](https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html).
 
+```bash
+npm run compile
 ```
-grunt compile
+
+Then build the distribution bundle:
+
+```bash
+npm run dist
+```
+
+Or run both in one command:
+
+```bash
+npm run build
 ```
 
 ## License
 
 Copyright 2015-2018 Open Whisper Systems
+Copyright 2022-2026 JC Brand
 
 Licensed under the GPLv3: http://www.gnu.org/licenses/gpl-3.0.html
