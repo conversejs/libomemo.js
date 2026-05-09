@@ -1,14 +1,10 @@
-/* vim: ts=4:sw=4 */
-
-"use strict";
-window.assert = chai.assert;
+import { assert } from "chai";
+import { SessionRecord } from "../src/SessionRecord.js";
 
 describe("SessionRecord", function () {
-    const { assert } = chai;
-
     describe("constructor", function () {
         it("creates a record with empty sessions and v1 version", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             assert.deepEqual(record.sessions, {});
             assert.strictEqual(record.version, "v1");
         });
@@ -16,7 +12,7 @@ describe("SessionRecord", function () {
 
     describe("serialize", function () {
         it("serializes an empty record", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             const json = record.serialize();
             assert.isString(json);
             const data = JSON.parse(json);
@@ -25,7 +21,7 @@ describe("SessionRecord", function () {
         });
 
         it("serializes a record with a session", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["mykey"] = {
                 registrationId: 42,
                 indexInfo: { closed: -1, baseKey: "mykey", baseKeyType: 2 },
@@ -40,14 +36,14 @@ describe("SessionRecord", function () {
 
     describe("deserialize", function () {
         it("roundtrips an empty record", function () {
-            const original = new Internal.SessionRecord();
-            const restored = Internal.SessionRecord.deserialize(original.serialize());
+            const original = new SessionRecord();
+            const restored = SessionRecord.deserialize(original.serialize());
             assert.deepEqual(restored.sessions, {});
             assert.strictEqual(restored.version, "v1");
         });
 
         it("roundtrips a record with sessions", function () {
-            const original = new Internal.SessionRecord();
+            const original = new SessionRecord();
             original.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: 1234, baseKey: "key1", baseKeyType: 2 },
@@ -56,7 +52,7 @@ describe("SessionRecord", function () {
                 registrationId: 2,
                 indexInfo: { closed: -1, baseKey: "key2", baseKeyType: 2 },
             };
-            const restored = Internal.SessionRecord.deserialize(original.serialize());
+            const restored = SessionRecord.deserialize(original.serialize());
             assert.strictEqual(Object.keys(restored.sessions).length, 2);
             assert.strictEqual(restored.sessions["key1"].registrationId, 1);
             assert.strictEqual(restored.sessions["key2"].registrationId, 2);
@@ -68,7 +64,7 @@ describe("SessionRecord", function () {
             const json = JSON.stringify({ version: "v1", sessions: null });
             assert.throw(
                 function () {
-                    Internal.SessionRecord.deserialize(json);
+                    SessionRecord.deserialize(json);
                 },
                 Error,
                 /deserializing/
@@ -79,7 +75,7 @@ describe("SessionRecord", function () {
             const json = JSON.stringify({ version: "v1", sessions: [] });
             assert.throw(
                 function () {
-                    Internal.SessionRecord.deserialize(json);
+                    SessionRecord.deserialize(json);
                 },
                 Error,
                 /deserializing/
@@ -90,7 +86,7 @@ describe("SessionRecord", function () {
             const json = JSON.stringify({ version: "v1", sessions: "notanobject" });
             assert.throw(
                 function () {
-                    Internal.SessionRecord.deserialize(json);
+                    SessionRecord.deserialize(json);
                 },
                 Error,
                 /deserializing/
@@ -100,7 +96,7 @@ describe("SessionRecord", function () {
 
     describe("haveOpenSession", function () {
         it("returns true when an open session has a registrationId", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2 },
@@ -109,7 +105,7 @@ describe("SessionRecord", function () {
         });
 
         it("returns false when no session is open", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2 },
@@ -118,14 +114,14 @@ describe("SessionRecord", function () {
         });
 
         it("returns false when sessions is empty", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             assert.isFalse(record.haveOpenSession());
         });
     });
 
     describe("getOpenSession", function () {
         it("returns the open session", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             const session = {
                 registrationId: 42,
                 indexInfo: { closed: -1, baseKey: "open", baseKeyType: 2 },
@@ -135,7 +131,7 @@ describe("SessionRecord", function () {
         });
 
         it("returns undefined when no sessions are open", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2 },
@@ -144,12 +140,12 @@ describe("SessionRecord", function () {
         });
 
         it("returns undefined when sessions is empty", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             assert.isUndefined(record.getOpenSession());
         });
 
         it("throws when there are multiple open sessions", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2 },
@@ -170,7 +166,7 @@ describe("SessionRecord", function () {
 
     describe("archiveCurrentState", function () {
         it("sets the closed timestamp on the open session", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             const session = {
                 registrationId: 42,
                 oldRatchetList: [],
@@ -186,7 +182,7 @@ describe("SessionRecord", function () {
         });
 
         it("does nothing when no session is open", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 oldRatchetList: [],
@@ -199,7 +195,7 @@ describe("SessionRecord", function () {
 
     describe("promoteState", function () {
         it("sets closed to -1 on a closed session", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             const session = {
                 registrationId: 42,
                 indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2 },
@@ -211,7 +207,7 @@ describe("SessionRecord", function () {
 
     describe("deleteAllSessions", function () {
         it("removes all sessions", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2 },
@@ -227,7 +223,7 @@ describe("SessionRecord", function () {
 
     describe("detectDuplicateOpenSessions", function () {
         it("does not throw when at most one session is open", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2 },
@@ -242,7 +238,7 @@ describe("SessionRecord", function () {
         });
 
         it("throws when multiple sessions are open", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2 },
@@ -263,7 +259,7 @@ describe("SessionRecord", function () {
 
     describe("getSessions", function () {
         it("returns sessions sorted by close time, with open session last", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
                 indexInfo: { closed: 3000, baseKey: "key1", baseKeyType: 2 },
@@ -290,14 +286,14 @@ describe("SessionRecord", function () {
         });
 
         it("returns empty array when no sessions exist", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             assert.deepEqual(record.getSessions(), []);
         });
     });
 
     describe("getSessionByBaseKey", function () {
         it("returns the session for the given baseKey", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 indexInfo: { baseKey: "key1", baseKeyType: 2 },
@@ -306,7 +302,7 @@ describe("SessionRecord", function () {
         });
 
         it("returns undefined when baseKeyType is OURS", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 indexInfo: { baseKey: "key1", baseKeyType: 1 },
@@ -317,7 +313,7 @@ describe("SessionRecord", function () {
 
     describe("serialize/deserialize preserves internal state", function () {
         it("archiveCurrentState survives serialize/deserialize", function () {
-            const record = new Internal.SessionRecord();
+            const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
                 oldRatchetList: [],
@@ -326,7 +322,7 @@ describe("SessionRecord", function () {
             record.archiveCurrentState();
             const closed = record.sessions["key1"].indexInfo.closed;
 
-            const restored = Internal.SessionRecord.deserialize(record.serialize());
+            const restored = SessionRecord.deserialize(record.serialize());
             assert.strictEqual(restored.sessions["key1"].indexInfo.closed, closed);
         });
     });

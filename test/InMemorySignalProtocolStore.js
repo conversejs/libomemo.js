@@ -1,3 +1,5 @@
+import { util, SignalProtocolAddress } from "../src/index.js";
+
 function SignalProtocolStore() {
     this.store = {};
 }
@@ -45,7 +47,7 @@ SignalProtocolStore.prototype = {
         if (trusted === undefined) {
             return Promise.resolve(true);
         }
-        return Promise.resolve(libomemo.util.toString(identityKey) === libomemo.util.toString(trusted));
+        return Promise.resolve(util.toString(identityKey) === util.toString(trusted));
     },
 
     loadIdentityKey: function (identifier) {
@@ -58,12 +60,12 @@ SignalProtocolStore.prototype = {
         if (identifier === null || identifier === undefined)
             throw new Error("Tried to put identity key for undefined/null key");
 
-        const address = new libomemo.SignalProtocolAddress.fromString(identifier);
+        const address = SignalProtocolAddress.fromString(identifier);
 
         const existing = this.get("identityKey" + address.getName());
         this.put("identityKey" + address.getName(), identityKey);
 
-        if (existing && libomemo.util.toString(identityKey) !== libomemo.util.toString(existing)) {
+        if (existing && util.toString(identityKey) !== util.toString(existing)) {
             return Promise.resolve(true);
         } else {
             return Promise.resolve(false);
@@ -118,3 +120,5 @@ SignalProtocolStore.prototype = {
         return Promise.resolve();
     },
 };
+
+export default SignalProtocolStore;

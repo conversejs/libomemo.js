@@ -1,7 +1,6 @@
-/* global hexToArrayBuffer, hexToUint8Array */
+import { hexToArrayBuffer, hexToUint8Array } from "./utils.js";
 
-// eslint-disable-next-line no-unused-vars
-const TestVectors = (function () {
+export const TestVectors = (function () {
     // We're gonna throw the finalized tests in here:
     const tests = [];
 

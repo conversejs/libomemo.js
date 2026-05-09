@@ -14,10 +14,6 @@ export default [
                 it: "readonly",
                 before: "readonly",
                 after: "readonly",
-                Internal: "writable",
-                Module: "writable",
-                libomemo: "writable",
-                util: "writable",
             },
         },
         rules: {

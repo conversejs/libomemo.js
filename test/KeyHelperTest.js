@@ -1,6 +1,7 @@
-describe("KeyHelper", function () {
-    const { assert } = chai;
+import { assert } from "chai";
+import { KeyHelper } from "../src/index.js";
 
+describe("KeyHelper", function () {
     function validateKeyPair(keyPair) {
         assert.isDefined(keyPair.pubKey);
         assert.isDefined(keyPair.privKey);
@@ -11,7 +12,7 @@ describe("KeyHelper", function () {
 
     describe("generateIdentityKeyPair", function () {
         it("works", function () {
-            libomemo.KeyHelper.generateIdentityKeyPair().then(function (keyPair) {
+            KeyHelper.generateIdentityKeyPair().then(function (keyPair) {
                 validateKeyPair(keyPair);
             });
         });
@@ -19,7 +20,7 @@ describe("KeyHelper", function () {
 
     describe("generateRegistrationId", function () {
         it("generates a 14-bit integer", function () {
-            const registrationId = libomemo.KeyHelper.generateRegistrationId();
+            const registrationId = KeyHelper.generateRegistrationId();
             assert.isNumber(registrationId);
             assert(registrationId >= 0);
             assert(registrationId < 16384);
@@ -29,7 +30,7 @@ describe("KeyHelper", function () {
 
     describe("generatePreKey", function () {
         it("generates a preKey", function (done) {
-            libomemo.KeyHelper.generatePreKey(1337)
+            KeyHelper.generatePreKey(1337)
                 .then(function (result) {
                     validateKeyPair(result.keyPair);
                     assert.strictEqual(result.keyId, 1337);
@@ -38,16 +39,16 @@ describe("KeyHelper", function () {
         });
         it("throws on bad keyId", function () {
             assert.throws(function () {
-                libomemo.KeyHelper.generatePreKey("bad");
+                KeyHelper.generatePreKey("bad");
             }, TypeError);
         });
     });
 
     describe("generateSignedPreKey", function () {
         it("generates a preKey", function (done) {
-            libomemo.KeyHelper.generateIdentityKeyPair()
+            KeyHelper.generateIdentityKeyPair()
                 .then(function (identityKey) {
-                    libomemo.KeyHelper.generateSignedPreKey(identityKey, 1337).then(
+                    KeyHelper.generateSignedPreKey(identityKey, 1337).then(
                         function (result) {
                             validateKeyPair(result.keyPair);
                             assert.strictEqual(result.keyId, 1337);
@@ -59,7 +60,7 @@ describe("KeyHelper", function () {
         });
         it("throws on bad keyId", function () {
             assert.throws(function () {
-                libomemo.KeyHelper.generateSignedPreKey("bad");
+                KeyHelper.generateSignedPreKey("bad");
             }, TypeError);
         });
     });

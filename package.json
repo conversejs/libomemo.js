@@ -21,7 +21,7 @@
         "dist": "rollup -c && cp build/curve25519_compiled.wasm dist/",
         "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" rollup.config.js",
         "lint": "eslint src/**/*.js test/**/*.js rollup.config.js",
-        "test": "karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
+        "test": "rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
         "test:browser": "karma start karma.conf.js --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
     },
     "dependencies": {

@@ -1,12 +1,15 @@
-/* vim: ts=4:sw=4 */
-/* global after, before, hexToArrayBuffer, assertEqualArrayBuffers */
-
-"use strict";
-window.assert = chai.assert;
+import { assert } from "chai";
+import {
+    internalCrypto,
+    encrypt,
+    decrypt,
+    sign as cryptoSign,
+    HKDFInternal as cryptoHKDF,
+} from "../src/crypto.js";
+import { startWorker, stopWorker } from "../src/curve25519_worker_manager.js";
+import { hexToArrayBuffer, assertEqualArrayBuffers } from "./utils.js";
 
 describe("Crypto", function () {
-    const { assert } = chai;
-
     describe("Encrypt AES-CBC", function () {
         it("works", function (done) {
             const key = hexToArrayBuffer(
@@ -19,8 +22,7 @@ describe("Crypto", function () {
             const ciphertext = hexToArrayBuffer(
                 "f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b3f461796d6b0d6b2e0c2a72b4d80e644"
             );
-            Internal.crypto
-                .encrypt(key, plaintext, iv)
+            encrypt(key, plaintext, iv)
                 .then(function (result) {
                     assertEqualArrayBuffers(result, ciphertext);
                 })
@@ -41,8 +43,7 @@ describe("Crypto", function () {
             const ciphertext = hexToArrayBuffer(
                 "f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b3f461796d6b0d6b2e0c2a72b4d80e644"
             );
-            Internal.crypto
-                .decrypt(key, ciphertext, iv)
+            decrypt(key, ciphertext, iv)
                 .then(function (result) {
                     assertEqualArrayBuffers(result, plaintext);
                 })
@@ -60,8 +61,7 @@ describe("Crypto", function () {
                 "752cff52e4b90768558e5369e75d97c69643509a5e5904e0a386cbe4d0970ef73f918f675945a9aefe26daea27587e8dc909dd56fd0468805f834039b345f855cfe19c44b55af241fff3ffcd8045cd5c288e6c4e284c3720570b58e4d47b8feeedc52fd1401f698a209fccfa3b4c0d9a797b046a2759f82a54c41ccd7b5f592b"
             );
             const mac = hexToArrayBuffer("05d1243e6465ed9620c9aec1c351a186");
-            Internal.crypto
-                .sign(key, input)
+            cryptoSign(key, input)
                 .then(function (result) {
                     assertEqualArrayBuffers(result.slice(0, mac.byteLength), mac);
                 })
@@ -86,7 +86,7 @@ describe("Crypto", function () {
             const info = new Uint8Array(new ArrayBuffer(10));
             for (let i = 0; i < 10; i++) info[i] = 240 + i;
 
-            return Internal.crypto.HKDF(IKM.buffer, salt.buffer, info.buffer).then(function (OKM) {
+            return cryptoHKDF(IKM.buffer, salt.buffer, info.buffer).then(function (OKM) {
                 assertEqualArrayBuffers(OKM[0], T1);
                 assertEqualArrayBuffers(OKM[1].slice(0, 10), T2);
             });
@@ -118,7 +118,7 @@ describe("Crypto", function () {
 
         describe("createKeyPair", function () {
             it("converts alice private keys to a keypair", function (done) {
-                Internal.crypto
+                internalCrypto
                     .createKeyPair(alice_bytes)
                     .then(function (keypair) {
                         assertEqualArrayBuffers(keypair.privKey, alice_priv);
@@ -128,7 +128,7 @@ describe("Crypto", function () {
                     .catch(done);
             });
             it("converts bob private keys to a keypair", function (done) {
-                Internal.crypto
+                internalCrypto
                     .createKeyPair(bob_bytes)
                     .then(function (keypair) {
                         assertEqualArrayBuffers(keypair.privKey, bob_priv);
@@ -138,7 +138,7 @@ describe("Crypto", function () {
                     .catch(done);
             });
             it("generates a key if one is not provided", function (done) {
-                Internal.crypto
+                internalCrypto
                     .createKeyPair()
                     .then(function (keypair) {
                         assert.strictEqual(keypair.privKey.byteLength, 32);
@@ -152,7 +152,7 @@ describe("Crypto", function () {
 
         describe("ECDHE", function () {
             it("computes the shared secret for alice", function (done) {
-                Internal.crypto
+                internalCrypto
                     .ECDHE(bob_pub, alice_priv)
                     .then(function (secret) {
                         assertEqualArrayBuffers(shared_sec, secret);
@@ -161,7 +161,7 @@ describe("Crypto", function () {
                     .catch(done);
             });
             it("computes the shared secret for bob", function (done) {
-                Internal.crypto
+                internalCrypto
                     .ECDHE(alice_pub, bob_priv)
                     .then(function (secret) {
                         assertEqualArrayBuffers(shared_sec, secret);
@@ -184,7 +184,7 @@ describe("Crypto", function () {
         describe("Ed25519Sign", function () {
             // Some self-generated test vectors
             it("works", function () {
-                return Internal.crypto.Ed25519Sign(priv, msg).then(function (sigCalc) {
+                return internalCrypto.Ed25519Sign(priv, msg).then(function (sigCalc) {
                     assertEqualArrayBuffers(sig, sigCalc);
                 });
             });
@@ -195,7 +195,7 @@ describe("Crypto", function () {
                 const badsig = sig.slice(0);
                 new Uint8Array(badsig).set([0], 0);
 
-                Internal.crypto
+                internalCrypto
                     .Ed25519Verify(pub, msg, badsig)
                     .catch(function (e) {
                         if (e.message === "Invalid signature") {
@@ -208,7 +208,7 @@ describe("Crypto", function () {
             });
 
             it("does not throw on good signature", function () {
-                return Internal.crypto.Ed25519Verify(pub, msg, sig);
+                return internalCrypto.Ed25519Verify(pub, msg, sig);
             });
         });
     }
@@ -219,10 +219,10 @@ describe("Crypto", function () {
     });
     describe("curve25519 in a worker", function () {
         before(function () {
-            libomemo.worker.startWorker("../dist/libomemo-worker.js");
+            startWorker("../dist/libomemo-worker.js");
         });
         after(function () {
-            libomemo.worker.stopWorker();
+            stopWorker();
         });
         this.timeout(5000);
         testCurve25519();

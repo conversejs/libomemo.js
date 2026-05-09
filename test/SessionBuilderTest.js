@@ -1,10 +1,17 @@
-/* global SignalProtocolStore, assertEqualArrayBuffers, before, generateIdentity, generatePreKeyBundle */
+import { assert } from "chai";
+import {
+    SessionBuilder,
+    SessionCipher,
+    SignalProtocolAddress,
+    KeyHelper,
+    util,
+} from "../src/index.js";
+import { SessionRecord } from "../src/SessionRecord.js";
+import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from "./utils.js";
+import SignalProtocolStore from "./InMemorySignalProtocolStore.js";
 
 describe("SessionBuilder", function () {
     this.timeout(5000);
-
-    const { assert } = chai;
-    const { util, SignalProtocolAddress, KeyHelper } = libomemo;
 
     const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
     const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
@@ -22,7 +29,7 @@ describe("SessionBuilder", function () {
                     return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
                 })
                 .then(function (preKeyBundle) {
-                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         done();
                     });
@@ -31,13 +38,13 @@ describe("SessionBuilder", function () {
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", function () {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
                 assert.isDefined(record);
-                const sessionRecord = Internal.SessionRecord.deserialize(record);
+                const sessionRecord = SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
             });
@@ -68,13 +75,13 @@ describe("SessionBuilder", function () {
         it("accepts a new preKey with the same identity", function (done) {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
                 .then(function (preKeyBundle) {
-                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         return aliceStore
                             .loadSession(BOB_ADDRESS.toString())
                             .then(function (record) {
                                 assert.isDefined(record);
-                                const sessionRecord = Internal.SessionRecord.deserialize(record);
+                                const sessionRecord = SessionRecord.deserialize(record);
                                 assert.isTrue(sessionRecord.haveOpenSession());
                                 assert.isDefined(sessionRecord.getOpenSession());
                                 done();
@@ -86,7 +93,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", function (done) {
             KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder
                     .processPreKey({
                         identityKey: newIdentity.pubKey,
@@ -118,7 +125,7 @@ describe("SessionBuilder", function () {
                 })
                 .then(function (preKeyBundle) {
                     delete preKeyBundle.preKey;
-                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         done();
                     });
@@ -127,13 +134,13 @@ describe("SessionBuilder", function () {
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        const aliceSessionCipher = new libomemo.SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new libomemo.SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", function () {
             return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
                 assert.isDefined(record);
-                const sessionRecord = Internal.SessionRecord.deserialize(record);
+                const sessionRecord = SessionRecord.deserialize(record);
                 assert.isTrue(sessionRecord.haveOpenSession());
                 assert.isDefined(sessionRecord.getOpenSession());
             });
@@ -169,13 +176,13 @@ describe("SessionBuilder", function () {
             generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
                 .then(function (preKeyBundle) {
                     delete preKeyBundle.preKey;
-                    const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                     return builder.processPreKey(preKeyBundle).then(function () {
                         return aliceStore
                             .loadSession(BOB_ADDRESS.toString())
                             .then(function (record) {
                                 assert.isDefined(record);
-                                const sessionRecord = Internal.SessionRecord.deserialize(record);
+                                const sessionRecord = SessionRecord.deserialize(record);
                                 assert.isTrue(sessionRecord.haveOpenSession());
                                 assert.isDefined(sessionRecord.getOpenSession());
                                 done();
@@ -187,7 +194,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", function (done) {
             KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new libomemo.SessionBuilder(aliceStore, BOB_ADDRESS);
+                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
                 return builder
                     .processPreKey({
                         identityKey: newIdentity.pubKey,

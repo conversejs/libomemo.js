@@ -1,16 +1,17 @@
-/* global before, assertEqualArrayBuffers */
+import { assert } from "chai";
+import { internalCrypto } from "../src/crypto.js";
+import { SignalProtocolAddress } from "../src/index.js";
+import { getRandomBytes } from "../src/crypto.js";
+import { assertEqualArrayBuffers } from "./utils.js";
 
-// eslint-disable-next-line no-unused-vars
-function testIdentityKeyStore(store, registrationId, identityKey) {
-    const { assert } = chai;
+export function testIdentityKeyStore(store, registrationId, identityKey) {
+    const number = "+5558675309";
+    const address = new SignalProtocolAddress("+5558675309", 1);
+    let testKey;
 
     describe("IdentityKeyStore", function () {
-        const number = "+5558675309";
-        const address = new libomemo.SignalProtocolAddress("+5558675309", 1);
-        let testKey;
-
         before(function (done) {
-            Internal.crypto
+            internalCrypto
                 .createKeyPair()
                 .then(function (keyPair) {
                     testKey = keyPair;
@@ -70,7 +71,7 @@ function testIdentityKeyStore(store, registrationId, identityKey) {
                 });
             });
             it("returns false if a key is untrusted", function (done) {
-                const newIdentity = libomemo.crypto.getRandomBytes(33);
+                const newIdentity = getRandomBytes(33);
                 store.saveIdentity(address.toString(), testKey.pubKey).then(function () {
                     store
                         .isTrustedIdentity(number, newIdentity)

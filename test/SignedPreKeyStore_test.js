@@ -1,13 +1,12 @@
-/* global before, assertEqualArrayBuffers */
+import { assert } from "chai";
+import { internalCrypto } from "../src/crypto.js";
+import { assertEqualArrayBuffers } from "./utils.js";
 
-// eslint-disable-next-line no-unused-vars
-function testSignedPreKeyStore(store) {
-    const { assert } = chai;
-
+export function testSignedPreKeyStore(store) {
     describe("SignedPreKeyStore", function () {
         let testKey;
         before(function (done) {
-            Internal.crypto
+            internalCrypto
                 .createKeyPair()
                 .then(function (keyPair) {
                     testKey = keyPair;

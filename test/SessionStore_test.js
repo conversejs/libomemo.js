@@ -1,12 +1,11 @@
-/* global before, assertEqualArrayBuffers, SignalProtocolAddress */
+import { assert } from "chai";
+import { SignalProtocolAddress } from "../src/index.js";
+import { assertEqualArrayBuffers } from "./utils.js";
 
-// eslint-disable-next-line no-unused-vars
-function testSessionStore(store) {
-    const { assert } = chai;
-
+export function testSessionStore(store) {
+    const number = "+5558675309";
+    const testRecord = "an opaque string";
     describe("SessionStore", function () {
-        const number = "+5558675309";
-        const testRecord = "an opaque string";
         describe("storeSession", function () {
             const address = new SignalProtocolAddress(number, 1);
             it("stores sessions encoded as strings", function (done) {

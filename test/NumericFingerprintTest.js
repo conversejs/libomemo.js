@@ -1,11 +1,8 @@
-/*
- * vim: ts=4:sw=4
- */
+import { assert } from "chai";
+import { FingerprintGenerator } from "../src/index.js";
+import { getRandomBytes } from "../src/crypto.js";
 
-"use strict";
 describe("NumericFingerprint", function () {
-    const { assert } = window.chai;
-
     this.timeout(5000);
     const ALICE_IDENTITY = [
         0x05, 0x06, 0x86, 0x3b, 0xc6, 0x6d, 0x02, 0xb4, 0x0d, 0x27, 0xb8, 0xd4, 0x9c, 0xa7, 0xc0,
@@ -29,7 +26,7 @@ describe("NumericFingerprint", function () {
     };
 
     it("returns the correct fingerprint", function (done) {
-        const generator = new libomemo.FingerprintGenerator(5200);
+        const generator = new FingerprintGenerator(5200);
         generator
             .createFor(alice.identifier, alice.key, bob.identifier, bob.key)
             .then(function (fingerprint) {
@@ -39,7 +36,7 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and bob results match", function (done) {
-        const generator = new libomemo.FingerprintGenerator(1024);
+        const generator = new FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
@@ -51,7 +48,7 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and !bob results mismatch", function (done) {
-        const generator = new libomemo.FingerprintGenerator(1024);
+        const generator = new FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, "+15558675309", bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
@@ -63,8 +60,8 @@ describe("NumericFingerprint", function () {
     });
 
     it("alice and mitm results mismatch", function (done) {
-        const mitm = libomemo.crypto.getRandomBytes(33);
-        const generator = new libomemo.FingerprintGenerator(1024);
+        const mitm = getRandomBytes(33);
+        const generator = new FingerprintGenerator(1024);
         Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, mitm),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),

@@ -1,8 +1,7 @@
-/* global SignalProtocolAddress */
+import { assert } from "chai";
+import { SignalProtocolAddress } from "../src/index.js";
 
 describe("SignalProtocolAddress", function () {
-    const { assert } = chai;
-
     const name = "name";
     const deviceId = 42;
     const string = "name.42";
@@ -28,12 +27,12 @@ describe("SignalProtocolAddress", function () {
         it("throws on a bad inputs", function () {
             ["", null, {}].forEach(function (input) {
                 assert.throws(function () {
-                    libomemo.SignalProtocolAddress.fromString(input);
+                    SignalProtocolAddress.fromString(input);
                 });
             });
         });
         it("constructs the address", function () {
-            const address = libomemo.SignalProtocolAddress.fromString(string);
+            const address = SignalProtocolAddress.fromString(string);
             assert.strictEqual(deviceId, address.getDeviceId());
             assert.strictEqual(name, address.getName());
         });
