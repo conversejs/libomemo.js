@@ -1,12 +1,10 @@
-"use strict";
-window.assert = chai.assert;
+import { assert } from "chai";
+import { queueJobForNumber } from "../src/SessionLock.js";
 
 describe("SessionLock", function () {
-    const { assert } = chai;
-
     describe("queueJobForNumber", function () {
         it("executes a job and returns its result", async function () {
-            const result = await Internal.SessionLock.queueJobForNumber("test1", () =>
+            const result = await queueJobForNumber("test1", () =>
                 Promise.resolve(42)
             );
             assert.strictEqual(result, 42);
@@ -16,7 +14,7 @@ describe("SessionLock", function () {
             const order = [];
             const number = "serialize_test";
 
-            await Internal.SessionLock.queueJobForNumber(number, () => {
+            await queueJobForNumber(number, () => {
                 order.push("start1");
                 return new Promise((resolve) => {
                     setTimeout(() => {
@@ -26,7 +24,7 @@ describe("SessionLock", function () {
                 });
             });
 
-            await Internal.SessionLock.queueJobForNumber(number, () => {
+            await queueJobForNumber(number, () => {
                 order.push("start2");
                 return new Promise((resolve) => {
                     order.push("end2");
@@ -39,7 +37,7 @@ describe("SessionLock", function () {
 
         it("allows concurrent execution for different numbers", function () {
             const order = [];
-            const job1 = Internal.SessionLock.queueJobForNumber("num1", function () {
+            const job1 = queueJobForNumber("num1", function () {
                 order.push("start1");
                 return new Promise(function (resolve) {
                     setTimeout(function () {
@@ -49,7 +47,7 @@ describe("SessionLock", function () {
                 });
             });
 
-            const job2 = Internal.SessionLock.queueJobForNumber("num2", function () {
+            const job2 = queueJobForNumber("num2", function () {
                 order.push("start2");
                 return new Promise(function (resolve) {
                     order.push("end2");
@@ -66,7 +64,7 @@ describe("SessionLock", function () {
         });
 
         it("propagates errors from the job", function () {
-            return Internal.SessionLock.queueJobForNumber("error_test", function () {
+            return queueJobForNumber("error_test", function () {
                 return Promise.reject(new Error("test failure"));
             }).then(
                 function () {
@@ -82,7 +80,7 @@ describe("SessionLock", function () {
             const number = "continue_after_error";
             const results = [];
 
-            return Internal.SessionLock.queueJobForNumber(number, function () {
+            return queueJobForNumber(number, function () {
                 return Promise.reject(new Error("fail"));
             })
                 .then(
@@ -94,7 +92,7 @@ describe("SessionLock", function () {
                     }
                 )
                 .then(function () {
-                    return Internal.SessionLock.queueJobForNumber(number, function () {
+                    return queueJobForNumber(number, function () {
                         results.push("second");
                         return Promise.resolve("ok");
                     });

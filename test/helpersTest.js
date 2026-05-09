@@ -1,7 +1,6 @@
-/* vim: ts=4:sw=4 */
-/* global assert */
+import { assert } from "chai";
+import { util } from "../src/index.js";
 
-"use strict";
 describe("util", function () {
     describe("isEqual", function () {
         it("returns false when either a or b is undefined", function () {

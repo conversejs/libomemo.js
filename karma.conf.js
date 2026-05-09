@@ -10,58 +10,37 @@ export default function (config) {
         frameworks: ["mocha"],
 
         files: [
-            "node_modules/mocha/mocha.css",
+            { pattern: "protos/WhisperTextProtocol.proto", served: true, included: false },
+            { pattern: "protos/push.proto", served: true, included: false },
+            { pattern: "build/curve25519_compiled.wasm", served: true, included: false },
+            { pattern: "dist/curve25519_compiled.wasm", served: true, included: false },
+            // chai loaded as a global (v3 breaks in strict mode)
             "node_modules/chai/chai.js",
-
-            {
-                pattern: "protos/WhisperTextProtocol.proto",
-                served: true,
-                included: false,
-            },
-            {
-                pattern: "protos/push.proto",
-                served: true,
-                included: false,
-            },
-            {
-                pattern: "build/curve25519_compiled.wasm",
-                served: true,
-                included: false,
-            },
-            {
-                pattern: "dist/curve25519_compiled.wasm",
-                served: true,
-                included: false,
-            },
-            {
-                pattern: "dist/libomemo.umd.js",
-                served: true,
-                included: true,
-            },
-            "test/test-setup.js",
-            "test/utils.js",
-            "test/testvectors.js",
-            "test/InMemorySignalProtocolStore.js",
-            "test/KeyHelperTest.js",
-            "test/NumericFingerprintTest.js",
-            "test/SessionBuilderTest.js",
-            "test/SessionCipherTest.js",
-            "test/SignalProtocolAddressTest.js",
-            "test/cryptoTest.js",
-            "test/CurveTest.js",
-            "test/helpersTest.js",
-            "test/SessionRecordTest.js",
-            "test/SessionLockTest.js",
-            "test/SessionStore_test.js",
-            "test/SignedPreKeyStore_test.js",
-            "test/PreKeyStore_test.js",
-            "test/IdentityKeyStore_test.js",
-            "test/SignalProtocolStore_test.js",
+            // Inline setup: tell the WASM wrapper where to find the .wasm file
+            { pattern: "test/support/karma-setup.js", included: true, served: true, watched: false },
+            // All test files go through rollup preprocessor
+            "test/**/*.js",
         ],
 
-        exclude: ["test/*~"],
+        exclude: ["test/*~", "test/integration.js"],
 
-        preprocessors: {},
+        preprocessors: {
+            "test/**/*.js": ["rollup"],
+        },
+
+        rollupPreprocessor: {
+            output: {
+                format: "iife",
+                globals: { chai: "chai" },
+                sourcemap: "inline",
+            },
+            plugins: [
+                string({ include: "**/*.proto" }),
+                resolve({ browser: true }),
+                commonjs(),
+            ],
+            external: ["chai"],
+        },
 
         reporters: ["progress"],
 

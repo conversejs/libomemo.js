@@ -1,16 +1,11 @@
-/* global KeyHelper */
+import { assert } from "chai";
+import { KeyHelper } from "../src/KeyHelper.js";
 
-/*
- * global helpers for tests
- */
-
-// eslint-disable-next-line no-unused-vars
-function assertEqualArrayBuffers(ab1, ab2) {
-    chai.assert.deepEqual(new Uint8Array(ab1), new Uint8Array(ab2));
+export function assertEqualArrayBuffers(ab1, ab2) {
+    assert.deepEqual(new Uint8Array(ab1), new Uint8Array(ab2));
 }
 
-// eslint-disable-next-line no-unused-vars
-function hexToArrayBuffer(str) {
+export function hexToArrayBuffer(str) {
     const view = new Uint8Array(str.length / 2);
     for (let i = 0; i < str.length; i += 2) {
         view[i / 2] = parseInt(str.substr(i, 2), 16);
@@ -18,8 +13,7 @@ function hexToArrayBuffer(str) {
     return view.buffer;
 }
 
-// eslint-disable-next-line no-unused-vars
-function hexToUint8Array(str) {
+export function hexToUint8Array(str) {
     const view = new Uint8Array(str.length / 2);
     for (let i = 0; i < str.length; i += 2) {
         view[i / 2] = parseInt(str.substr(i, 2), 16);
@@ -27,8 +21,7 @@ function hexToUint8Array(str) {
     return view;
 }
 
-// eslint-disable-next-line no-unused-vars
-function generateIdentity(store) {
+export function generateIdentity(store) {
     return Promise.all([
         KeyHelper.generateIdentityKeyPair(),
         KeyHelper.generateRegistrationId(),
@@ -38,8 +31,7 @@ function generateIdentity(store) {
     });
 }
 
-// eslint-disable-next-line no-unused-vars
-function generatePreKeyBundle(store, preKeyId, signedPreKeyId) {
+export function generatePreKeyBundle(store, preKeyId, signedPreKeyId) {
     return Promise.all([store.getIdentityKeyPair(), store.getLocalRegistrationId()]).then(
         function (result) {
             const identity = result[0];

@@ -6,7 +6,14 @@ let moduleInstance = null;
 
 async function getModule() {
     if (!moduleInstance) {
-        moduleInstance = await Curve25519Module();
+        const opts = {};
+        if (typeof globalThis.__WASM_BASE__ !== "undefined") {
+            opts.locateFile = (path) => {
+                if (path.endsWith(".wasm")) return globalThis.__WASM_BASE__ + path;
+                return path;
+            };
+        }
+        moduleInstance = await Curve25519Module(opts);
     }
     return moduleInstance;
 }

@@ -1,14 +1,15 @@
-/* global before, assertEqualArrayBuffers, SignalProtocolAddress */
+import { assert } from "chai";
+import { internalCrypto } from "../src/crypto.js";
+import { SignalProtocolAddress } from "../src/index.js";
+import { assertEqualArrayBuffers } from "./utils.js";
 
-// eslint-disable-next-line no-unused-vars
-function testPreKeyStore(store) {
-    const { assert } = chai;
+export function testPreKeyStore(store) {
     const number = "+5558675309";
     let testKey;
 
     describe("PreKeyStore", function () {
         before(function (done) {
-            Internal.crypto
+            internalCrypto
                 .createKeyPair()
                 .then(function (keyPair) {
                     testKey = keyPair;
