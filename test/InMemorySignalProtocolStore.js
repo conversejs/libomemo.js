@@ -45,7 +45,7 @@ SignalProtocolStore.prototype = {
         if (trusted === undefined) {
             return Promise.resolve(true);
         }
-        return Promise.resolve(util.toString(identityKey) === util.toString(trusted));
+        return Promise.resolve(libomemo.util.toString(identityKey) === libomemo.util.toString(trusted));
     },
 
     loadIdentityKey: function (identifier) {
@@ -63,7 +63,7 @@ SignalProtocolStore.prototype = {
         const existing = this.get("identityKey" + address.getName());
         this.put("identityKey" + address.getName(), identityKey);
 
-        if (existing && util.toString(identityKey) !== util.toString(existing)) {
+        if (existing && libomemo.util.toString(identityKey) !== libomemo.util.toString(existing)) {
             return Promise.resolve(true);
         } else {
             return Promise.resolve(false);

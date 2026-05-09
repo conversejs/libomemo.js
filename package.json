@@ -1,34 +1,44 @@
 {
     "name": "libomemo.js",
     "repository": "github:conversejs/libomemo.js",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "license": "GPL-3.0",
+    "type": "module",
+    "main": "./dist/libomemo.umd.js",
+    "module": "./dist/libomemo.esm.js",
+    "exports": {
+        ".": {
+            "import": "./dist/libomemo.esm.js",
+            "require": "./dist/libomemo.umd.js"
+        }
+    },
     "scripts": {
-        "build": "grunt build",
+        "build": "npm run compile && rollup -c",
         "check": "npm run dist && npm run lint && npm run test",
         "clean": "rm -rf node_modules",
-        "compile": "grunt compile",
-        "dev": "grunt dev",
-        "dist": "grunt concat:libomemo",
-        "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" Gruntfile.js",
-        "lint": "eslint src/**/*.js test/**/*.js Gruntfile.js",
+        "compile": "node scripts/compile.js",
+        "dev": "rollup -c -w",
+        "dist": "rollup -c && cp build/curve25519_compiled.wasm dist/",
+        "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" rollup.config.js",
+        "lint": "eslint src/**/*.js test/**/*.js rollup.config.js",
         "test": "karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
-        "test:browser": "karma start karma.conf --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
+        "test:browser": "karma start karma.conf.js --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
     },
     "dependencies": {
         "protobufjs": "^8.0.0"
     },
     "devDependencies": {
+        "@rollup/plugin-commonjs": "^29.0.2",
+        "@rollup/plugin-node-resolve": "^16.0.3",
         "chai": "^3.5.0",
         "eslint": "^8.19.0",
-        "grunt": "^0.4.5",
-        "grunt-cli": "^0.1.13",
-        "grunt-contrib-concat": "^0.5.0",
-        "grunt-contrib-watch": "^0.6.1",
         "karma": "^6.4.0",
         "karma-chrome-launcher": "^3.1.1",
         "karma-mocha": "^2.0.1",
+        "karma-rollup-preprocessor": "^7.0.8",
         "mocha": "^10.0.0",
-        "prettier": "^3.7.4"
+        "prettier": "^3.7.4",
+        "rollup": "^4.60.3",
+        "rollup-plugin-string": "^3.0.0"
     }
 }
