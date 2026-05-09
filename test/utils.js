@@ -1,8 +1,5 @@
 /* global KeyHelper */
 
-window.libomemo = {};
-window.Internal = {};
-
 /*
  * global helpers for tests
  */

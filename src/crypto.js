@@ -2,145 +2,115 @@
  * vim: ts=4:sw=4
  */
 
-// eslint-disable-next-line no-redeclare
-var Internal = Internal || {};
+import { curve25519Async } from "./Curve.js";
+import { util } from "./helpers.js";
 
-(function () {
-    "use strict";
+const webCrypto = globalThis.crypto;
 
-    const crypto = window.crypto;
+if (!webCrypto || !webCrypto.subtle || typeof webCrypto.getRandomValues !== "function") {
+    throw new Error("WebCrypto not found");
+}
 
-    if (!crypto || !crypto.subtle || typeof crypto.getRandomValues !== "function") {
-        throw new Error("WebCrypto not found");
-    }
+export function getRandomBytes(size) {
+    const array = new Uint8Array(size);
+    webCrypto.getRandomValues(array);
+    return array.buffer;
+}
 
-    Internal.crypto = {
-        getRandomBytes: function (size) {
-            const array = new Uint8Array(size);
-            crypto.getRandomValues(array);
-            return array.buffer;
-        },
-        encrypt: function (key, data, iv) {
-            return crypto.subtle
-                .importKey("raw", key, { name: "AES-CBC" }, false, ["encrypt"])
-                .then(function (key) {
-                    return crypto.subtle.encrypt(
-                        { name: "AES-CBC", iv: new Uint8Array(iv) },
-                        key,
-                        data
-                    );
-                });
-        },
-        decrypt: function (key, data, iv) {
-            return crypto.subtle
-                .importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"])
-                .then(function (key) {
-                    return crypto.subtle.decrypt(
-                        { name: "AES-CBC", iv: new Uint8Array(iv) },
-                        key,
-                        data
-                    );
-                });
-        },
-        sign: function (key, data) {
-            return crypto.subtle
-                .importKey("raw", key, { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"])
-                .then(function (key) {
-                    return crypto.subtle.sign({ name: "HMAC", hash: "SHA-256" }, key, data);
-                });
-        },
+export function encrypt(key, data, iv) {
+    return webCrypto.subtle
+        .importKey("raw", key, { name: "AES-CBC" }, false, ["encrypt"])
+        .then((importedKey) =>
+            webCrypto.subtle.encrypt({ name: "AES-CBC", iv: new Uint8Array(iv) }, importedKey, data)
+        );
+}
 
-        hash: function (data) {
-            return crypto.subtle.digest({ name: "SHA-512" }, data);
-        },
+export function decrypt(key, data, iv) {
+    return webCrypto.subtle
+        .importKey("raw", key, { name: "AES-CBC" }, false, ["decrypt"])
+        .then((importedKey) =>
+            webCrypto.subtle.decrypt({ name: "AES-CBC", iv: new Uint8Array(iv) }, importedKey, data)
+        );
+}
 
-        HKDF: function (input, salt, info) {
-            // Specific implementation of RFC 5869 that only returns the first 3 32-byte chunks
-            // TODO: We dont always need the third chunk, we might skip it
-            return Internal.crypto.sign(salt, input).then(function (PRK) {
-                const infoBuffer = new ArrayBuffer(info.byteLength + 1 + 32);
-                const infoArray = new Uint8Array(infoBuffer);
-                infoArray.set(new Uint8Array(info), 32);
-                infoArray[infoArray.length - 1] = 1;
-                return Internal.crypto.sign(PRK, infoBuffer.slice(32)).then(function (T1) {
-                    infoArray.set(new Uint8Array(T1));
-                    infoArray[infoArray.length - 1] = 2;
-                    return Internal.crypto.sign(PRK, infoBuffer).then(function (T2) {
-                        infoArray.set(new Uint8Array(T2));
-                        infoArray[infoArray.length - 1] = 3;
-                        return Internal.crypto.sign(PRK, infoBuffer).then(function (T3) {
-                            return [T1, T2, T3];
-                        });
-                    });
-                });
+export function sign(key, data) {
+    return webCrypto.subtle
+        .importKey("raw", key, { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"])
+        .then((importedKey) =>
+            webCrypto.subtle.sign({ name: "HMAC", hash: "SHA-256" }, importedKey, data)
+        );
+}
+
+export function hash(data) {
+    return webCrypto.subtle.digest({ name: "SHA-512" }, data);
+}
+
+export function HKDFInternal(input, salt, info) {
+    return sign(salt, input).then((PRK) => {
+        const infoBuffer = new ArrayBuffer(info.byteLength + 1 + 32);
+        const infoArray = new Uint8Array(infoBuffer);
+        infoArray.set(new Uint8Array(info), 32);
+        infoArray[infoArray.length - 1] = 1;
+        return sign(PRK, infoBuffer.slice(32)).then((T1) => {
+            infoArray.set(new Uint8Array(T1));
+            infoArray[infoArray.length - 1] = 2;
+            return sign(PRK, infoBuffer).then((T2) => {
+                infoArray.set(new Uint8Array(T2));
+                infoArray[infoArray.length - 1] = 3;
+                return sign(PRK, infoBuffer).then((T3) => [T1, T2, T3]);
             });
-        },
-
-        // Curve 25519 crypto
-        createKeyPair: function (privKey) {
-            if (privKey === undefined) {
-                privKey = Internal.crypto.getRandomBytes(32);
-            }
-            return Internal.Curve.async.createKeyPair(privKey);
-        },
-        ECDHE: function (pubKey, privKey) {
-            return Internal.Curve.async.ECDHE(pubKey, privKey);
-        },
-        Ed25519Sign: function (privKey, message) {
-            return Internal.Curve.async.Ed25519Sign(privKey, message);
-        },
-        Ed25519Verify: function (pubKey, msg, sig) {
-            return Internal.Curve.async.Ed25519Verify(pubKey, msg, sig);
-        },
-    };
-
-    // HKDF for TextSecure has a bit of additional handling - salts always end up being 32 bytes
-    Internal.HKDF = function (input, salt, info) {
-        if (salt.byteLength != 32) {
-            throw new Error("Got salt of incorrect length");
-        }
-
-        return Internal.crypto.HKDF(input, salt, util.toArrayBuffer(info));
-    };
-
-    Internal.verifyMAC = function (data, key, mac, length) {
-        return Internal.crypto.sign(key, data).then(function (calculated_mac) {
-            if (mac.byteLength != length || calculated_mac.byteLength < length) {
-                throw new Error("Bad MAC length");
-            }
-            const a = new Uint8Array(calculated_mac);
-            const b = new Uint8Array(mac);
-            let result = 0;
-            for (let i = 0; i < mac.byteLength; ++i) {
-                result = result | (a[i] ^ b[i]);
-            }
-            if (result !== 0) {
-                throw new Error("Bad MAC");
-            }
         });
-    };
+    });
+}
 
-    libomemo.HKDF = {
-        deriveSecrets: function (input, salt, info) {
-            return Internal.HKDF(input, salt, info);
-        },
-    };
+export function HKDF(input, salt, info) {
+    if (salt.byteLength !== 32) {
+        throw new Error("Got salt of incorrect length");
+    }
+    const infoBuffer = typeof info === "string" ? util.toArrayBuffer(info) : info;
+    return HKDFInternal(input, salt, infoBuffer);
+}
 
-    libomemo.crypto = {
-        encrypt: function (key, data, iv) {
-            return Internal.crypto.encrypt(key, data, iv);
-        },
-        decrypt: function (key, data, iv) {
-            return Internal.crypto.decrypt(key, data, iv);
-        },
-        calculateMAC: function (key, data) {
-            return Internal.crypto.sign(key, data);
-        },
-        verifyMAC: function (data, key, mac, length) {
-            return Internal.verifyMAC(data, key, mac, length);
-        },
-        getRandomBytes: function (size) {
-            return Internal.crypto.getRandomBytes(size);
-        },
-    };
-})();
+export function verifyMAC(data, key, mac, length) {
+    return sign(key, data).then((calculated_mac) => {
+        if (mac.byteLength !== length || calculated_mac.byteLength < length) {
+            throw new Error("Bad MAC length");
+        }
+        const a = new Uint8Array(calculated_mac);
+        const b = new Uint8Array(mac);
+        let result = 0;
+        for (let i = 0; i < mac.byteLength; ++i) {
+            result |= a[i] ^ b[i];
+        }
+        if (result !== 0) {
+            throw new Error("Bad MAC");
+        }
+    });
+}
+
+// Mutable object for curve operations that tests may override (e.g. signal protocol
+// test vectors inject predetermined keys by replacing Internal.crypto.createKeyPair).
+// Internal code calls methods on this object so replacements propagate to all callers.
+export const internalCrypto = {
+    createKeyPair(privKey) {
+        if (privKey === undefined) {
+            privKey = getRandomBytes(32);
+        }
+        return curve25519Async.then((curve) => curve.createKeyPair(privKey));
+    },
+    ECDHE(pubKey, privKey) {
+        return curve25519Async.then((curve) => curve.ECDHE(pubKey, privKey));
+    },
+    Ed25519Sign(privKey, message) {
+        return curve25519Async.then((curve) => curve.Ed25519Sign(privKey, message));
+    },
+    Ed25519Verify(pubKey, msg, sig) {
+        return curve25519Async.then((curve) => curve.Ed25519Verify(pubKey, msg, sig));
+    },
+};
+
+// Named exports for direct importers
+export const createKeyPair = (privKey) => internalCrypto.createKeyPair(privKey);
+export const ECDHE = (pubKey, privKey) => internalCrypto.ECDHE(pubKey, privKey);
+export const Ed25519Sign = (privKey, message) => internalCrypto.Ed25519Sign(privKey, message);
+export const Ed25519Verify = (pubKey, msg, sig) => internalCrypto.Ed25519Verify(pubKey, msg, sig);
