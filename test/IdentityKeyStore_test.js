@@ -10,80 +10,44 @@ export function testIdentityKeyStore(store, registrationId, identityKey) {
     let testKey;
 
     describe("IdentityKeyStore", function () {
-        before(function (done) {
-            internalCrypto
-                .createKeyPair()
-                .then(function (keyPair) {
-                    testKey = keyPair;
-                })
-                .then(done, done);
+        before(async () => {
+            testKey = await internalCrypto.createKeyPair();
         });
 
         describe("getLocalRegistrationId", function () {
-            it("retrieves my registration id", function (done) {
-                store
-                    .getLocalRegistrationId()
-                    .then(function (reg) {
-                        assert.strictEqual(reg, registrationId);
-                    })
-                    .then(done, done);
+            it("retrieves my registration id", async function () {
+                const reg = await store.getLocalRegistrationId();
+                assert.strictEqual(reg, registrationId);
             });
         });
 
         describe("getIdentityKeyPair", function () {
-            it("retrieves my identity key", function (done) {
-                store
-                    .getIdentityKeyPair()
-                    .then(function (key) {
-                        assertEqualArrayBuffers(key.pubKey, identityKey.pubKey);
-                        assertEqualArrayBuffers(key.privKey, identityKey.privKey);
-                    })
-                    .then(done, done);
+            it("retrieves my identity key", async function () {
+                const key = await store.getIdentityKeyPair();
+                assertEqualArrayBuffers(key.pubKey, identityKey.pubKey);
+                assertEqualArrayBuffers(key.privKey, identityKey.privKey);
             });
         });
 
         describe("saveIdentity", function () {
-            it("stores identity keys", function (done) {
-                store
-                    .saveIdentity(address.toString(), testKey.pubKey)
-                    .then(function () {
-                        return store.loadIdentityKey(number).then(function (key) {
-                            assertEqualArrayBuffers(key, testKey.pubKey);
-                        });
-                    })
-                    .then(done, done);
+            it("stores identity keys", async function () {
+                await store.saveIdentity(address.toString(), testKey.pubKey);
+                const key = await store.loadIdentityKey(number);
+                assertEqualArrayBuffers(key, testKey.pubKey);
             });
         });
 
         describe("isTrustedIdentity", function () {
-            it("returns true if a key is trusted", function (done) {
-                store.saveIdentity(address.toString(), testKey.pubKey).then(function () {
-                    store
-                        .isTrustedIdentity(number, testKey.pubKey)
-                        .then(function (trusted) {
-                            if (trusted) {
-                                done();
-                            } else {
-                                done(new Error("Wrong value for trusted key"));
-                            }
-                        })
-                        .catch(done);
-                });
+            it("returns true if a key is trusted", async function () {
+                await store.saveIdentity(address.toString(), testKey.pubKey);
+                const trusted = await store.isTrustedIdentity(number, testKey.pubKey);
+                assert.isTrue(trusted);
             });
-            it("returns false if a key is untrusted", function (done) {
+            it("returns false if a key is untrusted", async function () {
                 const newIdentity = getRandomBytes(33);
-                store.saveIdentity(address.toString(), testKey.pubKey).then(function () {
-                    store
-                        .isTrustedIdentity(number, newIdentity)
-                        .then(function (trusted) {
-                            if (trusted) {
-                                done(new Error("Wrong value for untrusted key"));
-                            } else {
-                                done();
-                            }
-                        })
-                        .catch(done);
-                });
+                await store.saveIdentity(address.toString(), testKey.pubKey);
+                const trusted = await store.isTrustedIdentity(number, newIdentity);
+                assert.isFalse(trusted);
             });
         });
     });

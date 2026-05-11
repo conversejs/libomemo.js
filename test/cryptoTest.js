@@ -1,4 +1,4 @@
-import { assert } from "chai";
+import { assert, expect } from "chai";
 import {
     internalCrypto,
     encrypt,
@@ -11,7 +11,7 @@ import { hexToArrayBuffer, assertEqualArrayBuffers } from "./utils.js";
 
 describe("Crypto", function () {
     describe("Encrypt AES-CBC", function () {
-        it("works", function (done) {
+        it("works", async function () {
             const key = hexToArrayBuffer(
                 "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
             );
@@ -22,17 +22,13 @@ describe("Crypto", function () {
             const ciphertext = hexToArrayBuffer(
                 "f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b3f461796d6b0d6b2e0c2a72b4d80e644"
             );
-            encrypt(key, plaintext, iv)
-                .then(function (result) {
-                    assertEqualArrayBuffers(result, ciphertext);
-                })
-                .then(done)
-                .catch(done);
+            const result = await encrypt(key, plaintext, iv);
+            assertEqualArrayBuffers(result, ciphertext);
         });
     });
 
     describe("Decrypt AES-CBC", function () {
-        it("works", function (done) {
+        it("works", async function () {
             const key = hexToArrayBuffer(
                 "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
             );
@@ -43,17 +39,13 @@ describe("Crypto", function () {
             const ciphertext = hexToArrayBuffer(
                 "f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b3f461796d6b0d6b2e0c2a72b4d80e644"
             );
-            decrypt(key, ciphertext, iv)
-                .then(function (result) {
-                    assertEqualArrayBuffers(result, plaintext);
-                })
-                .then(done)
-                .catch(done);
+            const result = await decrypt(key, ciphertext, iv);
+            assertEqualArrayBuffers(result, plaintext);
         });
     });
 
     describe("HMAC SHA-256", function () {
-        it("works", function (done) {
+        it("works", async function () {
             const key = hexToArrayBuffer(
                 "6f35628d65813435534b5d67fbdb54cb33403d04e843103e6399f806cb5df95febbdd61236f33245"
             );
@@ -61,17 +53,13 @@ describe("Crypto", function () {
                 "752cff52e4b90768558e5369e75d97c69643509a5e5904e0a386cbe4d0970ef73f918f675945a9aefe26daea27587e8dc909dd56fd0468805f834039b345f855cfe19c44b55af241fff3ffcd8045cd5c288e6c4e284c3720570b58e4d47b8feeedc52fd1401f698a209fccfa3b4c0d9a797b046a2759f82a54c41ccd7b5f592b"
             );
             const mac = hexToArrayBuffer("05d1243e6465ed9620c9aec1c351a186");
-            cryptoSign(key, input)
-                .then(function (result) {
-                    assertEqualArrayBuffers(result.slice(0, mac.byteLength), mac);
-                })
-                .then(done)
-                .catch(done);
+            const result = await cryptoSign(key, input);
+            assertEqualArrayBuffers(result.slice(0, mac.byteLength), mac);
         });
     });
 
     describe("HKDF", function () {
-        it("works", function () {
+        it("works", async function () {
             // HMAC RFC5869 Test vectors
             const T1 = hexToArrayBuffer(
                 "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf"
@@ -86,10 +74,9 @@ describe("Crypto", function () {
             const info = new Uint8Array(new ArrayBuffer(10));
             for (let i = 0; i < 10; i++) info[i] = 240 + i;
 
-            return cryptoHKDF(IKM.buffer, salt.buffer, info.buffer).then(function (OKM) {
-                assertEqualArrayBuffers(OKM[0], T1);
-                assertEqualArrayBuffers(OKM[1].slice(0, 10), T2);
-            });
+            const OKM = await cryptoHKDF(IKM.buffer, salt.buffer, info.buffer);
+            assertEqualArrayBuffers(OKM[0], T1);
+            assertEqualArrayBuffers(OKM[1].slice(0, 10), T2);
         });
     });
 
@@ -117,57 +104,35 @@ describe("Crypto", function () {
         );
 
         describe("createKeyPair", function () {
-            it("converts alice private keys to a keypair", function (done) {
-                internalCrypto
-                    .createKeyPair(alice_bytes)
-                    .then(function (keypair) {
-                        assertEqualArrayBuffers(keypair.privKey, alice_priv);
-                        assertEqualArrayBuffers(keypair.pubKey, alice_pub);
-                        done();
-                    })
-                    .catch(done);
+            it("converts alice private keys to a keypair", async function () {
+                const keypair = await internalCrypto.createKeyPair(alice_bytes);
+                assertEqualArrayBuffers(keypair.privKey, alice_priv);
+                assertEqualArrayBuffers(keypair.pubKey, alice_pub);
             });
-            it("converts bob private keys to a keypair", function (done) {
-                internalCrypto
-                    .createKeyPair(bob_bytes)
-                    .then(function (keypair) {
-                        assertEqualArrayBuffers(keypair.privKey, bob_priv);
-                        assertEqualArrayBuffers(keypair.pubKey, bob_pub);
-                        done();
-                    })
-                    .catch(done);
+
+            it("converts bob private keys to a keypair", async function () {
+                const keypair = await internalCrypto.createKeyPair(bob_bytes);
+                assertEqualArrayBuffers(keypair.privKey, bob_priv);
+                assertEqualArrayBuffers(keypair.pubKey, bob_pub);
             });
-            it("generates a key if one is not provided", function (done) {
-                internalCrypto
-                    .createKeyPair()
-                    .then(function (keypair) {
-                        assert.strictEqual(keypair.privKey.byteLength, 32);
-                        assert.strictEqual(keypair.pubKey.byteLength, 33);
-                        assert.strictEqual(new Uint8Array(keypair.pubKey)[0], 5);
-                        done();
-                    })
-                    .catch(done);
+
+            it("generates a key if one is not provided", async function () {
+                const keypair = await internalCrypto.createKeyPair();
+                assert.strictEqual(keypair.privKey.byteLength, 32);
+                assert.strictEqual(keypair.pubKey.byteLength, 33);
+                assert.strictEqual(new Uint8Array(keypair.pubKey)[0], 5);
             });
         });
 
         describe("ECDHE", function () {
-            it("computes the shared secret for alice", function (done) {
-                internalCrypto
-                    .ECDHE(bob_pub, alice_priv)
-                    .then(function (secret) {
-                        assertEqualArrayBuffers(shared_sec, secret);
-                        done();
-                    })
-                    .catch(done);
+            it("computes the shared secret for alice", async function () {
+                const secret = await internalCrypto.ECDHE(bob_pub, alice_priv);
+                assertEqualArrayBuffers(shared_sec, secret);
             });
-            it("computes the shared secret for bob", function (done) {
-                internalCrypto
-                    .ECDHE(alice_pub, bob_priv)
-                    .then(function (secret) {
-                        assertEqualArrayBuffers(shared_sec, secret);
-                        done();
-                    })
-                    .catch(done);
+
+            it("computes the shared secret for bob", async function () {
+                const secret = await internalCrypto.ECDHE(alice_pub, bob_priv);
+                assertEqualArrayBuffers(shared_sec, secret);
             });
         });
 
@@ -181,30 +146,27 @@ describe("Crypto", function () {
         const sig = hexToArrayBuffer(
             "f029e99d7ed021db4c43a5b4fcca65fcd4984114ac6041df30c10b6f3a3eb50a84b890ca0203c90189239287144a7f234c3a369a79eca0aea94925631335e50d"
         );
-        describe("Ed25519Sign", function () {
+        describe("Ed25519Sign", async function () {
             // Some self-generated test vectors
-            it("works", function () {
-                return internalCrypto.Ed25519Sign(priv, msg).then(function (sigCalc) {
-                    assertEqualArrayBuffers(sig, sigCalc);
-                });
+            it("works", async function () {
+                const sigCalc = await internalCrypto.Ed25519Sign(priv, msg);
+                assertEqualArrayBuffers(sig, sigCalc);
             });
         });
 
         describe("Ed25519Verify", function () {
-            it("throws on bad signature", function (done) {
+            it("throws on bad signature", async function () {
                 const badsig = sig.slice(0);
                 new Uint8Array(badsig).set([0], 0);
 
-                internalCrypto
-                    .Ed25519Verify(pub, msg, badsig)
-                    .catch(function (e) {
-                        if (e.message === "Invalid signature") {
-                            done();
-                        } else {
-                            throw e;
-                        }
-                    })
-                    .catch(done);
+                let error;
+                try {
+                    await internalCrypto.Ed25519Verify(pub, msg, badsig);
+                } catch (e) {
+                    error = e;
+                }
+                expect(error).to.be.an.instanceof(Error);
+                assert.equal(error.message, "Invalid signature");
             });
 
             it("does not throw on good signature", function () {
@@ -217,13 +179,11 @@ describe("Crypto", function () {
         this.timeout(5000);
         testCurve25519();
     });
+
     describe("curve25519 in a worker", function () {
-        before(function () {
-            startWorker("../dist/libomemo-worker.js");
-        });
-        after(function () {
-            stopWorker();
-        });
+        before(() => startWorker("../dist/libomemo-worker.js"));
+        after(() => stopWorker());
+
         this.timeout(5000);
         testCurve25519();
     });

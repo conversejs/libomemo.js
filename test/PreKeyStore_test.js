@@ -8,65 +8,43 @@ export function testPreKeyStore(store) {
     let testKey;
 
     describe("PreKeyStore", function () {
-        before(function (done) {
-            internalCrypto
-                .createKeyPair()
-                .then(function (keyPair) {
-                    testKey = keyPair;
-                })
-                .then(done, done);
+        before(async function () {
+            testKey = await internalCrypto.createKeyPair();
         });
 
         describe("storePreKey", function () {
-            it("stores prekeys", function (done) {
+            it("stores prekeys", async function () {
                 const address = new SignalProtocolAddress(number, 1);
-                store
-                    .storePreKey(address.toString(), testKey)
-                    .then(function () {
-                        return store.loadPreKey(address.toString()).then(function (key) {
-                            assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                            assertEqualArrayBuffers(key.privKey, testKey.privKey);
-                        });
-                    })
-                    .then(done, done);
+                await store.storePreKey(address.toString(), testKey);
+                const key = await store.loadPreKey(address.toString());
+                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.privKey, testKey.privKey);
             });
         });
 
         describe("loadPreKey", function () {
-            it("returns prekeys that exist", function (done) {
+            it("returns prekeys that exist", async function () {
                 const address = new SignalProtocolAddress(number, 1);
-                store
-                    .storePreKey(address.toString(), testKey)
-                    .then(function () {
-                        return store.loadPreKey(address.toString()).then(function (key) {
-                            assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                            assertEqualArrayBuffers(key.privKey, testKey.privKey);
-                        });
-                    })
-                    .then(done, done);
+                await store.storePreKey(address.toString(), testKey);
+                const key = await store.loadPreKey(address.toString());
+                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.privKey, testKey.privKey);
             });
-            it("returns undefined for prekeys that do not exist", function () {
+
+            it("returns undefined for prekeys that do not exist", async function () {
                 const address = new SignalProtocolAddress(number, 2);
-                return store.loadPreKey(address.toString()).then(function (key) {
-                    assert.isUndefined(key);
-                });
+                const key = await store.loadPreKey(address.toString());
+                assert.isUndefined(key);
             });
         });
 
         describe("removePreKey", function () {
-            it("deletes prekeys", function (done) {
+            it("deletes prekeys", async function () {
                 const address = new SignalProtocolAddress(number, 2);
-                before(function (done) {
-                    store.storePreKey(address.toString(), testKey).then(done);
-                });
-                store
-                    .removePreKey(address.toString())
-                    .then(function () {
-                        return store.loadPreKey(address.toString()).then(function (key) {
-                            assert.isUndefined(key);
-                        });
-                    })
-                    .then(done, done);
+                before(() => store.storePreKey(address.toString(), testKey));
+                store.removePreKey(address.toString());
+                const key = await store.loadPreKey(address.toString());
+                assert.isUndefined(key);
             });
         });
     });

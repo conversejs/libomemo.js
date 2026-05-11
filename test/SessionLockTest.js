@@ -4,9 +4,7 @@ import { queueJobForNumber } from "../src/SessionLock.js";
 describe("SessionLock", function () {
     describe("queueJobForNumber", function () {
         it("executes a job and returns its result", async function () {
-            const result = await queueJobForNumber("test1", () =>
-                Promise.resolve(42)
-            );
+            const result = await queueJobForNumber("test1", () => Promise.resolve(42));
             assert.strictEqual(result, 42);
         });
 
@@ -35,12 +33,12 @@ describe("SessionLock", function () {
             assert.deepEqual(order, ["start1", "end1", "start2", "end2"]);
         });
 
-        it("allows concurrent execution for different numbers", function () {
+        it("allows concurrent execution for different numbers", async function () {
             const order = [];
             const job1 = queueJobForNumber("num1", function () {
                 order.push("start1");
-                return new Promise(function (resolve) {
-                    setTimeout(function () {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
                         order.push("end1");
                         resolve();
                     }, 20);
@@ -49,18 +47,17 @@ describe("SessionLock", function () {
 
             const job2 = queueJobForNumber("num2", function () {
                 order.push("start2");
-                return new Promise(function (resolve) {
+                return new Promise((resolve) => {
                     order.push("end2");
                     resolve();
                 });
             });
 
-            return Promise.all([job1, job2]).then(function () {
-                assert.strictEqual(order[0], "start1");
-                assert.strictEqual(order[1], "start2");
-                assert.strictEqual(order[2], "end2");
-                assert.strictEqual(order[3], "end1");
-            });
+            await Promise.all([job1, job2]);
+            assert.strictEqual(order[0], "start1");
+            assert.strictEqual(order[1], "start2");
+            assert.strictEqual(order[2], "end2");
+            assert.strictEqual(order[3], "end1");
         });
 
         it("propagates errors from the job", function () {

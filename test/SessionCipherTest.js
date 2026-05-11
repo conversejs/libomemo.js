@@ -1,10 +1,5 @@
 import { assert } from "chai";
-import {
-    SessionBuilder,
-    SessionCipher,
-    SignalProtocolAddress,
-    util,
-} from "../src/index.js";
+import { SessionBuilder, SessionCipher, SignalProtocolAddress, util } from "../src/index.js";
 import { SessionRecord, BaseKeyType } from "../src/SessionRecord.js";
 import { internalCrypto } from "../src/crypto.js";
 import { loadProtocolMessages, loadPushMessages } from "../src/protobufs.js";
@@ -90,9 +85,9 @@ describe("SessionCipher", function () {
         });
 
         describe("no open session exists", function () {
-            before(function (done) {
+            before(async function () {
                 const record = new SessionRecord();
-                store.storeSession(address.toString(), record.serialize()).then(done);
+                await store.storeSession(address.toString(), record.serialize());
             });
 
             it("returns false", async function () {
@@ -254,8 +249,7 @@ describe("SessionCipher", function () {
                             if (data.expectedCiphertext[0] !== msg.body.charCodeAt(0)) {
                                 throw new Error("Bad version byte");
                             }
-                            const { PreKeyWhisperMessage } =
-                                await loadProtocolMessages();
+                            const { PreKeyWhisperMessage } = await loadProtocolMessages();
                             const decoded = PreKeyWhisperMessage.decode(
                                 data.expectedCiphertext.slice(1)
                             );
@@ -363,27 +357,15 @@ describe("SessionCipher", function () {
 
         let bobSessionCipher, aliceSessionCipher;
 
-        before(function (done) {
-            Promise.all([aliceStore, bobStore].map(generateIdentity))
-                .then(function () {
-                    return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-                })
-                .then(function (preKeyBundle) {
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder.processPreKey(preKeyBundle);
-                })
-                .then(function () {
-                    aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-                    bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
-                    return aliceSessionCipher.encrypt(originalMessage);
-                })
-                .then(function (ciphertext) {
-                    return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
-                })
-                .then(function () {
-                    done();
-                })
-                .catch(done);
+        before(async function () {
+            await Promise.all([aliceStore, bobStore].map(generateIdentity));
+            const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
+            aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+            bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+            const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
+            return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
 
         function hexEncode(str) {
@@ -437,33 +419,14 @@ describe("SessionCipher", function () {
 
         const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-        before(function (done) {
-            Promise.all([aliceStore, bobStore].map(generateIdentity))
-                .then(function () {
-                    return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-                })
-                .then(function (preKeyBundle) {
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder
-                        .processPreKey(preKeyBundle)
-                        .then(function () {
-                            const aliceSessionCipher = new SessionCipher(
-                                aliceStore,
-                                BOB_ADDRESS
-                            );
-                            return aliceSessionCipher.encrypt(originalMessage);
-                        })
-                        .then(function (ciphertext) {
-                            return bobSessionCipher.decryptPreKeyWhisperMessage(
-                                ciphertext.body,
-                                "binary"
-                            );
-                        })
-                        .then(function () {
-                            done();
-                        });
-                })
-                .catch(done);
+        before(async function () {
+            await Promise.all([aliceStore, bobStore].map(generateIdentity));
+            const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
+            const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+            const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
+            await bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
 
         describe("When bob's identity changes", function () {
