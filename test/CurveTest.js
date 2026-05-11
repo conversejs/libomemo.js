@@ -155,5 +155,34 @@ describe("Curve", function () {
                 "Invalid signature"
             );
         });
+
+        it("works correctly across many different key pairs", async function () {
+            const NUM_PAIRS = 50;
+            const message = new TextEncoder().encode("multi-key-pair test message").buffer;
+            const keyPairs = [];
+
+            for (let i = 0; i < NUM_PAIRS; i++) {
+                keyPairs.push(await Curve.async.generateKeyPair());
+            }
+
+            for (let i = 0; i < NUM_PAIRS; i++) {
+                const sig = await Curve.async.calculateSignature(keyPairs[i].privKey, message);
+                assert.strictEqual(sig.byteLength, 64);
+
+                await Curve.async.verifySignature(keyPairs[i].pubKey, message, sig);
+
+                for (let j = 0; j < NUM_PAIRS; j++) {
+                    if (j === i) continue;
+                    try {
+                        await Curve.async.verifySignature(keyPairs[j].pubKey, message, sig);
+                        assert.fail(`Signature from key ${i} should not verify with key ${j}`);
+                    } catch (err) {
+                        if (err.message !== "Invalid signature") {
+                            throw err;
+                        }
+                    }
+                }
+            }
+        });
     });
 });

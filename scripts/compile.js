@@ -19,6 +19,7 @@ const EXPORTED_FUNCTIONS = [
     "malloc",
     "free",
     "xed25519_sign",
+    "xed25519_verify",
 ].map((name) => `'_${name}'`);
 
 const FLAGS = [

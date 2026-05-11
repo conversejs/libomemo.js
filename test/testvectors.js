@@ -39,7 +39,7 @@ export const TestVectors = (function () {
                                     "05a9ecf666ec55fc27988ecc417db0d62dd5e1fa751da1f7a2dd2eca0d14c8bd46"
                                 ),
                                 signature: hexToArrayBuffer(
-                                    "0b46fdb238f1e2df7b28a94ba575e58b0aa1d377bb843602cc8c2a7cd33770fdd741f65a240f7c3086f00f31dc4f3b8ceeab498356f8d5e4bfe6f2dd3eeca98f"
+                                    "b0bbd0a2e939888245ece44d512e0c8e2872b75f5e6a418133621bfaba67e40a86cf4746a44daf836ed4a82ccf67bf78e14f31ca194715c932d7e124bca3fd0c"
                                 ),
                             },
                             registrationId: 0xd00d,
@@ -554,7 +554,7 @@ export const TestVectors = (function () {
                                     "05a7f5ea2bc830f546f03debdf57a9738aa8c65c3c2857240b786458dbfc58fe76"
                                 ),
                                 signature: hexToArrayBuffer(
-                                    "1a43ae36e17fefcb0d05b5618a79fda414ba5ae5ba3c3097a27b761a55810a2f6f1933e09a12e80f274cde4d39a837e3a1180b1c636c173f40190059ea09cc8e"
+                                    "99fa155a5f7c2d2541d1e8d601cc648ae35a8c60c8e453c0e9942c17f3e8f47dc69f3f126fb49cd5180ea8030b4175022f5ed27838f925e0d40ab232c768a809"
                                 ),
                             },
                             registrationId: 0xd00d,
@@ -617,7 +617,7 @@ export const TestVectors = (function () {
                                     "05a7f5ea2bc830f546f03debdf57a9738aa8c65c3c2857240b786458dbfc58fe76"
                                 ),
                                 signature: hexToArrayBuffer(
-                                    "1a43ae36e17fefcb0d05b5618a79fda414ba5ae5ba3c3097a27b761a55810a2f6f1933e09a12e80f274cde4d39a837e3a1180b1c636c173f40190059ea09cc8e"
+                                    "99fa155a5f7c2d2541d1e8d601cc648ae35a8c60c8e453c0e9942c17f3e8f47dc69f3f126fb49cd5180ea8030b4175022f5ed27838f925e0d40ab232c768a809"
                                 ),
                             },
                             registrationId: 0xd00d,

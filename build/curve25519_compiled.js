@@ -1636,6 +1636,11 @@ var _xed25519_sign = Module["_xed25519_sign"] = function() {
 };
 
 /** @type {function(...*):?} */
+var _xed25519_verify = Module["_xed25519_verify"] = function() {
+  return (_xed25519_verify = Module["_xed25519_verify"] = Module["asm"]["xed25519_verify"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
 var _curve25519_donna = Module["_curve25519_donna"] = function() {
   return (_curve25519_donna = Module["_curve25519_donna"] = Module["asm"]["curve25519_donna"]).apply(null, arguments);
 };
