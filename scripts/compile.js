@@ -12,8 +12,6 @@ const SOURCE_FILES = [
 
 const EXPORTED_FUNCTIONS = [
     "curve25519_donna",
-    "curve25519_sign",
-    "curve25519_verify",
     "crypto_sign_ed25519_ref10_ge_scalarmult_base",
     "sph_sha512_init",
     "malloc",
