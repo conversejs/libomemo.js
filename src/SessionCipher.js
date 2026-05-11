@@ -2,14 +2,7 @@ import { util } from "./helpers.js";
 import { loadProtocolMessages } from "./protobufs.js";
 import { SessionRecord, ChainType } from "./SessionRecord.js";
 import { queueJobForNumber } from "./SessionLock.js";
-import {
-    internalCrypto,
-    sign,
-    verifyMAC,
-    encrypt,
-    decrypt,
-    HKDF,
-} from "./crypto.js";
+import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "./crypto.js";
 import { SessionBuilder } from "./SessionBuilder.js";
 import { SignalProtocolAddress } from "./SignalProtocolAddress.js";
 
@@ -25,16 +18,14 @@ export class SessionCipher {
         this.#storage = storage;
     }
 
-    #getRecord(encodedNumber) {
-        return this.#storage.loadSession(encodedNumber).then((serialized) => {
-            if (serialized === undefined) {
-                return undefined;
-            }
-            return SessionRecord.deserialize(serialized);
-        });
+    async #getRecord(encodedNumber) {
+        const serialized = await this.#storage.loadSession(encodedNumber);
+        if (serialized === undefined) return;
+
+        return SessionRecord.deserialize(serialized);
     }
 
-    #fillMessageKeys(chain, counter) {
+    async #fillMessageKeys(chain, counter) {
         if (chain.chainKey.counter >= counter) {
             return Promise.resolve();
         }
@@ -47,84 +38,75 @@ export class SessionCipher {
             throw new Error("Got invalid request to extend chain after it was already closed");
         }
 
-        const key = util.toArrayBuffer(chain.chainKey.key);
+        let key = util.toArrayBuffer(chain.chainKey.key);
         const byteArray = new Uint8Array(1);
         byteArray[0] = 1;
-        return sign(key, byteArray.buffer).then((mac) => {
-            byteArray[0] = 2;
-            return sign(key, byteArray.buffer).then((key) => {
-                chain.messageKeys[chain.chainKey.counter + 1] = mac;
-                chain.chainKey.key = key;
-                chain.chainKey.counter += 1;
-                return this.#fillMessageKeys(chain, counter);
-            });
-        });
+
+        const mac = await sign(key, byteArray.buffer);
+        byteArray[0] = 2;
+
+        key = await sign(key, byteArray.buffer);
+        chain.messageKeys[chain.chainKey.counter + 1] = mac;
+        chain.chainKey.key = key;
+        chain.chainKey.counter += 1;
+
+        return this.#fillMessageKeys(chain, counter);
     }
 
-    #maybeStepRatchet(session, remoteKey, previousCounter) {
+    async #maybeStepRatchet(session, remoteKey, previousCounter) {
         if (session[util.toString(remoteKey)] !== undefined) {
-            return Promise.resolve();
+            return;
+        }
+        console.log("New remote ephemeral key");
+
+        const ratchet = session.currentRatchet;
+
+        let previousRatchet = session[util.toString(ratchet.lastRemoteEphemeralKey)];
+        if (previousRatchet !== undefined) {
+            await this.#fillMessageKeys(previousRatchet, previousCounter);
+            delete previousRatchet.chainKey.key;
+            session.oldRatchetList[session.oldRatchetList.length] = {
+                added: Date.now(),
+                ephemeralKey: ratchet.lastRemoteEphemeralKey,
+            };
         }
 
-        console.log("New remote ephemeral key");
-        const ratchet = session.currentRatchet;
+        await this.#calculateRatchet(session, remoteKey, false);
 
-        return Promise.resolve()
-            .then(() => {
-                const previousRatchet = session[util.toString(ratchet.lastRemoteEphemeralKey)];
-                if (previousRatchet !== undefined) {
-                    return this.#fillMessageKeys(previousRatchet, previousCounter).then(() => {
-                        delete previousRatchet.chainKey.key;
-                        session.oldRatchetList[session.oldRatchetList.length] = {
-                            added: Date.now(),
-                            ephemeralKey: ratchet.lastRemoteEphemeralKey,
-                        };
-                    });
-                }
-            })
-            .then(() => {
-                return this.#calculateRatchet(session, remoteKey, false).then(() => {
-                    const previousRatchet = util.toString(ratchet.ephemeralKeyPair.pubKey);
-                    if (session[previousRatchet] !== undefined) {
-                        ratchet.previousCounter = session[previousRatchet].chainKey.counter;
-                        delete session[previousRatchet];
-                    }
+        previousRatchet = util.toString(ratchet.ephemeralKeyPair.pubKey);
+        if (session[previousRatchet] !== undefined) {
+            ratchet.previousCounter = session[previousRatchet].chainKey.counter;
+            delete session[previousRatchet];
+        }
 
-                    return internalCrypto.createKeyPair().then((keyPair) => {
-                        ratchet.ephemeralKeyPair = keyPair;
-                        return this.#calculateRatchet(session, remoteKey, true).then(() => {
-                            ratchet.lastRemoteEphemeralKey = remoteKey;
-                        });
-                    });
-                });
-            });
+        const keyPair = await internalCrypto.createKeyPair();
+        ratchet.ephemeralKeyPair = keyPair;
+
+        await this.#calculateRatchet(session, remoteKey, true);
+        ratchet.lastRemoteEphemeralKey = remoteKey;
     }
 
-    #calculateRatchet(session, remoteKey, sending) {
+    async #calculateRatchet(session, remoteKey, sending) {
         const ratchet = session.currentRatchet;
-
-        return internalCrypto.ECDHE(remoteKey, util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)).then(
-            (sharedSecret) => {
-                return HKDF(
-                    sharedSecret,
-                    util.toArrayBuffer(ratchet.rootKey),
-                    "WhisperRatchet"
-                ).then((masterKey) => {
-                    const ephemeralPublicKey = sending
-                        ? ratchet.ephemeralKeyPair.pubKey
-                        : remoteKey;
-                    session[util.toString(ephemeralPublicKey)] = {
-                        messageKeys: {},
-                        chainKey: { counter: -1, key: masterKey[1] },
-                        chainType: sending ? ChainType.SENDING : ChainType.RECEIVING,
-                    };
-                    ratchet.rootKey = masterKey[0];
-                });
-            }
+        const sharedSecret = await internalCrypto.ECDHE(
+            remoteKey,
+            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)
         );
+        const masterKey = await HKDF(
+            sharedSecret,
+            util.toArrayBuffer(ratchet.rootKey),
+            "WhisperRatchet"
+        );
+        const ephemeralPublicKey = sending ? ratchet.ephemeralKeyPair.pubKey : remoteKey;
+        session[util.toString(ephemeralPublicKey)] = {
+            messageKeys: {},
+            chainKey: { counter: -1, key: masterKey[1] },
+            chainType: sending ? ChainType.SENDING : ChainType.RECEIVING,
+        };
+        ratchet.rootKey = masterKey[0];
     }
 
-    #doDecryptWhisperMessage(messageBytes, session) {
+    async #doDecryptWhisperMessage(messageBytes, session) {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
         }
@@ -132,85 +114,84 @@ export class SessionCipher {
         if ((version & 0xf) > 3 || version >> 4 < 3) {
             throw new Error("Incompatible version number on WhisperMessage");
         }
+
         const messageProto = new Uint8Array(messageBytes.slice(1, messageBytes.byteLength - 8));
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
-        return loadProtocolMessages().then(({ WhisperMessage }) => {
-            const message = WhisperMessage.decode(messageProto);
-            const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
+        const { WhisperMessage } = await loadProtocolMessages();
+        const message = WhisperMessage.decode(messageProto);
+        const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
 
-            if (session === undefined) {
-                return Promise.reject(
-                    new Error(
-                        `No session found to decrypt message from ${this.#remoteAddress.toString()}`
-                    )
-                );
-            }
-            if (session.indexInfo.closed !== -1) {
-                console.log("decrypting message for closed session");
-            }
+        if (session === undefined) {
+            return Promise.reject(
+                new Error(
+                    `No session found to decrypt message from ${this.#remoteAddress.toString()}`
+                )
+            );
+        }
+        if (session.indexInfo.closed !== -1) {
+            console.log("decrypting message for closed session");
+        }
 
-            return this.#maybeStepRatchet(session, remoteEphemeralKey, message.previousCounter)
-                .then(() => {
-                    const chain = session[util.toString(message.ephemeralKey)];
-                    if (chain.chainType === ChainType.SENDING) {
-                        throw new Error("Tried to decrypt on a sending chain");
-                    }
+        await this.#maybeStepRatchet(session, remoteEphemeralKey, message.previousCounter);
+        const chain = session[util.toString(message.ephemeralKey)];
+        if (chain.chainType === ChainType.SENDING) {
+            throw new Error("Tried to decrypt on a sending chain");
+        }
 
-                    return this.#fillMessageKeys(chain, message.counter).then(() => {
-                        const messageKey = chain.messageKeys[message.counter];
-                        if (messageKey === undefined) {
-                            const e = new Error(
-                                "Message key not found. The counter was repeated or the key was not filled."
-                            );
-                            e.name = "MessageCounterError";
-                            throw e;
-                        }
-                        delete chain.messageKeys[message.counter];
-                        return HKDF(
-                            util.toArrayBuffer(messageKey),
-                            new ArrayBuffer(32),
-                            "WhisperMessageKeys"
-                        );
-                    });
-                })
-                .then(async (keys) => {
-                    const ourIdentityKey = await this.#storage.getIdentityKeyPair();
+        await this.#fillMessageKeys(chain, message.counter);
 
-                    const macInput = new Uint8Array(messageProto.byteLength + 33 * 2 + 1);
-                    macInput.set(
-                        new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey))
-                    );
-                    macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)), 33);
-                    macInput[33 * 2] = (3 << 4) | 3;
-                    macInput.set(new Uint8Array(messageProto), 33 * 2 + 1);
-                    await verifyMAC(macInput.buffer, keys[1], mac, 8);
-                    const plaintext = await decrypt(
-                        keys[0],
-                        message.ciphertext.slice().buffer,
-                        keys[2].slice(0, 16)
-                    );
-                    delete session.pendingPreKey;
-                    return plaintext;
-                });
-        });
+        const messageKey = chain.messageKeys[message.counter];
+        if (messageKey === undefined) {
+            const e = new Error(
+                "Message key not found. The counter was repeated or the key was not filled."
+            );
+            e.name = "MessageCounterError";
+            throw e;
+        }
+        delete chain.messageKeys[message.counter];
+
+        const keys = await HKDF(
+            util.toArrayBuffer(messageKey),
+            new ArrayBuffer(32),
+            "WhisperMessageKeys"
+        );
+
+        const ourIdentityKey = await this.#storage.getIdentityKeyPair();
+
+        const macInput = new Uint8Array(messageProto.byteLength + 33 * 2 + 1);
+        macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)));
+        macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)), 33);
+        macInput[33 * 2] = (3 << 4) | 3;
+        macInput.set(new Uint8Array(messageProto), 33 * 2 + 1);
+        await verifyMAC(macInput.buffer, keys[1], mac, 8);
+        const plaintext = await decrypt(
+            keys[0],
+            message.ciphertext.slice().buffer,
+            keys[2].slice(0, 16)
+        );
+        delete session.pendingPreKey;
+        return plaintext;
     }
 
-    #decryptWithSessionList(buffer, sessionList, errors) {
+    async #decryptWithSessionList(buffer, sessionList, errors = []) {
         if (sessionList.length === 0) {
             return Promise.reject(errors[0]);
         }
 
         const session = sessionList.pop();
-        return this.#doDecryptWhisperMessage(buffer, session)
-            .then((plaintext) => ({ plaintext, session }))
-            .catch((e) => {
-                if (e.name === "MessageCounterError") {
-                    return Promise.reject(e);
-                }
-                errors.push(e);
-                return this.#decryptWithSessionList(buffer, sessionList, errors);
-            });
+        try {
+            return {
+                plaintext: await this.#doDecryptWhisperMessage(buffer, session),
+                session,
+            };
+        } catch (e) {
+            if (e.name === "MessageCounterError") {
+                throw e;
+            }
+            errors.push(e);
+            return this.#decryptWithSessionList(buffer, sessionList, errors);
+        }
     }
 
     encrypt(buffer) {
@@ -307,9 +288,7 @@ export class SessionCipher {
             if (session.pendingPreKey !== undefined) {
                 const { PreKeyWhisperMessage } = await loadProtocolMessages();
                 const preKeyMsg = PreKeyWhisperMessage.create({
-                    baseKey: new Uint8Array(
-                        util.toArrayBuffer(session.pendingPreKey.baseKey)
-                    ),
+                    baseKey: new Uint8Array(util.toArrayBuffer(session.pendingPreKey.baseKey)),
                     identityKey: new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)),
                     message: result,
                     preKeyId: session.pendingPreKey.preKeyId
@@ -339,53 +318,40 @@ export class SessionCipher {
         });
     }
 
-    decryptWhisperMessage(buffer, encoding) {
+    async decryptWhisperMessage(buffer, encoding) {
         buffer = util.normalizeBuffer(buffer, encoding).buffer;
-        return queueJobForNumber(this.#remoteAddress.toString(), () => {
+        return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
-            return this.#getRecord(address).then((record) => {
-                if (!record) {
-                    throw new Error(`No record for device ${address}`);
-                }
-                const errors = [];
-                return this.#decryptWithSessionList(buffer, record.getSessions(), errors).then(
-                    (result) => {
-                        return this.#getRecord(address).then((record) => {
-                            if (
-                                result.session.indexInfo.baseKey !==
-                                record.getOpenSession().indexInfo.baseKey
-                            ) {
-                                record.archiveCurrentState();
-                                record.promoteState(result.session);
-                            }
 
-                            return this.#storage
-                                .isTrustedIdentity(
-                                    this.#remoteAddress.getName(),
-                                    util.toArrayBuffer(result.session.indexInfo.remoteIdentityKey),
-                                    this.#storage.Direction.RECEIVING
-                                )
-                                .then((trusted) => {
-                                    if (!trusted) {
-                                        throw new Error("Identity key changed");
-                                    }
-                                })
-                                .then(() => {
-                                    return this.#storage.saveIdentity(
-                                        this.#remoteAddress.toString(),
-                                        result.session.indexInfo.remoteIdentityKey
-                                    );
-                                })
-                                .then(() => {
-                                    record.updateSessionState(result.session);
-                                    return this.#storage
-                                        .storeSession(address, record.serialize())
-                                        .then(() => result.plaintext);
-                                });
-                        });
-                    }
-                );
-            });
+            const record = await this.#getRecord(address);
+            if (!record) throw new Error(`No record for device ${address}`);
+
+            const { session, plaintext } = await this.#decryptWithSessionList(
+                buffer,
+                record.getSessions()
+            );
+
+            if (session.indexInfo.baseKey !== record.getOpenSession().indexInfo.baseKey) {
+                record.archiveCurrentState();
+                record.promoteState(session);
+            }
+
+            const trusted = await this.#storage.isTrustedIdentity(
+                this.#remoteAddress.getName(),
+                util.toArrayBuffer(session.indexInfo.remoteIdentityKey),
+                this.#storage.Direction.RECEIVING
+            );
+            if (!trusted) throw new Error("Identity key changed");
+
+            await this.#storage.saveIdentity(
+                this.#remoteAddress.toString(),
+                session.indexInfo.remoteIdentityKey
+            );
+            record.updateSessionState(session);
+
+            await this.#storage.storeSession(address, record.serialize());
+
+            return plaintext;
         });
     }
 
@@ -430,56 +396,48 @@ export class SessionCipher {
     }
 
     getRemoteRegistrationId() {
-        return queueJobForNumber(this.#remoteAddress.toString(), () => {
-            return this.#getRecord(this.#remoteAddress.toString()).then((record) => {
-                if (record === undefined) {
-                    return undefined;
-                }
-                const openSession = record.getOpenSession();
-                if (openSession === undefined) {
-                    return null;
-                }
-                return openSession?.registrationId ?? null;
-            });
+        return queueJobForNumber(this.#remoteAddress.toString(), async () => {
+            const record = await this.#getRecord(this.#remoteAddress.toString());
+            if (record === undefined) return;
+
+            const openSession = record.getOpenSession();
+            if (openSession === undefined) return null;
+
+            return openSession?.registrationId ?? null;
         });
     }
 
     hasOpenSession() {
-        return queueJobForNumber(this.#remoteAddress.toString(), () => {
-            return this.#getRecord(this.#remoteAddress.toString()).then((record) => {
-                if (record === undefined) {
-                    return false;
-                }
-                return record.haveOpenSession();
-            });
+        return queueJobForNumber(this.#remoteAddress.toString(), async () => {
+            const record = await this.#getRecord(this.#remoteAddress.toString());
+            if (record === undefined) return false;
+
+            return record.haveOpenSession();
         });
     }
 
     closeOpenSessionForDevice() {
         const address = this.#remoteAddress.toString();
-        return queueJobForNumber(address, () => {
-            return this.#getRecord(address).then((record) => {
-                if (record === undefined || record.getOpenSession() === undefined) {
-                    return;
-                }
-                record.archiveCurrentState();
-                return this.#storage.storeSession(address, record.serialize());
-            });
+        return queueJobForNumber(address, async () => {
+            const record = await this.#getRecord(address);
+            if (record === undefined || record.getOpenSession() === undefined) {
+                return;
+            }
+
+            record.archiveCurrentState();
+            return this.#storage.storeSession(address, record.serialize());
         });
     }
 
     deleteAllSessionsForDevice() {
         const address = this.#remoteAddress.toString();
-        return queueJobForNumber(address, () => {
-            return this.#getRecord(address).then((record) => {
-                if (record === undefined) {
-                    return;
-                }
-                record.deleteAllSessions();
-                return this.#storage.storeSession(address, record.serialize());
-            });
+        return queueJobForNumber(address, async () => {
+            const record = await this.#getRecord(address);
+            if (record === undefined) {
+                return;
+            }
+            record.deleteAllSessions();
+            return this.#storage.storeSession(address, record.serialize());
         });
     }
 }
-
-
