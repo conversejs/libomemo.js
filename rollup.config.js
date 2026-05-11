@@ -2,6 +2,15 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
 
+function onwarn(warning, warn) {
+    if (
+        warning.code === "CIRCULAR_DEPENDENCY" &&
+        warning.message.includes("node_modules/protobufjs")
+    )
+        return;
+    warn(warning);
+}
+
 export default [
     {
         input: "src/index.js",
@@ -23,6 +32,7 @@ export default [
             commonjs(),
         ],
         external: [],
+        onwarn,
     },
     {
         input: "src/curve25519_worker.js",
@@ -31,5 +41,6 @@ export default [
             format: "iife",
         },
         plugins: [resolve({ browser: true }), commonjs()],
+        onwarn,
     },
 ];

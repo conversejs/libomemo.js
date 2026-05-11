@@ -34,6 +34,14 @@ export default function (config) {
                 globals: { chai: "chai" },
                 sourcemap: "inline",
             },
+            onwarn(warning, warn) {
+                if (
+                    warning.code === "CIRCULAR_DEPENDENCY" &&
+                    warning.message.includes("node_modules/protobufjs")
+                )
+                    return;
+                warn(warning);
+            },
             plugins: [
                 string({ include: "**/*.proto" }),
                 resolve({ browser: true }),
