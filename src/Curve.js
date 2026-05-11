@@ -1,7 +1,3 @@
-/*
- * vim: ts=4:sw=4
- */
-
 import { createCurve25519, createCurve25519Async, getModule } from "./curve25519_wrapper.js";
 
 function generateRandomBytes(size) {
@@ -23,10 +19,7 @@ function validatePubKeyFormat(pubKey) {
     if (!(pubKey instanceof ArrayBuffer)) {
         throw new Error("Invalid public key: expected ArrayBuffer");
     }
-    if (
-        (pubKey.byteLength !== 33 || new Uint8Array(pubKey)[0] !== 5) &&
-        pubKey.byteLength !== 32
-    ) {
+    if ((pubKey.byteLength !== 33 || new Uint8Array(pubKey)[0] !== 5) && pubKey.byteLength !== 32) {
         throw new Error("Invalid public key");
     }
     if (pubKey.byteLength === 33) {
@@ -125,20 +118,26 @@ export const Curve = wrapCurve(curve25519_sync);
 // Curve.async mirrors the sync API but uses the async (WASM) implementation
 // Validation is done synchronously so tests using assert.throws work correctly
 Curve.async = {
-    generateKeyPair() {
+    async generateKeyPair() {
         const privKey = generateRandomBytes(32);
-        return curve25519AsyncPromise.then((curve) => curve.createKeyPair(privKey));
+        const curve = await curve25519AsyncPromise;
+        return curve.createKeyPair(privKey);
     },
-    createKeyPair(privKey) {
+
+    async createKeyPair(privKey) {
         validatePrivKey(privKey);
-        return curve25519AsyncPromise.then((curve) => curve.createKeyPair(privKey));
+        const curve = await curve25519AsyncPromise;
+        return curve.createKeyPair(privKey);
     },
-    calculateAgreement(pubKey, privKey) {
+
+    async calculateAgreement(pubKey, privKey) {
         validatePubKeyFormat(pubKey);
         validatePrivKey(privKey);
-        return curve25519AsyncPromise.then((curve) => curve.ECDHE(pubKey, privKey));
+        const curve = await curve25519AsyncPromise;
+        return curve.ECDHE(pubKey, privKey);
     },
-    verifySignature(pubKey, msg, sig) {
+
+    async verifySignature(pubKey, msg, sig) {
         validatePubKeyFormat(pubKey);
         if (msg === undefined) {
             throw new Error("Invalid message");
@@ -146,14 +145,17 @@ Curve.async = {
         if (sig === undefined || sig.byteLength !== 64) {
             throw new Error("Invalid signature");
         }
-        return curve25519AsyncPromise.then((curve) => curve.Ed25519Verify(pubKey, msg, sig));
+        const curve = await curve25519AsyncPromise;
+        return curve.Ed25519Verify(pubKey, msg, sig);
     },
-    calculateSignature(privKey, message) {
+
+    async calculateSignature(privKey, message) {
         validatePrivKey(privKey);
         if (message === undefined) {
             throw new Error("Invalid message");
         }
-        return curve25519AsyncPromise.then((curve) => curve.Ed25519Sign(privKey, message));
+        const curve = await curve25519AsyncPromise;
+        return curve.Ed25519Sign(privKey, message);
     },
 };
 
