@@ -108,7 +108,7 @@ function createCurve25519(Module) {
             const signature_ptr = _allocate(Module, new Uint8Array(sig));
             const message_ptr = _allocate(Module, new Uint8Array(message));
 
-            const res = Module._curve25519_verify(
+            const res = Module._xed25519_verify(
                 signature_ptr,
                 publicKey_ptr,
                 message_ptr,
