@@ -1,4 +1,4 @@
-import { assert } from "chai";
+import { assert, expect } from "chai";
 import { KeyHelper } from "../src/index.js";
 
 describe("KeyHelper", function () {
@@ -37,31 +37,41 @@ describe("KeyHelper", function () {
                 })
                 .then(done, done);
         });
-        it("throws on bad keyId", function () {
-            assert.throws(function () {
-                KeyHelper.generatePreKey("bad");
-            }, TypeError);
+
+        it("throws on bad keyId", async function () {
+            const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
+            let error;
+            try {
+                await KeyHelper.generatePreKey(identityKeyPair, "bad");
+            } catch (e) {
+                error = e;
+            }
+            expect(error).to.be.an.instanceof(TypeError);
         });
     });
 
     describe("generateSignedPreKey", function () {
         it("generates a preKey", function (done) {
             KeyHelper.generateIdentityKeyPair()
-                .then(function (identityKey) {
-                    KeyHelper.generateSignedPreKey(identityKey, 1337).then(
-                        function (result) {
-                            validateKeyPair(result.keyPair);
-                            assert.strictEqual(result.keyId, 1337);
-                            //todo: validate result.signature
-                        }
-                    );
+                .then((identityKey) => {
+                    KeyHelper.generateSignedPreKey(identityKey, 1337).then((result) => {
+                        validateKeyPair(result.keyPair);
+                        assert.strictEqual(result.keyId, 1337);
+                        //todo: validate result.signature
+                    });
                 })
                 .then(done, done);
         });
-        it("throws on bad keyId", function () {
-            assert.throws(function () {
-                KeyHelper.generateSignedPreKey("bad");
-            }, TypeError);
+
+        it("throws on bad keyId", async function () {
+            const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
+            let error;
+            try {
+                await KeyHelper.generateSignedPreKey(identityKeyPair, "bad");
+            } catch (e) {
+                error = e;
+            }
+            expect(error).to.be.an.instanceof(TypeError);
         });
     });
 });
