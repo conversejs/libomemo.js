@@ -5,63 +5,40 @@ import { assertEqualArrayBuffers } from "./utils.js";
 export function testSignedPreKeyStore(store) {
     describe("SignedPreKeyStore", function () {
         let testKey;
-        before(function (done) {
-            internalCrypto
-                .createKeyPair()
-                .then(function (keyPair) {
-                    testKey = keyPair;
-                })
-                .then(done, done);
+        before(async () => {
+            testKey = await internalCrypto.createKeyPair();
         });
+
         describe("storeSignedPreKey", function () {
-            it("stores signed prekeys", function (done) {
-                store
-                    .storeSignedPreKey(3, testKey)
-                    .then(function () {
-                        return store.loadSignedPreKey(3).then(function (key) {
-                            assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                            assertEqualArrayBuffers(key.privKey, testKey.privKey);
-                        });
-                    })
-                    .then(done, done);
+            it("stores signed prekeys", async function () {
+                await store.storeSignedPreKey(3, testKey);
+                const key = await store.loadSignedPreKey(3);
+                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.privKey, testKey.privKey);
             });
         });
+
         describe("loadSignedPreKey", function () {
-            it("returns prekeys that exist", function (done) {
-                store
-                    .storeSignedPreKey(1, testKey)
-                    .then(function () {
-                        return store.loadSignedPreKey(1).then(function (key) {
-                            assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                            assertEqualArrayBuffers(key.privKey, testKey.privKey);
-                        });
-                    })
-                    .then(done, done);
+            it("returns prekeys that exist", async function () {
+                await store.storeSignedPreKey(1, testKey);
+                const key = await store.loadSignedPreKey(1);
+                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.privKey, testKey.privKey);
             });
-            it("returns undefined for prekeys that do not exist", function (done) {
-                store
-                    .storeSignedPreKey(1, testKey)
-                    .then(function () {
-                        return store.loadSignedPreKey(2).then(function (key) {
-                            assert.isUndefined(key);
-                        });
-                    })
-                    .then(done, done);
+
+            it("returns undefined for prekeys that do not exist", async function () {
+                await store.storeSignedPreKey(1, testKey);
+                const key = await store.loadSignedPreKey(2);
+                assert.isUndefined(key);
             });
         });
+
         describe("removeSignedPreKey", function () {
-            it("deletes signed prekeys", function (done) {
-                before(function (done) {
-                    store.storeSignedPreKey(4, testKey).then(done);
-                });
-                store
-                    .removeSignedPreKey(4, testKey)
-                    .then(function () {
-                        return store.loadSignedPreKey(4).then(function (key) {
-                            assert.isUndefined(key);
-                        });
-                    })
-                    .then(done, done);
+            it("deletes signed prekeys", async function () {
+                before(() => store.storeSignedPreKey(4, testKey));
+                await store.removeSignedPreKey(4, testKey);
+                const key = await store.loadSignedPreKey(4);
+                assert.isUndefined(key);
             });
         });
     });

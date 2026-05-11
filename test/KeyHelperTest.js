@@ -1,5 +1,6 @@
 import { assert, expect } from "chai";
 import { KeyHelper } from "../src/index.js";
+import { internalCrypto } from "../src/crypto.js";
 
 describe("KeyHelper", function () {
     function validateKeyPair(keyPair) {
@@ -11,10 +12,9 @@ describe("KeyHelper", function () {
     }
 
     describe("generateIdentityKeyPair", function () {
-        it("works", function () {
-            KeyHelper.generateIdentityKeyPair().then(function (keyPair) {
-                validateKeyPair(keyPair);
-            });
+        it("works", async function () {
+            const keyPair = await KeyHelper.generateIdentityKeyPair();
+            validateKeyPair(keyPair);
         });
     });
 
@@ -29,20 +29,16 @@ describe("KeyHelper", function () {
     });
 
     describe("generatePreKey", function () {
-        it("generates a preKey", function (done) {
-            KeyHelper.generatePreKey(1337)
-                .then(function (result) {
-                    validateKeyPair(result.keyPair);
-                    assert.strictEqual(result.keyId, 1337);
-                })
-                .then(done, done);
+        it("generates a preKey", async function () {
+            const result = await KeyHelper.generatePreKey(1337);
+            validateKeyPair(result.keyPair);
+            assert.strictEqual(result.keyId, 1337);
         });
 
         it("throws on bad keyId", async function () {
-            const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
             let error;
             try {
-                await KeyHelper.generatePreKey(identityKeyPair, "bad");
+                await KeyHelper.generatePreKey("bad");
             } catch (e) {
                 error = e;
             }
@@ -51,23 +47,22 @@ describe("KeyHelper", function () {
     });
 
     describe("generateSignedPreKey", function () {
-        it("generates a preKey", function (done) {
-            KeyHelper.generateIdentityKeyPair()
-                .then((identityKey) => {
-                    KeyHelper.generateSignedPreKey(identityKey, 1337).then((result) => {
-                        validateKeyPair(result.keyPair);
-                        assert.strictEqual(result.keyId, 1337);
-                        //todo: validate result.signature
-                    });
-                })
-                .then(done, done);
+        it("generates a preKey", async function () {
+            const identityKey = await KeyHelper.generateIdentityKeyPair();
+            const result = await KeyHelper.generateSignedPreKey(identityKey, 1337);
+            validateKeyPair(result.keyPair);
+            assert.strictEqual(result.keyId, 1337);
+            await internalCrypto.Ed25519Verify(
+                identityKey.pubKey,
+                result.keyPair.pubKey,
+                result.signature
+            );
         });
 
         it("throws on bad keyId", async function () {
-            const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
             let error;
             try {
-                await KeyHelper.generateSignedPreKey(identityKeyPair, "bad");
+                await KeyHelper.generatePreKey("bad");
             } catch (e) {
                 error = e;
             }

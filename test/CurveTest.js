@@ -39,11 +39,7 @@ describe("Curve", function () {
 
         it("throws for private key with wrong length", function () {
             const shortKey = new ArrayBuffer(16);
-            assert.throw(
-                () => Curve.async.createKeyPair(shortKey),
-                Error,
-                "Invalid private key"
-            );
+            assert.throw(() => Curve.async.createKeyPair(shortKey), Error, "Invalid private key");
         });
     });
 

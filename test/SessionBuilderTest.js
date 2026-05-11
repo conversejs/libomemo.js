@@ -1,4 +1,4 @@
-import { assert } from "chai";
+import { assert, expect } from "chai";
 import {
     SessionBuilder,
     SessionCipher,
@@ -23,31 +23,23 @@ describe("SessionBuilder", function () {
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        before(function (done) {
-            Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)])
-                .then(function () {
-                    return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-                })
-                .then(function (preKeyBundle) {
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder.processPreKey(preKeyBundle).then(function () {
-                        done();
-                    });
-                })
-                .catch(done);
+        before(async function () {
+            await Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)]);
+            const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
         const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
         const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-        it("creates a session", function () {
-            return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
-                assert.isDefined(record);
-                const sessionRecord = SessionRecord.deserialize(record);
-                assert.isTrue(sessionRecord.haveOpenSession());
-                assert.isDefined(sessionRecord.getOpenSession());
-            });
+        it("creates a session", async function () {
+            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            assert.isDefined(record);
+            const sessionRecord = SessionRecord.deserialize(record);
+            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isDefined(sessionRecord.getOpenSession());
         });
 
         it("the session can encrypt", async function () {
@@ -60,54 +52,46 @@ describe("SessionBuilder", function () {
             assertEqualArrayBuffers(plaintext, originalMessage);
         });
 
-        it("the session can decrypt", function (done) {
-            bobSessionCipher
-                .encrypt(originalMessage)
-                .then(function (ciphertext) {
-                    return aliceSessionCipher.decryptWhisperMessage(ciphertext.body, "binary");
-                })
-                .then(function (plaintext) {
-                    assertEqualArrayBuffers(plaintext, originalMessage);
-                })
-                .then(done, done);
+        it("the session can decrypt", async function () {
+            const ciphertext = await bobSessionCipher.encrypt(originalMessage);
+            const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                ciphertext.body,
+                "binary"
+            );
+            assertEqualArrayBuffers(plaintext, originalMessage);
         });
 
-        it("accepts a new preKey with the same identity", function (done) {
-            generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
-                .then(function (preKeyBundle) {
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder.processPreKey(preKeyBundle).then(function () {
-                        return aliceStore
-                            .loadSession(BOB_ADDRESS.toString())
-                            .then(function (record) {
-                                assert.isDefined(record);
-                                const sessionRecord = SessionRecord.deserialize(record);
-                                assert.isTrue(sessionRecord.haveOpenSession());
-                                assert.isDefined(sessionRecord.getOpenSession());
-                                done();
-                            });
-                    });
-                })
-                .catch(done);
+        it("accepts a new preKey with the same identity", async function () {
+            const preKeyBundle = await generatePreKeyBundle(
+                bobStore,
+                bobPreKeyId + 1,
+                bobSignedKeyId + 1
+            );
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
+            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            assert.isDefined(record);
+            const sessionRecord = SessionRecord.deserialize(record);
+            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isDefined(sessionRecord.getOpenSession());
         });
 
-        it("rejects untrusted identity keys", function (done) {
-            KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                return builder
-                    .processPreKey({
-                        identityKey: newIdentity.pubKey,
-                        registrationId: 12356,
-                    })
-                    .then(function () {
-                        assert.fail("should not be trusted");
-                    })
-                    .catch(function (e) {
-                        assert.strictEqual(e.message, "Identity key changed");
-                        done();
-                    })
-                    .catch(done);
-            });
+        it("rejects untrusted identity keys", async function () {
+            const newIdentity = await KeyHelper.generateIdentityKeyPair();
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+
+            let error;
+            try {
+                await builder.processPreKey({
+                    identityKey: newIdentity.pubKey,
+                    registrationId: 12356,
+                });
+            } catch (e) {
+                error = e;
+            }
+
+            expect(error).to.be.an.instanceof(Error);
+            assert.equal(error.message, "Identity key changed");
         });
     });
 
@@ -118,97 +102,76 @@ describe("SessionBuilder", function () {
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        before(function (done) {
-            Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)])
-                .then(function () {
-                    return generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-                })
-                .then(function (preKeyBundle) {
-                    delete preKeyBundle.preKey;
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder.processPreKey(preKeyBundle).then(function () {
-                        done();
-                    });
-                })
-                .catch(done);
+        before(async function () {
+            await Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)]);
+            const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
+            delete preKeyBundle.preKey;
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
         });
 
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
         const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
         const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
-        it("creates a session", function () {
-            return aliceStore.loadSession(BOB_ADDRESS.toString()).then(function (record) {
-                assert.isDefined(record);
-                const sessionRecord = SessionRecord.deserialize(record);
-                assert.isTrue(sessionRecord.haveOpenSession());
-                assert.isDefined(sessionRecord.getOpenSession());
-            });
+        it("creates a session", async function () {
+            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            assert.isDefined(record);
+            const sessionRecord = SessionRecord.deserialize(record);
+            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isDefined(sessionRecord.getOpenSession());
         });
 
-        it("the session can encrypt", function (done) {
-            aliceSessionCipher
-                .encrypt(originalMessage)
-                .then(function (ciphertext) {
-                    assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
+        it("the session can encrypt", async function () {
+            const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
+            assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
 
-                    return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
-                })
-                .then(function (plaintext) {
-                    assertEqualArrayBuffers(plaintext, originalMessage);
-                })
-                .then(done, done);
+            const plaintext = await bobSessionCipher.decryptPreKeyWhisperMessage(
+                ciphertext.body,
+                "binary"
+            );
+            assertEqualArrayBuffers(plaintext, originalMessage);
         });
 
-        it("the session can decrypt", function (done) {
-            bobSessionCipher
-                .encrypt(originalMessage)
-                .then(function (ciphertext) {
-                    return aliceSessionCipher.decryptWhisperMessage(ciphertext.body, "binary");
-                })
-                .then(function (plaintext) {
-                    assertEqualArrayBuffers(plaintext, originalMessage);
-                })
-                .then(done, done);
+        it("the session can decrypt", async function () {
+            const ciphertext = await bobSessionCipher.encrypt(originalMessage);
+            const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                ciphertext.body,
+                "binary"
+            );
+            assertEqualArrayBuffers(plaintext, originalMessage);
         });
 
-        it("accepts a new preKey with the same identity", function (done) {
-            generatePreKeyBundle(bobStore, bobPreKeyId + 1, bobSignedKeyId + 1)
-                .then(function (preKeyBundle) {
-                    delete preKeyBundle.preKey;
-                    const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                    return builder.processPreKey(preKeyBundle).then(function () {
-                        return aliceStore
-                            .loadSession(BOB_ADDRESS.toString())
-                            .then(function (record) {
-                                assert.isDefined(record);
-                                const sessionRecord = SessionRecord.deserialize(record);
-                                assert.isTrue(sessionRecord.haveOpenSession());
-                                assert.isDefined(sessionRecord.getOpenSession());
-                                done();
-                            });
-                    });
-                })
-                .catch(done);
+        it("accepts a new preKey with the same identity", async function () {
+            const preKeyBundle = await generatePreKeyBundle(
+                bobStore,
+                bobPreKeyId + 1,
+                bobSignedKeyId + 1
+            );
+            delete preKeyBundle.preKey;
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            await builder.processPreKey(preKeyBundle);
+            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            assert.isDefined(record);
+            const sessionRecord = SessionRecord.deserialize(record);
+            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isDefined(sessionRecord.getOpenSession());
         });
 
-        it("rejects untrusted identity keys", function (done) {
-            KeyHelper.generateIdentityKeyPair().then(function (newIdentity) {
-                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
-                return builder
-                    .processPreKey({
-                        identityKey: newIdentity.pubKey,
-                        registrationId: 12356,
-                    })
-                    .then(function () {
-                        assert.fail("should not be trusted");
-                    })
-                    .catch(function (e) {
-                        assert.strictEqual(e.message, "Identity key changed");
-                        done();
-                    })
-                    .catch(done);
-            });
+        it("rejects untrusted identity keys", async function () {
+            const newIdentity = await KeyHelper.generateIdentityKeyPair();
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            let error;
+            try {
+                await builder.processPreKey({
+                    identityKey: newIdentity.pubKey,
+                    registrationId: 12356,
+                });
+            } catch (e) {
+                error = e;
+            }
+            expect(error).to.be.an.instanceof(Error);
+            assert.strictEqual(error.message, "Identity key changed");
         });
     });
 });

@@ -25,50 +25,42 @@ describe("NumericFingerprint", function () {
         key: new Uint8Array(BOB_IDENTITY).buffer,
     };
 
-    it("returns the correct fingerprint", function (done) {
+    it("returns the correct fingerprint", async function () {
         const generator = new FingerprintGenerator(5200);
-        generator
-            .createFor(alice.identifier, alice.key, bob.identifier, bob.key)
-            .then(function (fingerprint) {
-                assert.strictEqual(fingerprint, FINGERPRINT);
-            })
-            .then(done, done);
+        const fingerprint = await generator.createFor(
+            alice.identifier,
+            alice.key,
+            bob.identifier,
+            bob.key
+        );
+        assert.strictEqual(fingerprint, FINGERPRINT);
     });
 
-    it("alice and bob results match", function (done) {
+    it("alice and bob results match", async function () {
         const generator = new FingerprintGenerator(1024);
-        Promise.all([
+        const fingerprints = await Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
-        ])
-            .then(function (fingerprints) {
-                assert.strictEqual(fingerprints[0], fingerprints[1]);
-            })
-            .then(done, done);
+        ]);
+        assert.strictEqual(fingerprints[0], fingerprints[1]);
     });
 
-    it("alice and !bob results mismatch", function (done) {
+    it("alice and !bob results mismatch", async function () {
         const generator = new FingerprintGenerator(1024);
-        Promise.all([
+        const fingerprints = await Promise.all([
             generator.createFor(alice.identifier, alice.key, "+15558675309", bob.key),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
-        ])
-            .then(function (fingerprints) {
-                assert.notStrictEqual(fingerprints[0], fingerprints[1]);
-            })
-            .then(done, done);
+        ]);
+        assert.notStrictEqual(fingerprints[0], fingerprints[1]);
     });
 
-    it("alice and mitm results mismatch", function (done) {
+    it("alice and mitm results mismatch", async function () {
         const mitm = getRandomBytes(33);
         const generator = new FingerprintGenerator(1024);
-        Promise.all([
+        const fingerprints = await Promise.all([
             generator.createFor(alice.identifier, alice.key, bob.identifier, mitm),
             generator.createFor(bob.identifier, bob.key, alice.identifier, alice.key),
-        ])
-            .then(function (fingerprints) {
-                assert.notStrictEqual(fingerprints[0], fingerprints[1]);
-            })
-            .then(done, done);
+        ]);
+        assert.notStrictEqual(fingerprints[0], fingerprints[1]);
     });
 });

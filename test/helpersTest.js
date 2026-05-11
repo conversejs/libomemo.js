@@ -20,13 +20,7 @@ describe("util", function () {
         it("throws an error when a/b compare is too short", function () {
             const a = "1234";
             const b = "1234";
-            assert.throw(
-                function () {
-                    util.isEqual(a, b);
-                },
-                Error,
-                /a\/b compare too short/
-            );
+            assert.throw(() => util.isEqual(a, b), Error, /a\/b compare too short/);
         });
     });
 

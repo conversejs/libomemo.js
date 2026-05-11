@@ -8,92 +8,68 @@ export function testSessionStore(store) {
     describe("SessionStore", function () {
         describe("storeSession", function () {
             const address = new SignalProtocolAddress(number, 1);
-            it("stores sessions encoded as strings", function (done) {
-                store
-                    .storeSession(address.toString(), testRecord)
-                    .then(function () {
-                        return store.loadSession(address.toString()).then(function (record) {
-                            assert.strictEqual(record, testRecord);
-                        });
-                    })
-                    .then(done, done);
+            it("stores sessions encoded as strings", async function () {
+                await store.storeSession(address.toString(), testRecord);
+                const record = await store.loadSession(address.toString());
+                assert.strictEqual(record, testRecord);
             });
-            it("stores sessions encoded as array buffers", function (done) {
+
+            it("stores sessions encoded as array buffers", async function () {
                 const testRecord = new Uint8Array([1, 2, 3]).buffer;
-                store
-                    .storeSession(address.toString(), testRecord)
-                    .then(function () {
-                        return store.loadSession(address.toString()).then(function (record) {
-                            assertEqualArrayBuffers(testRecord, record);
-                        });
-                    })
-                    .then(done, done);
+                await store.storeSession(address.toString(), testRecord);
+                const record = await store.loadSession(address.toString());
+                assertEqualArrayBuffers(testRecord, record);
             });
         });
+
         describe("loadSession", function () {
-            it("returns sessions that exist", function (done) {
+            it("returns sessions that exist", async function () {
                 const address = new SignalProtocolAddress(number, 1);
                 const testRecord = "an opaque string";
-                store
-                    .storeSession(address.toString(), testRecord)
-                    .then(function () {
-                        return store.loadSession(address.toString()).then(function (record) {
-                            assert.strictEqual(record, testRecord);
-                        });
-                    })
-                    .then(done, done);
+                await store.storeSession(address.toString(), testRecord);
+                const record = await store.loadSession(address.toString());
+                assert.strictEqual(record, testRecord);
             });
-            it("returns undefined for sessions that do not exist", function () {
+
+            it("returns undefined for sessions that do not exist", async function () {
                 const address = new SignalProtocolAddress(number, 2);
-                return store.loadSession(address.toString()).then(function (record) {
-                    assert.isUndefined(record);
-                });
+                const record = await store.loadSession(address.toString());
+                assert.isUndefined(record);
             });
         });
+
         describe("removeSession", function () {
-            it("deletes sessions", function (done) {
+            it("deletes sessions", async function () {
                 const address = new SignalProtocolAddress(number, 1);
-                before(function (done) {
-                    store.storeSession(address.toString(), testRecord).then(done);
-                });
-                store
-                    .removeSession(address.toString())
-                    .then(function () {
-                        return store.loadSession(address.toString()).then(function (record) {
-                            assert.isUndefined(record);
-                        });
-                    })
-                    .then(done, done);
+                before(() => store.storeSession(address.toString(), testRecord));
+
+                await store.removeSession(address.toString());
+                const record = await store.loadSession(address.toString());
+                assert.isUndefined(record);
             });
         });
+
         describe("removeAllSessions", function () {
-            it("removes all sessions for a number", function (done) {
-                const devices = [1, 2, 3].map(function (deviceId) {
+            it("removes all sessions for a number", async function () {
+                const devices = [1, 2, 3].map((deviceId) => {
                     const address = new SignalProtocolAddress(number, deviceId);
                     return address.toString();
                 });
-                let promise = Promise.resolve();
-                devices.forEach(function (encodedNumber) {
-                    promise = promise.then(function () {
-                        return store.storeSession(encodedNumber, testRecord + encodedNumber);
-                    });
-                });
-                promise
-                    .then(function () {
-                        return store.removeAllSessions(number).then(function () {
-                            return Promise.all(devices.map(store.loadSession.bind(store))).then(
-                                function (records) {
-                                    for (const i in records) {
-                                        if (!Object.prototype.hasOwnProperty.call(records, i)) {
-                                            continue;
-                                        }
-                                        assert.isUndefined(records[i]);
-                                    }
-                                }
-                            );
-                        });
-                    })
-                    .then(done, done);
+
+                await Promise.all(
+                    devices.map((encodedNumber) =>
+                        store.storeSession(encodedNumber, testRecord + encodedNumber)
+                    )
+                );
+
+                await store.removeAllSessions(number);
+                const records = await Promise.all(devices.map(store.loadSession.bind(store)));
+                for (const i in records) {
+                    if (!Object.prototype.hasOwnProperty.call(records, i)) {
+                        continue;
+                    }
+                    assert.isUndefined(records[i]);
+                }
             });
         });
     });
