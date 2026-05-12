@@ -1,9 +1,9 @@
-// Karma configuration
 import path from "path";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
 import esbuild from "rollup-plugin-esbuild";
+import { onwarn } from "./rollup.config.js";
 
 function resolveTsFromJs() {
     return {
@@ -35,6 +35,8 @@ export default function (config) {
             { pattern: "build/curve25519_compiled.wasm", served: true, included: false },
             { pattern: "dist/curve25519_compiled.wasm", served: true, included: false },
             "node_modules/chai/chai.js",
+            "node_modules/mocha/mocha.js",
+            "node_modules/mocha/mocha.css",
             {
                 pattern: "test/support/karma-setup.js",
                 included: true,
@@ -44,7 +46,7 @@ export default function (config) {
             "test/**/*.js",
         ],
 
-        exclude: ["test/*~", "test/integration.js"],
+        exclude: ["test/*~", "test/integration.js", "test/allTests.js"],
 
         preprocessors: {
             "test/**/*.js": ["rollup"],
@@ -55,15 +57,9 @@ export default function (config) {
                 format: "iife",
                 globals: { chai: "chai" },
                 sourcemap: "inline",
+                dir: "build/test",
             },
-            onwarn(warning, warn) {
-                if (
-                    warning.code === "CIRCULAR_DEPENDENCY" &&
-                    warning.message.includes("node_modules/protobufjs")
-                )
-                    return;
-                warn(warning);
-            },
+            onwarn,
             plugins: [
                 resolveTsFromJs(),
                 string({ include: "**/*.proto" }),

@@ -3,3 +3,4 @@ dist
 .aider*
 .prompts
 build/dts
+build/curve25519_compiled.*
