@@ -13,8 +13,8 @@ export function testSignedPreKeyStore(store) {
             it("stores signed prekeys", async function () {
                 await store.storeSignedPreKey(3, testKey);
                 const key = await store.loadSignedPreKey(3);
-                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                assertEqualArrayBuffers(key.privKey, testKey.privKey);
+                assertEqualArrayBuffers(key.keyPair.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.keyPair.privKey, testKey.privKey);
             });
         });
 
@@ -22,8 +22,8 @@ export function testSignedPreKeyStore(store) {
             it("returns prekeys that exist", async function () {
                 await store.storeSignedPreKey(1, testKey);
                 const key = await store.loadSignedPreKey(1);
-                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                assertEqualArrayBuffers(key.privKey, testKey.privKey);
+                assertEqualArrayBuffers(key.keyPair.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.keyPair.privKey, testKey.privKey);
             });
 
             it("returns undefined for prekeys that do not exist", async function () {

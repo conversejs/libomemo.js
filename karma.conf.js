@@ -1,7 +1,27 @@
 // Karma configuration
+import path from "path";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
+import esbuild from "rollup-plugin-esbuild";
+
+function resolveTsFromJs() {
+    return {
+        name: "resolve-ts-from-js",
+        resolveId(source, importer) {
+            if (
+                source.endsWith(".js") &&
+                (source.startsWith("../src/") || source.startsWith("./src/"))
+            ) {
+                if (importer) {
+                    const tsPath = source.replace(/\.js$/, ".ts");
+                    return path.resolve(path.dirname(importer), tsPath);
+                }
+            }
+            return null;
+        },
+    };
+}
 
 export default function (config) {
     config.set({
@@ -14,11 +34,13 @@ export default function (config) {
             { pattern: "protos/push.proto", served: true, included: false },
             { pattern: "build/curve25519_compiled.wasm", served: true, included: false },
             { pattern: "dist/curve25519_compiled.wasm", served: true, included: false },
-            // chai loaded as a global (v3 breaks in strict mode)
             "node_modules/chai/chai.js",
-            // Inline setup: tell the WASM wrapper where to find the .wasm file
-            { pattern: "test/support/karma-setup.js", included: true, served: true, watched: false },
-            // All test files go through rollup preprocessor
+            {
+                pattern: "test/support/karma-setup.js",
+                included: true,
+                served: true,
+                watched: false,
+            },
             "test/**/*.js",
         ],
 
@@ -43,7 +65,13 @@ export default function (config) {
                 warn(warning);
             },
             plugins: [
+                resolveTsFromJs(),
                 string({ include: "**/*.proto" }),
+                esbuild({
+                    target: "es2020",
+                    tsconfig: "./tsconfig.json",
+                    sourcemap: "inline",
+                }),
                 resolve({ browser: true }),
                 commonjs(),
             ],

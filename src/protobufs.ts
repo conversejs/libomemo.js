@@ -2,10 +2,20 @@ import protobuf from "protobufjs";
 import whisperProtoText from "../protos/WhisperTextProtocol.proto";
 import pushProtoText from "../protos/push.proto";
 
-let cachedProtocolMessages = null;
-let cachedPushMessages = null;
+interface ProtocolMessages {
+    WhisperMessage: protobuf.Type;
+    PreKeyWhisperMessage: protobuf.Type;
+}
 
-export async function loadProtocolMessages() {
+interface PushMessages {
+    IncomingPushMessageSignal: protobuf.Type;
+    PushMessageContent: protobuf.Type;
+}
+
+let cachedProtocolMessages: ProtocolMessages | null = null;
+let cachedPushMessages: PushMessages | null = null;
+
+export async function loadProtocolMessages(): Promise<ProtocolMessages> {
     if (cachedProtocolMessages) {
         return cachedProtocolMessages;
     }
@@ -18,7 +28,7 @@ export async function loadProtocolMessages() {
     return cachedProtocolMessages;
 }
 
-export async function loadPushMessages() {
+export async function loadPushMessages(): Promise<PushMessages> {
     if (cachedPushMessages) {
         return cachedPushMessages;
     }

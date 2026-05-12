@@ -1,17 +1,18 @@
 import { assert } from "chai";
-import { SessionBuilder, SessionCipher, SignalProtocolAddress, util } from "../src/index.js";
-import { SessionRecord, BaseKeyType } from "../src/SessionRecord.js";
+import { SessionBuilder, SessionCipher, OMEMOAddress, util } from "../src/index.js";
+import { SessionRecord } from "../src/session/record.js";
 import { internalCrypto } from "../src/crypto.js";
 import { loadProtocolMessages, loadPushMessages } from "../src/protobufs.js";
 import { generateIdentity, generatePreKeyBundle } from "./utils.js";
 import { TestVectors } from "./testvectors.js";
 import SignalProtocolStore from "./InMemorySignalProtocolStore.js";
+import { BaseKeyType } from "../src/types.js";
 
 describe("SessionCipher", function () {
     describe("getRemoteRegistrationId", function () {
         const store = new SignalProtocolStore();
         const registrationId = 1337;
-        const address = new SignalProtocolAddress("foo", 1);
+        const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
 
         describe("when an open record exists", function () {
@@ -53,7 +54,7 @@ describe("SessionCipher", function () {
 
     describe("hasOpenSession", function () {
         const store = new SignalProtocolStore();
-        const address = new SignalProtocolAddress("foo", 1);
+        const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
 
         describe("open session exists", function () {
@@ -328,7 +329,7 @@ describe("SessionCipher", function () {
             });
 
             const store = new SignalProtocolStore();
-            const address = SignalProtocolAddress.fromString("SNOWDEN.1");
+            const address = OMEMOAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
                 it(getDescription(step), function (done) {
                     let doStep;
@@ -347,8 +348,8 @@ describe("SessionCipher", function () {
     });
 
     describe("encoding parameter", function () {
-        const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
-        const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
+        const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
+        const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
         const aliceStore = new SignalProtocolStore();
         const bobStore = new SignalProtocolStore();
@@ -407,8 +408,8 @@ describe("SessionCipher", function () {
     });
 
     describe("key changes", function () {
-        const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
-        const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
+        const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
+        const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
         const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
 
         const aliceStore = new SignalProtocolStore();

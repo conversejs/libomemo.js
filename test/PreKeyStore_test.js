@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { internalCrypto } from "../src/crypto.js";
-import { SignalProtocolAddress } from "../src/index.js";
+import { OMEMOAddress } from "../src/index.js";
 import { assertEqualArrayBuffers } from "./utils.js";
 
 export function testPreKeyStore(store) {
@@ -14,25 +14,25 @@ export function testPreKeyStore(store) {
 
         describe("storePreKey", function () {
             it("stores prekeys", async function () {
-                const address = new SignalProtocolAddress(number, 1);
+                const address = new OMEMOAddress(number, 1);
                 await store.storePreKey(address.toString(), testKey);
                 const key = await store.loadPreKey(address.toString());
-                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                assertEqualArrayBuffers(key.privKey, testKey.privKey);
+                assertEqualArrayBuffers(key.keyPair.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.keyPair.privKey, testKey.privKey);
             });
         });
 
         describe("loadPreKey", function () {
             it("returns prekeys that exist", async function () {
-                const address = new SignalProtocolAddress(number, 1);
+                const address = new OMEMOAddress(number, 1);
                 await store.storePreKey(address.toString(), testKey);
                 const key = await store.loadPreKey(address.toString());
-                assertEqualArrayBuffers(key.pubKey, testKey.pubKey);
-                assertEqualArrayBuffers(key.privKey, testKey.privKey);
+                assertEqualArrayBuffers(key.keyPair.pubKey, testKey.pubKey);
+                assertEqualArrayBuffers(key.keyPair.privKey, testKey.privKey);
             });
 
             it("returns undefined for prekeys that do not exist", async function () {
-                const address = new SignalProtocolAddress(number, 2);
+                const address = new OMEMOAddress(number, 2);
                 const key = await store.loadPreKey(address.toString());
                 assert.isUndefined(key);
             });
@@ -40,7 +40,7 @@ export function testPreKeyStore(store) {
 
         describe("removePreKey", function () {
             it("deletes prekeys", async function () {
-                const address = new SignalProtocolAddress(number, 2);
+                const address = new OMEMOAddress(number, 2);
                 before(() => store.storePreKey(address.toString(), testKey));
                 store.removePreKey(address.toString());
                 const key = await store.loadPreKey(address.toString());

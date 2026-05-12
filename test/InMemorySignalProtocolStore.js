@@ -1,4 +1,4 @@
-import { util, SignalProtocolAddress } from "../src/index.js";
+import { util, OMEMOAddress } from "../src/index.js";
 
 function SignalProtocolStore() {
     this.store = {};
@@ -60,7 +60,7 @@ SignalProtocolStore.prototype = {
         if (identifier === null || identifier === undefined)
             throw new Error("Tried to put identity key for undefined/null key");
 
-        const address = SignalProtocolAddress.fromString(identifier);
+        const address = OMEMOAddress.fromString(identifier);
 
         const existing = this.get("identityKey" + address.getName());
         this.put("identityKey" + address.getName(), identityKey);
@@ -76,7 +76,7 @@ SignalProtocolStore.prototype = {
     loadPreKey: function (keyId) {
         let res = this.get("25519KeypreKey" + keyId);
         if (res !== undefined) {
-            res = { pubKey: res.pubKey, privKey: res.privKey };
+            res = { keyPair: { pubKey: res.pubKey, privKey: res.privKey } };
         }
         return Promise.resolve(res);
     },
@@ -91,7 +91,7 @@ SignalProtocolStore.prototype = {
     loadSignedPreKey: function (keyId) {
         let res = this.get("25519KeysignedKey" + keyId);
         if (res !== undefined) {
-            res = { pubKey: res.pubKey, privKey: res.privKey };
+            res = { keyPair: { pubKey: res.pubKey, privKey: res.privKey } };
         }
         return Promise.resolve(res);
     },

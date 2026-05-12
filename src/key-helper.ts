@@ -1,20 +1,21 @@
-import { internalCrypto, getRandomBytes } from "./crypto.js";
-
-function isNonNegativeInteger(n) {
-    return typeof n === "number" && n % 1 === 0 && n >= 0;
-}
+import { internalCrypto, getRandomBytes } from "./crypto";
+import { isNonNegativeInteger } from "./helpers";
+import { KeyPair, PreKey, SignedPreKey } from "./types";
 
 export const KeyHelper = {
-    generateIdentityKeyPair() {
+    generateIdentityKeyPair(): Promise<KeyPair> {
         return internalCrypto.createKeyPair();
     },
 
-    generateRegistrationId() {
+    generateRegistrationId(): number {
         const registrationId = new Uint16Array(getRandomBytes(2))[0];
         return registrationId & 0x3fff;
     },
 
-    async generateSignedPreKey(identityKeyPair, signedKeyId) {
+    async generateSignedPreKey(
+        identityKeyPair: KeyPair,
+        signedKeyId: number
+    ): Promise<SignedPreKey> {
         if (
             !(identityKeyPair.privKey instanceof ArrayBuffer) ||
             identityKeyPair.privKey.byteLength !== 32 ||
@@ -36,7 +37,7 @@ export const KeyHelper = {
         };
     },
 
-    async generatePreKey(keyId) {
+    async generatePreKey(keyId: number): Promise<PreKey> {
         if (!isNonNegativeInteger(keyId)) {
             throw new TypeError(`Invalid argument for keyId: ${keyId}`);
         }

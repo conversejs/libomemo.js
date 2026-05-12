@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { queueJobForNumber } from "../src/SessionLock.js";
+import { queueJobForNumber } from "../src/session/lock.js";
 
 describe("SessionLock", function () {
     describe("queueJobForNumber", function () {

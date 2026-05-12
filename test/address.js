@@ -1,25 +1,25 @@
 import { assert } from "chai";
-import { SignalProtocolAddress } from "../src/index.js";
+import { OMEMOAddress } from "../src/index.js";
 
-describe("SignalProtocolAddress", function () {
+describe("OMEMOAddress", function () {
     const name = "name";
     const deviceId = 42;
     const string = "name.42";
     describe("getName", function () {
         it("returns the name", function () {
-            const address = new SignalProtocolAddress(name, 1);
+            const address = new OMEMOAddress(name, 1);
             assert.strictEqual(name, address.getName());
         });
     });
     describe("getDeviceId", function () {
         it("returns the deviceId", function () {
-            const address = new SignalProtocolAddress(name, deviceId);
+            const address = new OMEMOAddress(name, deviceId);
             assert.strictEqual(deviceId, address.getDeviceId());
         });
     });
     describe("toString", function () {
         it("returns the address", function () {
-            const address = new SignalProtocolAddress(name, deviceId);
+            const address = new OMEMOAddress(name, deviceId);
             assert.strictEqual(string, address.toString());
         });
     });
@@ -27,12 +27,12 @@ describe("SignalProtocolAddress", function () {
         it("throws on a bad inputs", function () {
             ["", null, {}].forEach(function (input) {
                 assert.throws(function () {
-                    SignalProtocolAddress.fromString(input);
+                    OMEMOAddress.fromString(input);
                 });
             });
         });
         it("constructs the address", function () {
-            const address = SignalProtocolAddress.fromString(string);
+            const address = OMEMOAddress.fromString(string);
             assert.strictEqual(deviceId, address.getDeviceId());
             assert.strictEqual(name, address.getName());
         });

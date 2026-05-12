@@ -34,12 +34,14 @@ This is a fork of [libsignal-protocol-javascript](https://github.com/signalapp/l
 ## Essential Commands
 
 ### Development Setup
+
 ```bash
 # Install dependencies
 npm install
 ```
 
 ### Building
+
 ```bash
 # Compile native C code (requires Emscripten)
 npm run compile
@@ -55,12 +57,14 @@ npm run dev
 ```
 
 ### Testing
+
 ```bash
 # Run tests with Karma
 npm test
 ```
 
 ### Code Quality
+
 ```bash
 # Run ESLint on source and test files
 npm run lint
@@ -69,26 +73,31 @@ npm run lint
 ## Code Patterns and Conventions
 
 ### Asynchronous Operations
+
 - Most cryptographic operations return Promises
 - Uses native Promise syntax (no polyfills needed)
 - Async/await is supported but not heavily used
 
 ### Error Handling
+
 - Throwing Errors for invalid inputs/validation failures
 - Promise rejection for cryptographic operation failures
 - Console warnings for non-fatal issues
 
 ### Data Types
+
 - Primary use of ArrayBuffer for binary data
 - Uint8Array for byte manipulation
 - Promises for asynchronous operations
 
 ### Module System
+
 - Uses IIFE (Immediately Invoked Function Expression) pattern
 - Internal functions in `Internal` namespace
 - Public API exposed through `libomemo` global object
 
 ### Naming Conventions
+
 - CamelCase for functions and variables
 - PascalCase for constructor functions/classes
 - Constants in UPPER_CASE
@@ -97,17 +106,21 @@ npm run lint
 ## Testing Approach
 
 ### Framework
+
 - Uses Mocha test framework
 - Chai assertion library
 - Karma test runner for browser testing
 
 ### Test Structure
+
 - Test files located in `/test` directory
 - Each component typically has a corresponding test file
 - Uses in-memory store implementation for testing (`InMemorySignalProtocolStore.js`)
 
 ### Running Tests
+
 Tests are run in Chrome browser by default and cover:
+
 - Key generation and management
 - Session establishment
 - Message encryption/decryption
@@ -125,6 +138,7 @@ Tests are run in Chrome browser by default and cover:
 ## File Formats
 
 ### Protocol Buffers
+
 - Uses ProtoBuf.js for serialization
 - Definitions in `/protos` directory
 - Compiled versions used in build process
