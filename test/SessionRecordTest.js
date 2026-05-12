@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { SessionRecord } from "../src/SessionRecord.js";
+import { SessionRecord } from "../src/session/record.js";
 
 describe("SessionRecord", function () {
     describe("constructor", function () {

@@ -1,20 +1,14 @@
 import { assert, expect } from "chai";
-import {
-    SessionBuilder,
-    SessionCipher,
-    SignalProtocolAddress,
-    KeyHelper,
-    util,
-} from "../src/index.js";
-import { SessionRecord } from "../src/SessionRecord.js";
+import { SessionBuilder, SessionCipher, OMEMOAddress, KeyHelper, util } from "../src/index.js";
+import { SessionRecord } from "../src/session/record.js";
 import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from "./utils.js";
 import SignalProtocolStore from "./InMemorySignalProtocolStore.js";
 
 describe("SessionBuilder", function () {
     this.timeout(5000);
 
-    const ALICE_ADDRESS = new SignalProtocolAddress("+14151111111", 1);
-    const BOB_ADDRESS = new SignalProtocolAddress("+14152222222", 1);
+    const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
+    const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
 
     describe("basic prekey v3", function () {
         const aliceStore = new SignalProtocolStore();

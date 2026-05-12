@@ -1,25 +1,27 @@
+import { util } from "../helpers";
+import { SessionRecord } from "./record";
+import { queueJobForNumber } from "./lock";
+import { internalCrypto, HKDF } from "../crypto";
+import { OMEMOAddress } from "./address";
+import { BaseKeyType, ChainType, KeyPair } from "../types";
+import { PreKeyBundle, SessionState, SignalProtocolStore } from "./types";
+
 /**
  * Establishes a new Signal Protocol session from a PreKey bundle.
  */
-import { util } from "./helpers.js";
-import { SessionRecord, BaseKeyType, ChainType } from "./SessionRecord.js";
-import { queueJobForNumber } from "./SessionLock.js";
-import { internalCrypto, HKDF } from "./crypto.js";
-import { SignalProtocolAddress } from "./SignalProtocolAddress.js";
-
 export class SessionBuilder {
-    #remoteAddress;
-    #storage;
+    #remoteAddress: OMEMOAddress;
+    #storage: SignalProtocolStore;
 
-    constructor(storage, remoteAddress) {
+    constructor(storage: SignalProtocolStore, remoteAddress: OMEMOAddress | string) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
-                ? SignalProtocolAddress.fromString(remoteAddress)
+                ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
         this.#storage = storage;
     }
 
-    processPreKey(device) {
+    processPreKey(device: PreKeyBundle): Promise<void> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const trusted = await this.#storage.isTrustedIdentity(
                 this.#remoteAddress.getName(),
@@ -68,23 +70,24 @@ export class SessionBuilder {
 
             record.archiveCurrentState();
             record.updateSessionState(session);
-            return Promise.all([
+            await Promise.all([
                 this.#storage.storeSession(address, record.serialize()),
                 this.#storage.saveIdentity(
                     this.#remoteAddress.toString(),
                     session.indexInfo.remoteIdentityKey
                 ),
             ]);
+            return;
         });
     }
 
-    async processV3(record, message) {
+    async processV3(record: SessionRecord, message: any): Promise<number | undefined> {
         if (record.getSessionByBaseKey(message.baseKey)) {
             console.log("Duplicate PreKeyMessage for session");
             return;
         }
 
-        const identityKeyAB = message.identityKey.slice().buffer;
+        const identityKeyAB = message.identityKey.slice().buffer as ArrayBuffer;
 
         const trusted = await this.#storage.isTrustedIdentity(
             this.#remoteAddress.getName(),
@@ -94,7 +97,7 @@ export class SessionBuilder {
 
         if (!trusted) {
             const e = new Error("Unknown identity key");
-            e.identityKey = identityKeyAB;
+            (e as any).identityKey = identityKeyAB;
             throw e;
         }
 
@@ -108,7 +111,7 @@ export class SessionBuilder {
         const session = record.getOpenSession();
 
         if (signedPreKeyPair === undefined) {
-            if (session !== undefined && session.currentRatchet !== undefined) {
+            if (session !== undefined && (session as any).currentRatchet !== undefined) {
                 return;
             } else {
                 throw new Error("Missing Signed PreKey for PreKeyWhisperMessage");
@@ -123,11 +126,11 @@ export class SessionBuilder {
             console.log("Invalid prekey id", message.preKeyId);
         }
 
-        const baseKeyAB = message.baseKey.slice().buffer;
+        const baseKeyAB = message.baseKey.slice().buffer as ArrayBuffer;
         const newSession = await this.#initSession(
             false,
-            preKeyPair,
-            signedPreKeyPair,
+            preKeyPair ? preKeyPair.keyPair : undefined,
+            signedPreKeyPair ? signedPreKeyPair.keyPair : undefined,
             identityKeyAB,
             baseKeyAB,
             undefined,
@@ -141,14 +144,14 @@ export class SessionBuilder {
     }
 
     async #initSession(
-        isInitiator,
-        ourEphemeralKey,
-        ourSignedKey,
-        theirIdentityPubKey,
-        theirEphemeralPubKey,
-        theirSignedPubKey,
-        registrationId
-    ) {
+        isInitiator: boolean,
+        ourEphemeralKey: KeyPair | undefined,
+        ourSignedKey: KeyPair | undefined,
+        theirIdentityPubKey: ArrayBuffer,
+        theirEphemeralPubKey: ArrayBuffer | undefined,
+        theirSignedPubKey: ArrayBuffer | undefined,
+        registrationId: number
+    ): Promise<SessionState> {
         const ourIdentityKey = await this.#storage.getIdentityKeyPair();
 
         if (isInitiator) {
@@ -163,7 +166,7 @@ export class SessionBuilder {
             theirSignedPubKey = theirEphemeralPubKey;
         }
 
-        let sharedSecret;
+        let sharedSecret: Uint8Array;
         if (ourEphemeralKey === undefined || theirEphemeralPubKey === undefined) {
             sharedSecret = new Uint8Array(32 * 4);
         } else {
@@ -175,9 +178,9 @@ export class SessionBuilder {
         }
 
         const ecRes = await Promise.all([
-            internalCrypto.ECDHE(theirSignedPubKey, ourIdentityKey.privKey),
-            internalCrypto.ECDHE(theirIdentityPubKey, ourSignedKey.privKey),
-            internalCrypto.ECDHE(theirSignedPubKey, ourSignedKey.privKey),
+            internalCrypto.ECDHE(theirSignedPubKey!, ourIdentityKey.privKey),
+            internalCrypto.ECDHE(theirIdentityPubKey, ourSignedKey!.privKey),
+            internalCrypto.ECDHE(theirSignedPubKey!, ourSignedKey!.privKey),
         ]);
 
         if (isInitiator) {
@@ -198,17 +201,18 @@ export class SessionBuilder {
         }
 
         const masterKey = await HKDF(
-            sharedSecret.buffer,
+            sharedSecret.buffer as ArrayBuffer,
             new ArrayBuffer(32),
             "WhisperText"
         );
 
-        const session = {
+        const session: SessionState = {
             registrationId: registrationId,
             currentRatchet: {
                 rootKey: masterKey[0],
-                lastRemoteEphemeralKey: theirSignedPubKey,
+                lastRemoteEphemeralKey: theirSignedPubKey!,
                 previousCounter: 0,
+                ephemeralKeyPair: ourSignedKey!,
             },
             indexInfo: {
                 remoteIdentityKey: theirIdentityPubKey,
@@ -218,30 +222,30 @@ export class SessionBuilder {
         };
 
         if (isInitiator) {
-            session.indexInfo.baseKey = ourEphemeralKey.pubKey;
+            session.indexInfo.baseKey = ourEphemeralKey!.pubKey;
             session.indexInfo.baseKeyType = BaseKeyType.OURS;
             const ourSendingEphemeralKey = await internalCrypto.createKeyPair();
             session.currentRatchet.ephemeralKeyPair = ourSendingEphemeralKey;
-            await this.#calculateSendingRatchet(session, theirSignedPubKey);
+            await this.#calculateSendingRatchet(session, theirSignedPubKey!);
         } else {
-            session.indexInfo.baseKey = theirEphemeralPubKey;
+            session.indexInfo.baseKey = theirEphemeralPubKey!;
             session.indexInfo.baseKeyType = BaseKeyType.THEIRS;
-            session.currentRatchet.ephemeralKeyPair = ourSignedKey;
+            session.currentRatchet.ephemeralKeyPair = ourSignedKey!;
         }
         return session;
     }
 
-    async #calculateSendingRatchet(session, remoteKey) {
+    async #calculateSendingRatchet(session: SessionState, remoteKey: ArrayBuffer): Promise<void> {
         const ratchet = session.currentRatchet;
 
         const sharedSecret = await internalCrypto.ECDHE(
             remoteKey,
-            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)
+            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)!
         );
 
         const masterKey = await HKDF(
             sharedSecret,
-            util.toArrayBuffer(ratchet.rootKey),
+            util.toArrayBuffer(ratchet.rootKey)!,
             "WhisperRatchet"
         );
 

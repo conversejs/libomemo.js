@@ -1,12 +1,12 @@
 import { assert } from "chai";
 import { internalCrypto } from "../src/crypto.js";
-import { SignalProtocolAddress } from "../src/index.js";
+import { OMEMOAddress } from "../src/index.js";
 import { getRandomBytes } from "../src/crypto.js";
 import { assertEqualArrayBuffers } from "./utils.js";
 
 export function testIdentityKeyStore(store, registrationId, identityKey) {
     const number = "+5558675309";
-    const address = new SignalProtocolAddress("+5558675309", 1);
+    const address = new OMEMOAddress("+5558675309", 1);
     let testKey;
 
     describe("IdentityKeyStore", function () {

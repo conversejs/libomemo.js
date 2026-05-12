@@ -1,31 +1,39 @@
-import { util } from "./helpers.js";
-import { loadProtocolMessages } from "./protobufs.js";
-import { SessionRecord, ChainType } from "./SessionRecord.js";
-import { queueJobForNumber } from "./SessionLock.js";
-import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "./crypto.js";
-import { SessionBuilder } from "./SessionBuilder.js";
-import { SignalProtocolAddress } from "./SignalProtocolAddress.js";
+import { util } from "../helpers";
+import { loadProtocolMessages } from "../protobufs";
+import { SessionRecord } from "./record";
+import { queueJobForNumber } from "./lock";
+import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "../crypto";
+import { SessionBuilder } from "./builder";
+import { OMEMOAddress } from "./address";
+import { ChainType, KeyPair } from "../types";
+import { EncryptResult, SessionState, SignalProtocolStore } from "./types";
 
 export class SessionCipher {
-    #remoteAddress;
-    #storage;
+    #remoteAddress: OMEMOAddress;
+    #storage: SignalProtocolStore;
 
-    constructor(storage, remoteAddress) {
+    constructor(storage: SignalProtocolStore, remoteAddress: OMEMOAddress | string) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
-                ? SignalProtocolAddress.fromString(remoteAddress)
+                ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
         this.#storage = storage;
     }
 
-    async #getRecord(encodedNumber) {
+    async #getRecord(encodedNumber: string): Promise<SessionRecord | undefined> {
         const serialized = await this.#storage.loadSession(encodedNumber);
-        if (serialized === undefined) return;
+        if (serialized === undefined) return undefined;
 
         return SessionRecord.deserialize(serialized);
     }
 
-    async #fillMessageKeys(chain, counter) {
+    async #fillMessageKeys(
+        chain: {
+            messageKeys: Record<number, ArrayBuffer>;
+            chainKey: { counter: number; key?: ArrayBuffer };
+        },
+        counter: number
+    ): Promise<void> {
         if (chain.chainKey.counter >= counter) {
             return Promise.resolve();
         }
@@ -38,7 +46,7 @@ export class SessionCipher {
             throw new Error("Got invalid request to extend chain after it was already closed");
         }
 
-        let key = util.toArrayBuffer(chain.chainKey.key);
+        let key = util.toArrayBuffer(chain.chainKey.key)!;
         const byteArray = new Uint8Array(1);
         byteArray[0] = 1;
 
@@ -53,18 +61,32 @@ export class SessionCipher {
         return this.#fillMessageKeys(chain, counter);
     }
 
-    async #maybeStepRatchet(session, remoteKey, previousCounter) {
-        if (session[util.toString(remoteKey)] !== undefined) {
+    async #maybeStepRatchet(
+        session: SessionState,
+        remoteKey: ArrayBuffer,
+        previousCounter: number
+    ): Promise<void> {
+        const remoteKeyStr = util.toString(remoteKey) as keyof SessionState;
+        if (session[remoteKeyStr] !== undefined) {
             return;
         }
         console.log("New remote ephemeral key");
 
         const ratchet = session.currentRatchet;
 
-        let previousRatchet = session[util.toString(ratchet.lastRemoteEphemeralKey)];
+        const lastRemoteKeyStr = util.toString(
+            ratchet.lastRemoteEphemeralKey
+        ) as keyof SessionState;
+        let previousRatchet = session[lastRemoteKeyStr];
         if (previousRatchet !== undefined) {
-            await this.#fillMessageKeys(previousRatchet, previousCounter);
-            delete previousRatchet.chainKey.key;
+            await this.#fillMessageKeys(
+                previousRatchet as {
+                    messageKeys: Record<number, ArrayBuffer>;
+                    chainKey: { counter: number; key?: ArrayBuffer };
+                },
+                previousCounter
+            );
+            delete (previousRatchet as { chainKey: { key?: ArrayBuffer } }).chainKey.key;
             session.oldRatchetList[session.oldRatchetList.length] = {
                 added: Date.now(),
                 ephemeralKey: ratchet.lastRemoteEphemeralKey,
@@ -73,10 +95,15 @@ export class SessionCipher {
 
         await this.#calculateRatchet(session, remoteKey, false);
 
-        previousRatchet = util.toString(ratchet.ephemeralKeyPair.pubKey);
-        if (session[previousRatchet] !== undefined) {
-            ratchet.previousCounter = session[previousRatchet].chainKey.counter;
-            delete session[previousRatchet];
+        const ephemeralPubKeyStr = util.toString(
+            ratchet.ephemeralKeyPair.pubKey
+        ) as keyof SessionState;
+        previousRatchet = session[ephemeralPubKeyStr];
+        if (previousRatchet !== undefined) {
+            ratchet.previousCounter = (
+                previousRatchet as { chainKey: { counter: number } }
+            ).chainKey.counter;
+            delete session[ephemeralPubKeyStr];
         }
 
         const keyPair = await internalCrypto.createKeyPair();
@@ -86,19 +113,24 @@ export class SessionCipher {
         ratchet.lastRemoteEphemeralKey = remoteKey;
     }
 
-    async #calculateRatchet(session, remoteKey, sending) {
+    async #calculateRatchet(
+        session: SessionState,
+        remoteKey: ArrayBuffer,
+        sending: boolean
+    ): Promise<void> {
         const ratchet = session.currentRatchet;
         const sharedSecret = await internalCrypto.ECDHE(
             remoteKey,
-            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)
+            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)!
         );
         const masterKey = await HKDF(
             sharedSecret,
-            util.toArrayBuffer(ratchet.rootKey),
+            util.toArrayBuffer(ratchet.rootKey)!,
             "WhisperRatchet"
         );
         const ephemeralPublicKey = sending ? ratchet.ephemeralKeyPair.pubKey : remoteKey;
-        session[util.toString(ephemeralPublicKey)] = {
+        const ephemeralKeyStr = util.toString(ephemeralPublicKey) as keyof SessionState;
+        session[ephemeralKeyStr] = {
             messageKeys: {},
             chainKey: { counter: -1, key: masterKey[1] },
             chainType: sending ? ChainType.SENDING : ChainType.RECEIVING,
@@ -106,7 +138,10 @@ export class SessionCipher {
         ratchet.rootKey = masterKey[0];
     }
 
-    async #doDecryptWhisperMessage(messageBytes, session) {
+    async #doDecryptWhisperMessage(
+        messageBytes: ArrayBuffer,
+        session: SessionState | undefined
+    ): Promise<ArrayBuffer> {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
         }
@@ -119,8 +154,8 @@ export class SessionCipher {
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
         const { WhisperMessage } = await loadProtocolMessages();
-        const message = WhisperMessage.decode(messageProto);
-        const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
+        const message = WhisperMessage.decode(messageProto) as any;
+        const remoteEphemeralKey = message.ephemeralKey.slice().buffer as ArrayBuffer;
 
         if (session === undefined) {
             return Promise.reject(
@@ -134,7 +169,11 @@ export class SessionCipher {
         }
 
         await this.#maybeStepRatchet(session, remoteEphemeralKey, message.previousCounter);
-        const chain = session[util.toString(message.ephemeralKey)];
+        const chain = session[util.toString(message.ephemeralKey) as keyof SessionState] as {
+            messageKeys: Record<number, ArrayBuffer>;
+            chainKey: { counter: number; key?: ArrayBuffer };
+            chainType: ChainType;
+        };
         if (chain.chainType === ChainType.SENDING) {
             throw new Error("Tried to decrypt on a sending chain");
         }
@@ -146,13 +185,13 @@ export class SessionCipher {
             const e = new Error(
                 "Message key not found. The counter was repeated or the key was not filled."
             );
-            e.name = "MessageCounterError";
+            (e as any).name = "MessageCounterError";
             throw e;
         }
         delete chain.messageKeys[message.counter];
 
         const keys = await HKDF(
-            util.toArrayBuffer(messageKey),
+            util.toArrayBuffer(messageKey)!,
             new ArrayBuffer(32),
             "WhisperMessageKeys"
         );
@@ -160,32 +199,36 @@ export class SessionCipher {
         const ourIdentityKey = await this.#storage.getIdentityKeyPair();
 
         const macInput = new Uint8Array(messageProto.byteLength + 33 * 2 + 1);
-        macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)));
-        macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)), 33);
+        macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!));
+        macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)!), 33);
         macInput[33 * 2] = (3 << 4) | 3;
         macInput.set(new Uint8Array(messageProto), 33 * 2 + 1);
         await verifyMAC(macInput.buffer, keys[1], mac, 8);
         const plaintext = await decrypt(
             keys[0],
-            message.ciphertext.slice().buffer,
+            message.ciphertext.slice().buffer as ArrayBuffer,
             keys[2].slice(0, 16)
         );
         delete session.pendingPreKey;
         return plaintext;
     }
 
-    async #decryptWithSessionList(buffer, sessionList, errors = []) {
+    async #decryptWithSessionList(
+        buffer: ArrayBuffer,
+        sessionList: SessionState[],
+        errors: Error[] = []
+    ): Promise<{ plaintext: ArrayBuffer; session: SessionState }> {
         if (sessionList.length === 0) {
             return Promise.reject(errors[0]);
         }
 
-        const session = sessionList.pop();
+        const session = sessionList.pop()!;
         try {
             return {
                 plaintext: await this.#doDecryptWhisperMessage(buffer, session),
                 session,
             };
-        } catch (e) {
+        } catch (e: any) {
             if (e.name === "MessageCounterError") {
                 throw e;
             }
@@ -194,23 +237,34 @@ export class SessionCipher {
         }
     }
 
-    encrypt(buffer) {
+    encrypt(buffer: ArrayBuffer | string | Uint8Array): Promise<EncryptResult> {
+        let buf: ArrayBuffer;
         if (!(buffer instanceof ArrayBuffer)) {
             if (typeof buffer === "string") {
-                buffer = new TextEncoder().encode(buffer).buffer;
+                buf = new TextEncoder().encode(buffer).buffer;
             } else if (buffer instanceof Uint8Array) {
-                buffer = buffer.buffer;
+                buf = buffer.buffer as ArrayBuffer;
             } else {
                 throw new Error("Expected buffer to be an ArrayBuffer, string, or Uint8Array");
             }
+        } else {
+            buf = buffer;
         }
 
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
             const { WhisperMessage } = await loadProtocolMessages();
-            const msg = WhisperMessage.create();
+            const msg = WhisperMessage.create() as any;
 
-            let ourIdentityKey, myRegistrationId, record, session, chain;
+            let ourIdentityKey: KeyPair,
+                myRegistrationId: number,
+                record: SessionRecord | undefined,
+                session: SessionState | undefined,
+                chain: {
+                    messageKeys: Record<number, ArrayBuffer>;
+                    chainKey: { counter: number; key?: ArrayBuffer };
+                    chainType: ChainType;
+                };
 
             const results = await Promise.all([
                 this.#storage.getIdentityKeyPair(),
@@ -230,10 +284,11 @@ export class SessionCipher {
             }
 
             msg.ephemeralKey = new Uint8Array(
-                util.toArrayBuffer(session.currentRatchet.ephemeralKeyPair.pubKey)
+                util.toArrayBuffer(session.currentRatchet.ephemeralKeyPair.pubKey)!
             );
 
-            chain = session[util.toString(msg.ephemeralKey)];
+            const ephemeralKeyStr = util.toString(msg.ephemeralKey) as keyof SessionState;
+            chain = session[ephemeralKeyStr] as typeof chain;
             if (chain.chainType === ChainType.RECEIVING) {
                 throw new Error("Tried to encrypt on a receiving chain");
             }
@@ -241,7 +296,7 @@ export class SessionCipher {
             await this.#fillMessageKeys(chain, chain.chainKey.counter + 1);
 
             const keys = await HKDF(
-                util.toArrayBuffer(chain.messageKeys[chain.chainKey.counter]),
+                util.toArrayBuffer(chain.messageKeys[chain.chainKey.counter])!,
                 new ArrayBuffer(32),
                 "WhisperMessageKeys"
             );
@@ -250,14 +305,14 @@ export class SessionCipher {
             msg.counter = chain.chainKey.counter;
             msg.previousCounter = session.currentRatchet.previousCounter;
 
-            const ciphertext = await encrypt(keys[0], buffer, keys[2].slice(0, 16));
+            const ciphertext = await encrypt(keys[0], buf, keys[2].slice(0, 16));
             msg.ciphertext = new Uint8Array(ciphertext);
 
             const encodedMsg = WhisperMessage.encode(msg).finish();
             const macInput = new Uint8Array(encodedMsg.byteLength + 33 * 2 + 1);
-            macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)));
+            macInput.set(new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)!));
             macInput.set(
-                new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)),
+                new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!),
                 33
             );
             macInput[33 * 2] = (3 << 4) | 3;
@@ -271,7 +326,7 @@ export class SessionCipher {
 
             const trusted = await this.#storage.isTrustedIdentity(
                 this.#remoteAddress.getName(),
-                util.toArrayBuffer(session.indexInfo.remoteIdentityKey),
+                util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!,
                 this.#storage.Direction.SENDING
             );
             if (!trusted) {
@@ -288,8 +343,8 @@ export class SessionCipher {
             if (session.pendingPreKey !== undefined) {
                 const { PreKeyWhisperMessage } = await loadProtocolMessages();
                 const preKeyMsg = PreKeyWhisperMessage.create({
-                    baseKey: new Uint8Array(util.toArrayBuffer(session.pendingPreKey.baseKey)),
-                    identityKey: new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)),
+                    baseKey: new Uint8Array(util.toArrayBuffer(session.pendingPreKey.baseKey)!),
+                    identityKey: new Uint8Array(util.toArrayBuffer(ourIdentityKey.pubKey)!),
                     message: result,
                     preKeyId: session.pendingPreKey.preKeyId
                         ? session.pendingPreKey.preKeyId
@@ -318,8 +373,11 @@ export class SessionCipher {
         });
     }
 
-    async decryptWhisperMessage(buffer, encoding) {
-        buffer = util.normalizeBuffer(buffer, encoding).buffer;
+    async decryptWhisperMessage(
+        buffer: string | ArrayBuffer | Uint8Array,
+        encoding: string
+    ): Promise<ArrayBuffer> {
+        buffer = util.normalizeBuffer(buffer, encoding).buffer as ArrayBuffer;
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
 
@@ -331,14 +389,14 @@ export class SessionCipher {
                 record.getSessions()
             );
 
-            if (session.indexInfo.baseKey !== record.getOpenSession().indexInfo.baseKey) {
+            if (session.indexInfo.baseKey !== record.getOpenSession()!.indexInfo.baseKey) {
                 record.archiveCurrentState();
                 record.promoteState(session);
             }
 
             const trusted = await this.#storage.isTrustedIdentity(
                 this.#remoteAddress.getName(),
-                util.toArrayBuffer(session.indexInfo.remoteIdentityKey),
+                util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!,
                 this.#storage.Direction.RECEIVING
             );
             if (!trusted) throw new Error("Identity key changed");
@@ -355,19 +413,22 @@ export class SessionCipher {
         });
     }
 
-    decryptPreKeyWhisperMessage(buffer, encoding) {
+    decryptPreKeyWhisperMessage(
+        buffer: string | ArrayBuffer | Uint8Array,
+        encoding: string
+    ): Promise<ArrayBuffer> {
         const bytes = util.normalizeBuffer(buffer, encoding);
         const version = bytes[0];
         if ((version & 0xf) > 3 || version >> 4 < 3) {
             throw new Error("Incompatible version number on PreKeyWhisperMessage");
         }
 
-        const arrayBuffer = bytes.buffer.slice(1);
+        const arrayBuffer = bytes.buffer.slice(1) as ArrayBuffer;
 
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
             const { PreKeyWhisperMessage } = await loadProtocolMessages();
-            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer));
+            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer)) as any;
 
             let record = await this.#getRecord(address);
             if (!record) {
@@ -382,10 +443,10 @@ export class SessionCipher {
 
             const session = record.getSessionByBaseKey(preKeyProto.baseKey);
             const plaintext = await this.#doDecryptWhisperMessage(
-                preKeyProto.message.slice().buffer,
+                preKeyProto.message.slice().buffer as ArrayBuffer,
                 session
             );
-            record.updateSessionState(session);
+            record.updateSessionState(session!);
             await this.#storage.storeSession(address, record.serialize());
 
             if (preKeyId !== undefined && preKeyId !== null) {
@@ -395,10 +456,10 @@ export class SessionCipher {
         });
     }
 
-    getRemoteRegistrationId() {
+    getRemoteRegistrationId(): Promise<number | undefined | null> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const record = await this.#getRecord(this.#remoteAddress.toString());
-            if (record === undefined) return;
+            if (record === undefined) return undefined;
 
             const openSession = record.getOpenSession();
             if (openSession === undefined) return null;
@@ -407,7 +468,7 @@ export class SessionCipher {
         });
     }
 
-    hasOpenSession() {
+    hasOpenSession(): Promise<boolean> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const record = await this.#getRecord(this.#remoteAddress.toString());
             if (record === undefined) return false;
@@ -416,7 +477,7 @@ export class SessionCipher {
         });
     }
 
-    closeOpenSessionForDevice() {
+    closeOpenSessionForDevice(): Promise<void> {
         const address = this.#remoteAddress.toString();
         return queueJobForNumber(address, async () => {
             const record = await this.#getRecord(address);
@@ -429,7 +490,7 @@ export class SessionCipher {
         });
     }
 
-    deleteAllSessionsForDevice() {
+    deleteAllSessionsForDevice(): Promise<void> {
         const address = this.#remoteAddress.toString();
         return queueJobForNumber(address, async () => {
             const record = await this.#getRecord(address);

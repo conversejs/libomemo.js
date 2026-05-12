@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { KeyHelper } from "../src/KeyHelper.js";
+import { KeyHelper } from "../src/key-helper.js";
 
 export function assertEqualArrayBuffers(ab1, ab2) {
     assert.deepEqual(new Uint8Array(ab1), new Uint8Array(ab2));

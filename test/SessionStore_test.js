@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { SignalProtocolAddress } from "../src/index.js";
+import { OMEMOAddress } from "../src/index.js";
 import { assertEqualArrayBuffers } from "./utils.js";
 
 export function testSessionStore(store) {
@@ -7,7 +7,7 @@ export function testSessionStore(store) {
     const testRecord = "an opaque string";
     describe("SessionStore", function () {
         describe("storeSession", function () {
-            const address = new SignalProtocolAddress(number, 1);
+            const address = new OMEMOAddress(number, 1);
             it("stores sessions encoded as strings", async function () {
                 await store.storeSession(address.toString(), testRecord);
                 const record = await store.loadSession(address.toString());
@@ -24,7 +24,7 @@ export function testSessionStore(store) {
 
         describe("loadSession", function () {
             it("returns sessions that exist", async function () {
-                const address = new SignalProtocolAddress(number, 1);
+                const address = new OMEMOAddress(number, 1);
                 const testRecord = "an opaque string";
                 await store.storeSession(address.toString(), testRecord);
                 const record = await store.loadSession(address.toString());
@@ -32,7 +32,7 @@ export function testSessionStore(store) {
             });
 
             it("returns undefined for sessions that do not exist", async function () {
-                const address = new SignalProtocolAddress(number, 2);
+                const address = new OMEMOAddress(number, 2);
                 const record = await store.loadSession(address.toString());
                 assert.isUndefined(record);
             });
@@ -40,7 +40,7 @@ export function testSessionStore(store) {
 
         describe("removeSession", function () {
             it("deletes sessions", async function () {
-                const address = new SignalProtocolAddress(number, 1);
+                const address = new OMEMOAddress(number, 1);
                 before(() => store.storeSession(address.toString(), testRecord));
 
                 await store.removeSession(address.toString());
@@ -52,7 +52,7 @@ export function testSessionStore(store) {
         describe("removeAllSessions", function () {
             it("removes all sessions for a number", async function () {
                 const devices = [1, 2, 3].map((deviceId) => {
-                    const address = new SignalProtocolAddress(number, deviceId);
+                    const address = new OMEMOAddress(number, deviceId);
                     return address.toString();
                 });
 

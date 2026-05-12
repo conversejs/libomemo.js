@@ -6,21 +6,26 @@
     "type": "module",
     "main": "./dist/libomemo.umd.js",
     "module": "./dist/libomemo.esm.js",
+    "types": "./dist/index.d.ts",
     "exports": {
         ".": {
             "import": "./dist/libomemo.esm.js",
-            "require": "./dist/libomemo.umd.js"
+            "require": "./dist/libomemo.umd.js",
+            "types": "./dist/index.d.ts"
         }
     },
     "scripts": {
-        "build": "npm run compile && rollup -c",
+        "build": "npm run compile && npm run build:dts && rollup -c",
+        "build:dts": "tsc -p tsconfig.dts.json",
         "check": "npm run dist && npm run lint && npm run test",
         "clean": "rm -rf node_modules",
         "compile": "node scripts/compile.js",
         "dev": "rollup -c -w",
-        "dist": "rollup -c && cp build/curve25519_compiled.wasm dist/",
-        "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" rollup.config.js",
-        "lint": "eslint src/**/*.js test/**/*.js rollup.config.js",
+        "dist": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/",
+        "format": "prettier --write \"src/**/*.ts\" \"test/**/*.js\" rollup.config.js karma.conf.js",
+        "lint": "eslint \"src/**/*.ts\" \"test/**/*.js\" rollup.config.js karma.conf.js",
+        "lint:fix": "eslint --fix \"src/**/*.ts\" \"test/**/*.js\" rollup.config.js karma.conf.js",
+        "typecheck": "tsc --noEmit",
         "test": "rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
         "test:browser": "karma start karma.conf.js --browsers Chrome; pkill -f 'ChromeHeadless' 2>/dev/null; true"
     },
@@ -28,9 +33,15 @@
         "protobufjs": "^8.0.0"
     },
     "devDependencies": {
+        "@rollup/plugin-alias": "^6.0.0",
         "@rollup/plugin-commonjs": "^29.0.2",
         "@rollup/plugin-node-resolve": "^16.0.3",
+        "@rollup/plugin-typescript": "^12.1.2",
+        "@types/node": "^22.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.59.3",
+        "@typescript-eslint/parser": "^8.59.3",
         "chai": "^3.5.0",
+        "esbuild": "^0.28.0",
         "eslint": "^8.19.0",
         "globals": "^17.6.0",
         "karma": "^6.4.0",
@@ -40,6 +51,10 @@
         "mocha": "^10.0.0",
         "prettier": "^3.7.4",
         "rollup": "^4.60.3",
-        "rollup-plugin-string": "^3.0.0"
+        "rollup-plugin-dts": "^6.4.1",
+        "rollup-plugin-esbuild": "^6.2.1",
+        "rollup-plugin-string": "^3.0.0",
+        "tslib": "^2.8.1",
+        "typescript": "^6.0.3"
     }
 }

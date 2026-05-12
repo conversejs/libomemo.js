@@ -1,60 +1,20 @@
-import { util } from "./helpers.js";
-
-export const BaseKeyType = {
-    OURS: 1,
-    THEIRS: 2,
-};
-
-export const ChainType = {
-    SENDING: 1,
-    RECEIVING: 2,
-};
+import { jsonThing, util } from "../helpers";
+import { BaseKeyType } from "../types";
+import { Migration, SessionRecordData, SessionState } from "./types";
 
 const ARCHIVED_STATES_MAX_LENGTH = 40;
 const OLD_RATCHETS_MAX_LENGTH = 10;
 const SESSION_RECORD_VERSION = "v1";
 
-function ensureStringed(thing) {
-    if (typeof thing === "string" || typeof thing === "number" || typeof thing === "boolean") {
-        return thing;
-    } else if (thing instanceof ArrayBuffer || thing instanceof Uint8Array) {
-        return util.toString(thing);
-    } else if (Array.isArray(thing)) {
-        return thing.map(ensureStringed);
-    } else if (thing === Object(thing)) {
-        const obj = {};
-        for (const key in thing) {
-            if (!Object.prototype.hasOwnProperty.call(thing, key)) {
-                continue;
-            }
-            try {
-                obj[key] = ensureStringed(thing[key]);
-            } catch (ex) {
-                console.log("Error serializing key", key);
-                throw ex;
-            }
-        }
-        return obj;
-    } else if (thing === null) {
-        return null;
-    } else {
-        throw new Error(`unsure of how to jsonify object of type ${typeof thing}`);
-    }
-}
-
-function jsonThing(thing) {
-    return JSON.stringify(ensureStringed(thing));
-}
-
-const migrations = [
+const migrations: Migration[] = [
     {
         version: "v1",
-        migrate(data) {
+        migrate(data: SessionRecordData) {
             const sessions = data.sessions;
             if (data.registrationId) {
                 for (const key in sessions) {
                     if (!sessions[key].registrationId) {
-                        sessions[key].registrationId = data.registrationId;
+                        sessions[key].registrationId = data.registrationId!;
                     }
                 }
             } else {
@@ -73,7 +33,7 @@ const migrations = [
     },
 ];
 
-function migrate(data) {
+function migrate(data: SessionRecordData): void {
     let run = data.version === undefined;
     for (let i = 0; i < migrations.length; ++i) {
         if (run) {
@@ -88,17 +48,17 @@ function migrate(data) {
 }
 
 export class SessionRecord {
-    sessions = {};
+    sessions: Record<string, SessionState> = {};
     version = SESSION_RECORD_VERSION;
 
-    static deserialize(serialized) {
-        const data = JSON.parse(serialized);
+    static deserialize(serialized: string): SessionRecord {
+        const data = JSON.parse(serialized) as SessionRecordData;
         if (data.version !== SESSION_RECORD_VERSION) {
             migrate(data);
         }
 
         const record = new SessionRecord();
-        record.sessions = data.sessions;
+        record.sessions = data.sessions as unknown as Record<string, SessionState>;
         if (
             record.sessions === undefined ||
             record.sessions === null ||
@@ -110,19 +70,19 @@ export class SessionRecord {
         return record;
     }
 
-    serialize() {
+    serialize(): string {
         return jsonThing({
             sessions: this.sessions,
             version: this.version,
         });
     }
 
-    haveOpenSession() {
+    haveOpenSession(): boolean {
         const openSession = this.getOpenSession();
         return !!openSession && typeof openSession.registrationId === "number";
     }
 
-    getSessionByBaseKey(baseKey) {
+    getSessionByBaseKey(baseKey: ArrayBuffer): SessionState | undefined {
         const session = this.sessions[util.toString(baseKey)];
         if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
             console.log("Tried to lookup a session using our basekey");
@@ -131,12 +91,12 @@ export class SessionRecord {
         return session;
     }
 
-    getSessionByRemoteEphemeralKey(remoteEphemeralKey) {
+    getSessionByRemoteEphemeralKey(remoteEphemeralKey: ArrayBuffer): SessionState | undefined {
         this.detectDuplicateOpenSessions();
         const sessions = this.sessions;
         const searchKey = util.toString(remoteEphemeralKey);
 
-        let openSession;
+        let openSession: SessionState | undefined;
         for (const key in sessions) {
             if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
                 continue;
@@ -151,7 +111,7 @@ export class SessionRecord {
         return openSession;
     }
 
-    getOpenSession() {
+    getOpenSession(): SessionState | undefined {
         const sessions = this.sessions;
         if (sessions === undefined) {
             return undefined;
@@ -167,8 +127,8 @@ export class SessionRecord {
         return undefined;
     }
 
-    detectDuplicateOpenSessions() {
-        let openSession;
+    detectDuplicateOpenSessions(): void {
+        let openSession: SessionState | undefined;
         const sessions = this.sessions;
         for (const key in sessions) {
             if (sessions[key].indexInfo.closed === -1) {
@@ -180,16 +140,16 @@ export class SessionRecord {
         }
     }
 
-    updateSessionState(session) {
+    updateSessionState(session: SessionState): void {
         const sessions = this.sessions;
         this.#removeOldChains(session);
-        sessions[util.toString(session.indexInfo.baseKey)] = session;
+        sessions[util.toString(session.indexInfo.baseKey!)] = session;
         this.#removeOldSessions();
     }
 
-    getSessions() {
-        let list = [];
-        let openSession;
+    getSessions(): SessionState[] {
+        let list: SessionState[] = [];
+        let openSession: SessionState | undefined;
         for (const k in this.sessions) {
             if (this.sessions[k].indexInfo.closed === -1) {
                 openSession = this.sessions[k];
@@ -204,7 +164,7 @@ export class SessionRecord {
         return list;
     }
 
-    archiveCurrentState() {
+    archiveCurrentState(): void {
         const open_session = this.getOpenSession();
         if (open_session !== undefined) {
             console.log("closing session");
@@ -213,12 +173,12 @@ export class SessionRecord {
         }
     }
 
-    promoteState(session) {
+    promoteState(session: SessionState): void {
         console.log("promoting session");
         session.indexInfo.closed = -1;
     }
 
-    #removeOldChains(session) {
+    #removeOldChains(session: SessionState): void {
         while (session.oldRatchetList.length > OLD_RATCHETS_MAX_LENGTH) {
             let index = 0;
             let oldest = session.oldRatchetList[0];
@@ -234,9 +194,10 @@ export class SessionRecord {
         }
     }
 
-    #removeOldSessions() {
+    #removeOldSessions(): void {
         const sessions = this.sessions;
-        let oldestBaseKey, oldestSession;
+        let oldestBaseKey: string | undefined;
+        let oldestSession: SessionState | undefined;
         while (Object.keys(sessions).length > ARCHIVED_STATES_MAX_LENGTH) {
             for (const key in sessions) {
                 if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
@@ -251,12 +212,12 @@ export class SessionRecord {
                     oldestSession = session;
                 }
             }
-            console.log("Deleting session closed at", oldestSession.indexInfo.closed);
-            delete sessions[util.toString(oldestBaseKey)];
+            console.log("Deleting session closed at", oldestSession!.indexInfo.closed);
+            delete sessions[util.toString(oldestBaseKey!)];
         }
     }
 
-    deleteAllSessions() {
+    deleteAllSessions(): void {
         this.sessions = {};
     }
 }

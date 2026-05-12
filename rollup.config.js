@@ -1,6 +1,8 @@
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
+import typescript from "@rollup/plugin-typescript";
+import { dts } from "rollup-plugin-dts";
 
 function onwarn(warning, warn) {
     if (
@@ -13,7 +15,7 @@ function onwarn(warning, warn) {
 
 export default [
     {
-        input: "src/index.js",
+        input: "src/index.ts",
         output: [
             {
                 file: "dist/libomemo.esm.js",
@@ -28,6 +30,7 @@ export default [
         ],
         plugins: [
             string({ include: "**/*.proto" }),
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: false }),
             resolve({ browser: true }),
             commonjs(),
         ],
@@ -35,12 +38,25 @@ export default [
         onwarn,
     },
     {
-        input: "src/curve25519_worker.js",
+        input: "src/curve25519_worker.ts",
         output: {
             file: "dist/libomemo-worker.js",
             format: "iife",
         },
-        plugins: [resolve({ browser: true }), commonjs()],
+        plugins: [
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: false }),
+            resolve({ browser: true }),
+            commonjs(),
+        ],
+        onwarn,
+    },
+    {
+        input: "build/dts/index.d.ts",
+        output: {
+            file: "dist/index.d.ts",
+            format: "es",
+        },
+        plugins: [dts()],
         onwarn,
     },
 ];
