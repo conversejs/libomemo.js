@@ -4,7 +4,7 @@ import { string } from "rollup-plugin-string";
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
 
-function onwarn(warning, warn) {
+export function onwarn(warning, warn) {
     if (
         warning.code === "CIRCULAR_DEPENDENCY" &&
         warning.message.includes("node_modules/protobufjs")
