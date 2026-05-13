@@ -34,12 +34,12 @@ describe("Curve25519", function () {
         it("throws for invalid private key (not ArrayBuffer)", async function () {
             let error;
             try {
-                await curve.createKeyPair("notabuffer");
+                await curve.createKeyPair("notabuffer" as unknown as ArrayBuffer);
             } catch (e) {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid private key: expected ArrayBuffer");
+            assert.strictEqual((error as Error).message, "Invalid private key: expected ArrayBuffer");
         });
 
         it("throws for private key with wrong length", async function () {
@@ -52,7 +52,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid private key");
+            assert.strictEqual((error as Error).message, "Invalid private key");
         });
     });
 
@@ -61,8 +61,8 @@ describe("Curve25519", function () {
             const alice = await curve.generateKeyPair();
             const bob = await curve.generateKeyPair();
 
-            const aliceShared = curve.calculateAgreement(bob.pubKey, alice.privKey);
-            const bobShared = curve.calculateAgreement(alice.pubKey, bob.privKey);
+            const aliceShared = await curve.calculateAgreement(bob.pubKey, alice.privKey);
+            const bobShared = await curve.calculateAgreement(alice.pubKey, bob.privKey);
 
             assertEqualArrayBuffers(aliceShared, bobShared);
         });
@@ -86,7 +86,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid public key");
+            assert.strictEqual((error as Error).message, "Invalid public key");
         });
     });
 
@@ -105,12 +105,12 @@ describe("Curve25519", function () {
             const kp = await curve.generateKeyPair();
             let error;
             try {
-                await curve.calculateSignature(kp.privKey, undefined);
+                await curve.calculateSignature(kp.privKey, undefined as unknown as ArrayBuffer);
             } catch (e) {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid message");
+            assert.strictEqual((error as Error).message, "Invalid message");
         });
     });
 
@@ -138,7 +138,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid signature");
+            assert.strictEqual((error as Error).message, "Invalid signature");
         });
 
         it("rejects for a tampered signature", async function () {
@@ -155,7 +155,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid signature");
+            assert.strictEqual((error as Error).message, "Invalid signature");
         });
 
         it("throws for invalid public key format", async function () {
@@ -169,7 +169,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid public key");
+            assert.strictEqual((error as Error).message, "Invalid public key");
         });
 
         it("throws for invalid signature length", async function () {
@@ -183,7 +183,7 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Invalid signature");
+            assert.strictEqual((error as Error).message, "Invalid signature");
         });
 
         it("works correctly across many different key pairs", async function () {
@@ -207,8 +207,8 @@ describe("Curve25519", function () {
                         await curve.verifySignature(keyPairs[j].pubKey, message, sig);
                         assert.fail(`Signature from key ${i} should not verify with key ${j}`);
                     } catch (err) {
-                        if (err.message !== "Invalid signature") {
-                            throw err;
+                        if ((err as Error).message !== "Invalid signature") {
+                            throw err as Error;
                         }
                     }
                 }

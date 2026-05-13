@@ -3,7 +3,7 @@ import { KeyHelper } from "../src/index.js";
 import { internalCrypto } from "../src/crypto.js";
 
 describe("KeyHelper", function () {
-    function validateKeyPair(keyPair) {
+    function validateKeyPair(keyPair: { pubKey: ArrayBuffer; privKey: ArrayBuffer }): void {
         assert.isDefined(keyPair.pubKey);
         assert.isDefined(keyPair.privKey);
         assert.strictEqual(keyPair.privKey.byteLength, 32);

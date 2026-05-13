@@ -5,35 +5,37 @@ import { queueJobForNumber } from "./lock";
 import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "../crypto";
 import { SessionBuilder } from "./builder";
 import { OMEMOAddress } from "./address";
-import { ChainType, KeyPair } from "../types";
-import { EncryptResult, SessionState, SignalProtocolStore } from "./types";
+import { ChainType } from "../types";
+import {
+    EncryptResult,
+    SessionState,
+    OMEMOStore,
+    Direction,
+    MixedSessionState,
+    SerializableSessionState,
+    Chain,
+} from "./types";
 
 export class SessionCipher {
     #remoteAddress: OMEMOAddress;
-    #storage: SignalProtocolStore;
+    #store: OMEMOStore;
 
-    constructor(storage: SignalProtocolStore, remoteAddress: OMEMOAddress | string) {
+    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
                 ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
-        this.#storage = storage;
+        this.#store = store;
     }
 
     async #getRecord(encodedNumber: string): Promise<SessionRecord | undefined> {
-        const serialized = await this.#storage.loadSession(encodedNumber);
+        const serialized = await this.#store.loadSession(encodedNumber);
         if (serialized === undefined) return undefined;
 
         return SessionRecord.deserialize(serialized);
     }
 
-    async #fillMessageKeys(
-        chain: {
-            messageKeys: Record<number, ArrayBuffer>;
-            chainKey: { counter: number; key?: ArrayBuffer };
-        },
-        counter: number
-    ): Promise<void> {
+    async #fillMessageKeys(chain: Chain, counter: number): Promise<void> {
         if (chain.chainKey.counter >= counter) {
             return Promise.resolve();
         }
@@ -62,7 +64,7 @@ export class SessionCipher {
     }
 
     async #maybeStepRatchet(
-        session: SessionState,
+        session: MixedSessionState,
         remoteKey: ArrayBuffer,
         previousCounter: number
     ): Promise<void> {
@@ -79,13 +81,7 @@ export class SessionCipher {
         ) as keyof SessionState;
         let previousRatchet = session[lastRemoteKeyStr];
         if (previousRatchet !== undefined) {
-            await this.#fillMessageKeys(
-                previousRatchet as {
-                    messageKeys: Record<number, ArrayBuffer>;
-                    chainKey: { counter: number; key?: ArrayBuffer };
-                },
-                previousCounter
-            );
+            await this.#fillMessageKeys(previousRatchet as Chain, previousCounter);
             delete (previousRatchet as { chainKey: { key?: ArrayBuffer } }).chainKey.key;
             session.oldRatchetList[session.oldRatchetList.length] = {
                 added: Date.now(),
@@ -114,7 +110,7 @@ export class SessionCipher {
     }
 
     async #calculateRatchet(
-        session: SessionState,
+        session: MixedSessionState,
         remoteKey: ArrayBuffer,
         sending: boolean
     ): Promise<void> {
@@ -140,7 +136,7 @@ export class SessionCipher {
 
     async #doDecryptWhisperMessage(
         messageBytes: ArrayBuffer,
-        session: SessionState | undefined
+        session: MixedSessionState | undefined
     ): Promise<ArrayBuffer> {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
@@ -169,11 +165,7 @@ export class SessionCipher {
         }
 
         await this.#maybeStepRatchet(session, remoteEphemeralKey, message.previousCounter);
-        const chain = session[util.toString(message.ephemeralKey) as keyof SessionState] as {
-            messageKeys: Record<number, ArrayBuffer>;
-            chainKey: { counter: number; key?: ArrayBuffer };
-            chainType: ChainType;
-        };
+        const chain = session[util.toString(message.ephemeralKey) as keyof SessionState] as Chain;
         if (chain.chainType === ChainType.SENDING) {
             throw new Error("Tried to decrypt on a sending chain");
         }
@@ -185,7 +177,7 @@ export class SessionCipher {
             const e = new Error(
                 "Message key not found. The counter was repeated or the key was not filled."
             );
-            (e as any).name = "MessageCounterError";
+            e.name = "MessageCounterError";
             throw e;
         }
         delete chain.messageKeys[message.counter];
@@ -196,7 +188,8 @@ export class SessionCipher {
             "WhisperMessageKeys"
         );
 
-        const ourIdentityKey = await this.#storage.getIdentityKeyPair();
+        const ourIdentityKey = await this.#store.getIdentityKeyPair();
+        if (!ourIdentityKey) throw new Error("No identity keypair to verify MAC");
 
         const macInput = new Uint8Array(messageProto.byteLength + 33 * 2 + 1);
         macInput.set(new Uint8Array(util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!));
@@ -204,6 +197,7 @@ export class SessionCipher {
         macInput[33 * 2] = (3 << 4) | 3;
         macInput.set(new Uint8Array(messageProto), 33 * 2 + 1);
         await verifyMAC(macInput.buffer, keys[1], mac, 8);
+
         const plaintext = await decrypt(
             keys[0],
             message.ciphertext.slice().buffer as ArrayBuffer,
@@ -215,9 +209,9 @@ export class SessionCipher {
 
     async #decryptWithSessionList(
         buffer: ArrayBuffer,
-        sessionList: SessionState[],
-        errors: Error[] = []
-    ): Promise<{ plaintext: ArrayBuffer; session: SessionState }> {
+        sessionList: MixedSessionState[],
+        errors: unknown[] = []
+    ): Promise<{ plaintext: ArrayBuffer; session: MixedSessionState }> {
         if (sessionList.length === 0) {
             return Promise.reject(errors[0]);
         }
@@ -228,8 +222,8 @@ export class SessionCipher {
                 plaintext: await this.#doDecryptWhisperMessage(buffer, session),
                 session,
             };
-        } catch (e: any) {
-            if (e.name === "MessageCounterError") {
+        } catch (e: unknown) {
+            if ((e as Error).name === "MessageCounterError") {
                 throw e;
             }
             errors.push(e);
@@ -256,28 +250,19 @@ export class SessionCipher {
             const { WhisperMessage } = await loadProtocolMessages();
             const msg = WhisperMessage.create() as any;
 
-            let ourIdentityKey: KeyPair,
-                myRegistrationId: number,
-                record: SessionRecord | undefined,
-                session: SessionState | undefined,
-                chain: {
-                    messageKeys: Record<number, ArrayBuffer>;
-                    chainKey: { counter: number; key?: ArrayBuffer };
-                    chainType: ChainType;
-                };
+            let session: MixedSessionState | undefined;
+            let chain: Chain;
 
-            const results = await Promise.all([
-                this.#storage.getIdentityKeyPair(),
-                this.#storage.getLocalRegistrationId(),
+            const [ourIdentityKey, myRegistrationId, record] = await Promise.all([
+                this.#store.getIdentityKeyPair(),
+                this.#store.getLocalRegistrationId(),
                 this.#getRecord(address),
             ]);
 
-            ourIdentityKey = results[0];
-            myRegistrationId = results[1];
-            record = results[2];
-            if (!record) {
-                throw new Error(`No record for ${address}`);
-            }
+            if (!ourIdentityKey) throw new Error("Can't encrypt: no identity key");
+
+            if (!record) throw new Error(`Can't encrypt: no record for ${address}`);
+
             session = record.getOpenSession();
             if (!session) {
                 throw new Error(`No session to encrypt message for ${address}`);
@@ -287,7 +272,10 @@ export class SessionCipher {
                 util.toArrayBuffer(session.currentRatchet.ephemeralKeyPair.pubKey)!
             );
 
-            const ephemeralKeyStr = util.toString(msg.ephemeralKey) as keyof SessionState;
+            const ephemeralKeyStr = util.toString(
+                msg.ephemeralKey
+            ) as keyof SerializableSessionState;
+
             chain = session[ephemeralKeyStr] as typeof chain;
             if (chain.chainType === ChainType.RECEIVING) {
                 throw new Error("Tried to encrypt on a receiving chain");
@@ -324,21 +312,21 @@ export class SessionCipher {
             result.set(encodedMsg, 1);
             result.set(new Uint8Array(mac, 0, 8), encodedMsg.byteLength + 1);
 
-            const trusted = await this.#storage.isTrustedIdentity(
+            const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.getName(),
                 util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!,
-                this.#storage.Direction.SENDING
+                Direction.SENDING
             );
             if (!trusted) {
                 throw new Error("Identity key changed");
             }
-            await this.#storage.saveIdentity(
+            await this.#store.saveIdentity(
                 this.#remoteAddress.toString(),
                 session.indexInfo.remoteIdentityKey
             );
 
             record.updateSessionState(session);
-            await this.#storage.storeSession(address, record.serialize());
+            await this.#store.storeSession(address, record.serialize());
 
             if (session.pendingPreKey !== undefined) {
                 const { PreKeyWhisperMessage } = await loadProtocolMessages();
@@ -394,20 +382,20 @@ export class SessionCipher {
                 record.promoteState(session);
             }
 
-            const trusted = await this.#storage.isTrustedIdentity(
+            const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.getName(),
                 util.toArrayBuffer(session.indexInfo.remoteIdentityKey)!,
-                this.#storage.Direction.RECEIVING
+                Direction.RECEIVING
             );
             if (!trusted) throw new Error("Identity key changed");
 
-            await this.#storage.saveIdentity(
+            await this.#store.saveIdentity(
                 this.#remoteAddress.toString(),
                 session.indexInfo.remoteIdentityKey
             );
             record.updateSessionState(session);
 
-            await this.#storage.storeSession(address, record.serialize());
+            await this.#store.storeSession(address, record.serialize());
 
             return plaintext;
         });
@@ -437,7 +425,7 @@ export class SessionCipher {
                 }
                 record = new SessionRecord();
             }
-            const builder = new SessionBuilder(this.#storage, this.#remoteAddress);
+            const builder = new SessionBuilder(this.#store, this.#remoteAddress);
 
             const preKeyId = await builder.processV3(record, preKeyProto);
 
@@ -447,10 +435,10 @@ export class SessionCipher {
                 session
             );
             record.updateSessionState(session!);
-            await this.#storage.storeSession(address, record.serialize());
+            await this.#store.storeSession(address, record.serialize());
 
             if (preKeyId !== undefined && preKeyId !== null) {
-                this.#storage.removePreKey(preKeyId);
+                await this.#store.removePreKey(preKeyId);
             }
             return plaintext;
         });
@@ -473,7 +461,7 @@ export class SessionCipher {
             const record = await this.#getRecord(this.#remoteAddress.toString());
             if (record === undefined) return false;
 
-            return record.haveOpenSession();
+            return record.hasOpenSession();
         });
     }
 
@@ -486,7 +474,7 @@ export class SessionCipher {
             }
 
             record.archiveCurrentState();
-            return this.#storage.storeSession(address, record.serialize());
+            return this.#store.storeSession(address, record.serialize());
         });
     }
 
@@ -498,7 +486,7 @@ export class SessionCipher {
                 return;
             }
             record.deleteAllSessions();
-            return this.#storage.storeSession(address, record.serialize());
+            return this.#store.storeSession(address, record.serialize());
         });
     }
 }

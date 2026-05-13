@@ -1,4 +1,23 @@
-import { BaseKeyType, JSONValue, KeyPair } from "../types";
+import { BaseKeyType, ChainType, Key, KeyPair } from "../types";
+
+export type JSONValue =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: JSONValue }
+    | JSONValue[];
+
+export enum Direction {
+    SENDING = 1,
+    RECEIVING = 2,
+}
+
+export type Chain = {
+    messageKeys: Record<number, ArrayBuffer>;
+    chainKey: { counter: number; key?: ArrayBuffer };
+    chainType?: ChainType;
+};
 
 export interface EncryptResult {
     type: number;
@@ -7,10 +26,10 @@ export interface EncryptResult {
 }
 
 interface IndexInfo {
-    remoteIdentityKey: ArrayBuffer;
-    closed: number;
-    baseKey?: ArrayBuffer;
+    baseKey?: Key;
     baseKeyType?: BaseKeyType;
+    closed: number;
+    remoteIdentityKey: Key;
 }
 
 interface RatchetState {
@@ -31,15 +50,6 @@ interface PendingPreKey {
     preKeyId?: number;
 }
 
-export interface SessionState {
-    registrationId: number;
-    currentRatchet: RatchetState;
-    indexInfo: IndexInfo;
-    oldRatchetList: OldRatchetEntry[];
-    pendingPreKey?: PendingPreKey;
-    [ephemeralKey: string]: unknown;
-}
-
 export interface PreKeyBundle {
     identityKey: ArrayBuffer;
     signedPreKey: {
@@ -54,6 +64,34 @@ export interface PreKeyBundle {
     registrationId: number;
 }
 
+export type SessionState = {
+    registrationId: number;
+    currentRatchet: RatchetState;
+    indexInfo: IndexInfo;
+    oldRatchetList: OldRatchetEntry[];
+    pendingPreKey?: PendingPreKey;
+    [ephemeralKey: string]: unknown;
+};
+
+export interface MixedSessionState {
+    registrationId: number;
+    currentRatchet: {
+        rootKey: Key;
+        lastRemoteEphemeralKey: Key;
+        previousCounter: number;
+        ephemeralKeyPair: { pubKey: Key; privKey: Key };
+    };
+    indexInfo: {
+        baseKey?: Key;
+        baseKeyType?: BaseKeyType;
+        closed: number;
+        remoteIdentityKey: Key;
+    };
+    oldRatchetList: { added: number; ephemeralKey: Key }[];
+    pendingPreKey?: { signedKeyId: number; baseKey: Key; preKeyId?: number };
+    [ephemeralKey: string]: unknown;
+}
+
 export interface SerializableSessionState {
     registrationId: number;
     currentRatchet: {
@@ -63,14 +101,14 @@ export interface SerializableSessionState {
         ephemeralKeyPair: { pubKey: string; privKey: string };
     };
     indexInfo: {
-        remoteIdentityKey: string;
-        closed: number;
         baseKey?: string;
         baseKeyType?: BaseKeyType;
+        closed: number;
+        remoteIdentityKey: string;
     };
     oldRatchetList: { added: number; ephemeralKey: string }[];
     pendingPreKey?: { signedKeyId: number; baseKey: string; preKeyId?: number };
-    [ephemeralKey: string]: JSONValue | undefined;
+    [ephemeralKey: string]: unknown;
 }
 
 export interface SessionRecordData {
@@ -84,20 +122,40 @@ export interface Migration {
     migrate(data: SessionRecordData): void;
 }
 
-export interface StorageDirection {
-    SENDING: string;
-    RECEIVING: string;
-}
+type KeyPairWrapper = { keyPair: KeyPair };
 
-export interface SignalProtocolStore {
-    Direction: StorageDirection;
-    isTrustedIdentity(name: string, identityKey: ArrayBuffer, direction: string): Promise<boolean>;
-    getIdentityKeyPair(): Promise<KeyPair>;
-    getLocalRegistrationId(): Promise<number>;
-    loadSession(address: string): Promise<string | undefined>;
-    storeSession(address: string, data: string): Promise<void>;
-    saveIdentity(name: string, identityKey: ArrayBuffer): Promise<void>;
-    loadPreKey(keyId: number): Promise<{ keyPair: KeyPair } | undefined>;
-    loadSignedPreKey(keyId: number): Promise<{ keyPair: KeyPair } | undefined>;
-    removePreKey(keyId: number): Promise<void>;
+export type KeyId = number | string;
+
+export interface OMEMOStore {
+    store: Record<string, unknown>;
+
+    put(key: string, value: unknown): void;
+    get<T = unknown>(key: string, defaultValue?: T): T | undefined;
+    remove(key: string): void;
+
+    isTrustedIdentity(
+        name: string,
+        identityKey: ArrayBuffer,
+        direction: Direction
+    ): Promise<boolean> | boolean;
+    loadIdentityKey(name: string): Promise<ArrayBuffer | undefined> | ArrayBuffer | undefined;
+    saveIdentity(name: string, identityKey: Key): Promise<boolean> | boolean;
+
+    loadPreKey(keyId: KeyId): Promise<KeyPairWrapper | undefined>;
+    storePreKey(keyId: KeyId, keyPair: KeyPair): Promise<void> | void;
+    removePreKey(keyId: KeyId): Promise<void> | void;
+
+    loadSignedPreKey(
+        keyId: number
+    ): Promise<KeyPairWrapper | undefined> | KeyPairWrapper | undefined;
+    storeSignedPreKey(keyId: KeyId, keyPair: KeyPair): Promise<void> | void;
+    removeSignedPreKey(keyId: KeyId): Promise<void> | void;
+
+    loadSession(address: string): Promise<string | undefined> | string | undefined;
+    removeAllSessions(identifier: string): Promise<void> | void;
+    removeSession(identifier: string): Promise<void> | void;
+    storeSession(address: string, record: string): Promise<void> | void;
+
+    getIdentityKeyPair(): Promise<KeyPair | undefined> | KeyPair | undefined;
+    getLocalRegistrationId(): Promise<number | undefined> | number | undefined;
 }

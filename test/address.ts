@@ -25,9 +25,9 @@ describe("OMEMOAddress", function () {
     });
     describe("fromString", function () {
         it("throws on a bad inputs", function () {
-            ["", null, {}].forEach(function (input) {
+            (["", null, {}] as (string | null | object)[]).forEach(function (input) {
                 assert.throws(function () {
-                    OMEMOAddress.fromString(input);
+                    OMEMOAddress.fromString(input as string);
                 });
             });
         });

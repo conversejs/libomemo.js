@@ -2,12 +2,18 @@ import { assert } from "chai";
 import { internalCrypto } from "../src/crypto.js";
 import { OMEMOAddress } from "../src/index.js";
 import { getRandomBytes } from "../src/crypto.js";
+import type { KeyPair } from "../src/types.js";
 import { assertEqualArrayBuffers } from "./utils.js";
+import { OMEMOStore, Direction } from "../src/session/types.js";
 
-export function testIdentityKeyStore(store, registrationId, identityKey) {
+export function testIdentityKeyStore(
+    store: OMEMOStore,
+    registrationId: number,
+    identityKey: KeyPair
+): void {
     const number = "+5558675309";
     const address = new OMEMOAddress("+5558675309", 1);
-    let testKey;
+    let testKey: KeyPair;
 
     describe("IdentityKeyStore", function () {
         before(async () => {
@@ -24,8 +30,9 @@ export function testIdentityKeyStore(store, registrationId, identityKey) {
         describe("getIdentityKeyPair", function () {
             it("retrieves my identity key", async function () {
                 const key = await store.getIdentityKeyPair();
-                assertEqualArrayBuffers(key.pubKey, identityKey.pubKey);
-                assertEqualArrayBuffers(key.privKey, identityKey.privKey);
+                assert.isNotNull(key);
+                assertEqualArrayBuffers(key!.pubKey, identityKey.pubKey);
+                assertEqualArrayBuffers(key!.privKey, identityKey.privKey);
             });
         });
 
@@ -33,20 +40,20 @@ export function testIdentityKeyStore(store, registrationId, identityKey) {
             it("stores identity keys", async function () {
                 await store.saveIdentity(address.toString(), testKey.pubKey);
                 const key = await store.loadIdentityKey(number);
-                assertEqualArrayBuffers(key, testKey.pubKey);
+                assertEqualArrayBuffers(key!, testKey.pubKey);
             });
         });
 
         describe("isTrustedIdentity", function () {
             it("returns true if a key is trusted", async function () {
                 await store.saveIdentity(address.toString(), testKey.pubKey);
-                const trusted = await store.isTrustedIdentity(number, testKey.pubKey);
+                const trusted = await store.isTrustedIdentity(number, testKey.pubKey, Direction.SENDING);
                 assert.isTrue(trusted);
             });
             it("returns false if a key is untrusted", async function () {
                 const newIdentity = getRandomBytes(33);
                 await store.saveIdentity(address.toString(), testKey.pubKey);
-                const trusted = await store.isTrustedIdentity(number, newIdentity);
+                const trusted = await store.isTrustedIdentity(number, newIdentity, Direction.SENDING);
                 assert.isFalse(trusted);
             });
         });

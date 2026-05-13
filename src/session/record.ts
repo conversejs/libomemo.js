@@ -1,6 +1,6 @@
 import { jsonThing, util } from "../helpers";
 import { BaseKeyType } from "../types";
-import { Migration, SessionRecordData, SessionState } from "./types";
+import { Migration, MixedSessionState, SessionRecordData } from "./types";
 
 const ARCHIVED_STATES_MAX_LENGTH = 40;
 const OLD_RATCHETS_MAX_LENGTH = 10;
@@ -48,7 +48,7 @@ function migrate(data: SessionRecordData): void {
 }
 
 export class SessionRecord {
-    sessions: Record<string, SessionState> = {};
+    sessions: Record<string, MixedSessionState> = {};
     version = SESSION_RECORD_VERSION;
 
     static deserialize(serialized: string): SessionRecord {
@@ -58,7 +58,7 @@ export class SessionRecord {
         }
 
         const record = new SessionRecord();
-        record.sessions = data.sessions as unknown as Record<string, SessionState>;
+        record.sessions = data.sessions;
         if (
             record.sessions === undefined ||
             record.sessions === null ||
@@ -77,12 +77,12 @@ export class SessionRecord {
         });
     }
 
-    haveOpenSession(): boolean {
+    hasOpenSession(): boolean {
         const openSession = this.getOpenSession();
         return !!openSession && typeof openSession.registrationId === "number";
     }
 
-    getSessionByBaseKey(baseKey: ArrayBuffer): SessionState | undefined {
+    getSessionByBaseKey(baseKey: ArrayBuffer): MixedSessionState | undefined {
         const session = this.sessions[util.toString(baseKey)];
         if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
             console.log("Tried to lookup a session using our basekey");
@@ -91,12 +91,12 @@ export class SessionRecord {
         return session;
     }
 
-    getSessionByRemoteEphemeralKey(remoteEphemeralKey: ArrayBuffer): SessionState | undefined {
+    getSessionByRemoteEphemeralKey(remoteEphemeralKey: ArrayBuffer): MixedSessionState | undefined {
         this.detectDuplicateOpenSessions();
         const sessions = this.sessions;
         const searchKey = util.toString(remoteEphemeralKey);
 
-        let openSession: SessionState | undefined;
+        let openSession: MixedSessionState | undefined;
         for (const key in sessions) {
             if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
                 continue;
@@ -111,7 +111,7 @@ export class SessionRecord {
         return openSession;
     }
 
-    getOpenSession(): SessionState | undefined {
+    getOpenSession(): MixedSessionState | undefined {
         const sessions = this.sessions;
         if (sessions === undefined) {
             return undefined;
@@ -128,7 +128,7 @@ export class SessionRecord {
     }
 
     detectDuplicateOpenSessions(): void {
-        let openSession: SessionState | undefined;
+        let openSession: MixedSessionState | undefined;
         const sessions = this.sessions;
         for (const key in sessions) {
             if (sessions[key].indexInfo.closed === -1) {
@@ -140,16 +140,16 @@ export class SessionRecord {
         }
     }
 
-    updateSessionState(session: SessionState): void {
+    updateSessionState(session: MixedSessionState): void {
         const sessions = this.sessions;
         this.#removeOldChains(session);
         sessions[util.toString(session.indexInfo.baseKey!)] = session;
         this.#removeOldSessions();
     }
 
-    getSessions(): SessionState[] {
-        let list: SessionState[] = [];
-        let openSession: SessionState | undefined;
+    getSessions(): MixedSessionState[] {
+        let list: MixedSessionState[] = [];
+        let openSession: MixedSessionState | undefined;
         for (const k in this.sessions) {
             if (this.sessions[k].indexInfo.closed === -1) {
                 openSession = this.sessions[k];
@@ -173,12 +173,12 @@ export class SessionRecord {
         }
     }
 
-    promoteState(session: SessionState): void {
+    promoteState(session: MixedSessionState): void {
         console.log("promoting session");
         session.indexInfo.closed = -1;
     }
 
-    #removeOldChains(session: SessionState): void {
+    #removeOldChains(session: MixedSessionState): void {
         while (session.oldRatchetList.length > OLD_RATCHETS_MAX_LENGTH) {
             let index = 0;
             let oldest = session.oldRatchetList[0];
@@ -197,7 +197,7 @@ export class SessionRecord {
     #removeOldSessions(): void {
         const sessions = this.sessions;
         let oldestBaseKey: string | undefined;
-        let oldestSession: SessionState | undefined;
+        let oldestSession: MixedSessionState | undefined;
         while (Object.keys(sessions).length > ARCHIVED_STATES_MAX_LENGTH) {
             for (const key in sessions) {
                 if (!Object.prototype.hasOwnProperty.call(sessions, key)) {

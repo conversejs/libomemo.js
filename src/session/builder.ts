@@ -4,29 +4,29 @@ import { queueJobForNumber } from "./lock";
 import { internalCrypto, HKDF } from "../crypto";
 import { OMEMOAddress } from "./address";
 import { BaseKeyType, ChainType, KeyPair } from "../types";
-import { PreKeyBundle, SessionState, SignalProtocolStore } from "./types";
+import { PreKeyBundle, SessionState, OMEMOStore, Direction } from "./types";
 
 /**
  * Establishes a new Signal Protocol session from a PreKey bundle.
  */
 export class SessionBuilder {
     #remoteAddress: OMEMOAddress;
-    #storage: SignalProtocolStore;
+    #store: OMEMOStore;
 
-    constructor(storage: SignalProtocolStore, remoteAddress: OMEMOAddress | string) {
+    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
                 ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
-        this.#storage = storage;
+        this.#store = store;
     }
 
     processPreKey(device: PreKeyBundle): Promise<void> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
-            const trusted = await this.#storage.isTrustedIdentity(
+            const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.getName(),
                 device.identityKey,
-                this.#storage.Direction.SENDING
+                Direction.SENDING
             );
 
             if (!trusted) {
@@ -61,7 +61,7 @@ export class SessionBuilder {
             }
 
             const address = this.#remoteAddress.toString();
-            const serialized = await this.#storage.loadSession(address);
+            const serialized = await this.#store.loadSession(address);
 
             const record =
                 serialized !== undefined
@@ -71,8 +71,8 @@ export class SessionBuilder {
             record.archiveCurrentState();
             record.updateSessionState(session);
             await Promise.all([
-                this.#storage.storeSession(address, record.serialize()),
-                this.#storage.saveIdentity(
+                this.#store.storeSession(address, record.serialize()),
+                this.#store.saveIdentity(
                     this.#remoteAddress.toString(),
                     session.indexInfo.remoteIdentityKey
                 ),
@@ -89,10 +89,10 @@ export class SessionBuilder {
 
         const identityKeyAB = message.identityKey.slice().buffer as ArrayBuffer;
 
-        const trusted = await this.#storage.isTrustedIdentity(
+        const trusted = await this.#store.isTrustedIdentity(
             this.#remoteAddress.getName(),
             identityKeyAB,
-            this.#storage.Direction.RECEIVING
+            Direction.RECEIVING
         );
 
         if (!trusted) {
@@ -102,8 +102,8 @@ export class SessionBuilder {
         }
 
         const results = await Promise.all([
-            this.#storage.loadPreKey(message.preKeyId),
-            this.#storage.loadSignedPreKey(message.signedPreKeyId),
+            this.#store.loadPreKey(message.preKeyId),
+            this.#store.loadSignedPreKey(message.signedPreKeyId),
         ]);
 
         const preKeyPair = results[0];
@@ -139,7 +139,7 @@ export class SessionBuilder {
 
         record.updateSessionState(newSession);
 
-        await this.#storage.saveIdentity(this.#remoteAddress.toString(), identityKeyAB);
+        await this.#store.saveIdentity(this.#remoteAddress.toString(), identityKeyAB);
         return message.preKeyId;
     }
 
@@ -152,7 +152,8 @@ export class SessionBuilder {
         theirSignedPubKey: ArrayBuffer | undefined,
         registrationId: number
     ): Promise<SessionState> {
-        const ourIdentityKey = await this.#storage.getIdentityKeyPair();
+        const ourIdentityKey = await this.#store.getIdentityKeyPair();
+        if (!ourIdentityKey) throw new Error("No identity keypair to init session with");
 
         if (isInitiator) {
             if (ourSignedKey !== undefined) {

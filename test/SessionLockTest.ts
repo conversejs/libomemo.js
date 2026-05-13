@@ -9,12 +9,12 @@ describe("SessionLock", function () {
         });
 
         it("serializes jobs for the same number", async function () {
-            const order = [];
+            const order: string[] = [];
             const number = "serialize_test";
 
             await queueJobForNumber(number, () => {
                 order.push("start1");
-                return new Promise((resolve) => {
+                return new Promise<void>((resolve) => {
                     setTimeout(() => {
                         order.push("end1");
                         resolve();
@@ -24,7 +24,7 @@ describe("SessionLock", function () {
 
             await queueJobForNumber(number, () => {
                 order.push("start2");
-                return new Promise((resolve) => {
+                return new Promise<void>((resolve) => {
                     order.push("end2");
                     resolve();
                 });
@@ -34,10 +34,10 @@ describe("SessionLock", function () {
         });
 
         it("allows concurrent execution for different numbers", async function () {
-            const order = [];
+            const order: string[] = [];
             const job1 = queueJobForNumber("num1", function () {
                 order.push("start1");
-                return new Promise((resolve) => {
+                return new Promise<void>((resolve) => {
                     setTimeout(() => {
                         order.push("end1");
                         resolve();
@@ -47,7 +47,7 @@ describe("SessionLock", function () {
 
             const job2 = queueJobForNumber("num2", function () {
                 order.push("start2");
-                return new Promise((resolve) => {
+                return new Promise<void>((resolve) => {
                     order.push("end2");
                     resolve();
                 });
@@ -75,7 +75,7 @@ describe("SessionLock", function () {
 
         it("continues running subsequent jobs after a job fails", function () {
             const number = "continue_after_error";
-            const results = [];
+            const results: string[] = [];
 
             return queueJobForNumber(number, function () {
                 return Promise.reject(new Error("fail"));
