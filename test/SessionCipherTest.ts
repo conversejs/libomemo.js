@@ -1,40 +1,46 @@
+// @ts-nocheck
 import { assert } from "chai";
-import { SessionBuilder, SessionCipher, OMEMOAddress, util } from "../src/index.js";
-import { SessionRecord } from "../src/session/record.js";
-import { internalCrypto } from "../src/crypto.js";
-import { loadProtocolMessages, loadPushMessages } from "../src/protobufs.js";
-import { generateIdentity, generatePreKeyBundle } from "./utils.js";
-import { TestVectors } from "./testvectors.js";
-import SignalProtocolStore from "./InMemorySignalProtocolStore.js";
-import { BaseKeyType } from "../src/types.js";
+import { SessionBuilder, SessionCipher, OMEMOAddress, util } from "../src/index";
+import { SessionRecord } from "../src/session/record";
+import { internalCrypto } from "../src/crypto";
+import { loadProtocolMessages, loadPushMessages } from "../src/protobufs";
+import { generateIdentity, generatePreKeyBundle } from "./utils";
+import { TestVectors } from "./testvectors";
+import TestOMEMOStore from "./InMemorySignalProtocolStore";
+import { BaseKeyType } from "../src/types";
 
 describe("SessionCipher", function () {
     describe("getRemoteRegistrationId", function () {
-        const store = new SignalProtocolStore();
+        const store = new TestOMEMOStore();
         const registrationId = 1337;
         const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
 
         describe("when an open record exists", function () {
             before(async () => {
-                const record = new SessionRecord(registrationId);
+                const record = new SessionRecord();
                 const session = {
                     registrationId: registrationId,
                     currentRatchet: {
                         rootKey: new ArrayBuffer(32),
                         lastRemoteEphemeralKey: new ArrayBuffer(32),
                         previousCounter: 0,
+                        ephemeralKeyPair: {
+                            privKey: new ArrayBuffer(32),
+                            pubKey: new ArrayBuffer(32),
+                        },
                     },
                     indexInfo: {
                         baseKey: new ArrayBuffer(32),
                         baseKeyType: BaseKeyType.OURS,
-                        remoteIdentityKey: new ArrayBuffer(32),
                         closed: -1,
+                        remoteIdentityKey: new ArrayBuffer(32),
                     },
                     oldRatchetList: [],
+                    ephemeralKey: new ArrayBuffer(32),
                 };
                 record.updateSessionState(session);
-                await store.storeSession(address.toString(), record.serialize());
+                store.storeSession(address.toString(), record.serialize());
             });
 
             it("returns a valid registrationId", async function () {
@@ -53,7 +59,7 @@ describe("SessionCipher", function () {
     });
 
     describe("hasOpenSession", function () {
-        const store = new SignalProtocolStore();
+        const store = new TestOMEMOStore();
         const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
 
@@ -66,6 +72,10 @@ describe("SessionCipher", function () {
                         rootKey: new ArrayBuffer(32),
                         lastRemoteEphemeralKey: new ArrayBuffer(32),
                         previousCounter: 0,
+                        ephemeralKeyPair: {
+                            privKey: new ArrayBuffer(32),
+                            pubKey: new ArrayBuffer(32),
+                        },
                     },
                     indexInfo: {
                         baseKey: new ArrayBuffer(32),
@@ -74,13 +84,17 @@ describe("SessionCipher", function () {
                         closed: -1,
                     },
                     oldRatchetList: [],
+                    ephemeralKeyPair: {
+                        privKey: new ArrayBuffer(32),
+                        pubKey: new ArrayBuffer(32),
+                    },
                 };
                 record.updateSessionState(session);
-                await store.storeSession(address.toString(), record.serialize());
+                store.storeSession(address.toString(), record.serialize());
             });
 
             it("returns true", async function () {
-                const value = await sessionCipher.hasOpenSession(address.toString());
+                const value = await sessionCipher.hasOpenSession();
                 assert.isTrue(value);
             });
         });
@@ -88,17 +102,17 @@ describe("SessionCipher", function () {
         describe("no open session exists", function () {
             before(async function () {
                 const record = new SessionRecord();
-                await store.storeSession(address.toString(), record.serialize());
+                store.storeSession(address.toString(), record.serialize());
             });
 
             it("returns false", async function () {
-                const value = await sessionCipher.hasOpenSession(address.toString());
+                const value = await sessionCipher.hasOpenSession();
                 assert.isFalse(value);
             });
         });
         describe("when there is no session", function () {
             it("returns false", async function () {
-                const value = await sessionCipher.hasOpenSession("bar");
+                const value = await sessionCipher.hasOpenSession();
                 assert.isFalse(value);
             });
         });
@@ -165,10 +179,11 @@ describe("SessionCipher", function () {
             .then(async () => {
                 const sessionCipher = new SessionCipher(store, address);
                 const pushMessages = await loadPushMessages();
-                if (data.type == pushMessages.IncomingPushMessageSignal.Type.CIPHERTEXT) {
-                    return sessionCipher.decryptWhisperMessage(data.message).then(unpad);
-                } else if (data.type == pushMessages.IncomingPushMessageSignal.Type.PREKEY_BUNDLE) {
-                    return sessionCipher.decryptPreKeyWhisperMessage(data.message).then(unpad);
+                const Type = pushMessages.IncomingPushMessageSignal.Type;
+                if (data.type == Type.CIPHERTEXT) {
+                    return sessionCipher.decryptWhisperMessage(data.message, "binary").then(unpad);
+                } else if (data.type == Type.PREKEY_BUNDLE) {
+                    return sessionCipher.decryptPreKeyWhisperMessage(data.message, "binary").then(unpad);
                 } else {
                     throw new Error("Unknown data type in test vector");
                 }
@@ -328,7 +343,7 @@ describe("SessionCipher", function () {
                 }
             });
 
-            const store = new SignalProtocolStore();
+            const store = new TestOMEMOStore();
             const address = OMEMOAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
                 it(getDescription(step), function (done) {
@@ -350,13 +365,15 @@ describe("SessionCipher", function () {
     describe("encoding parameter", function () {
         const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
         const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
-        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
-        const aliceStore = new SignalProtocolStore();
-        const bobStore = new SignalProtocolStore();
+        const originalMessage = util.toArrayBuffer(
+            "L'homme est condamné à être libre"
+        ) as ArrayBuffer;
+        const aliceStore = new TestOMEMOStore();
+        const bobStore = new TestOMEMOStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        let bobSessionCipher, aliceSessionCipher;
+        let bobSessionCipher: SessionCipher, aliceSessionCipher: SessionCipher;
 
         before(async function () {
             await Promise.all([aliceStore, bobStore].map(generateIdentity));
@@ -369,9 +386,9 @@ describe("SessionCipher", function () {
             return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
 
-        function hexEncode(str) {
+        function hexEncode(str: string) {
             return Array.from(str)
-                .map(function (c) {
+                .map(function (c: string) {
                     return ("0" + c.charCodeAt(0).toString(16)).slice(-2);
                 })
                 .join("");
@@ -410,11 +427,13 @@ describe("SessionCipher", function () {
     describe("key changes", function () {
         const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
         const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
-        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const originalMessage = util.toArrayBuffer(
+            "L'homme est condamné à être libre"
+        ) as ArrayBuffer;
 
-        const aliceStore = new SignalProtocolStore();
+        const aliceStore = new TestOMEMOStore();
 
-        const bobStore = new SignalProtocolStore();
+        const bobStore = new TestOMEMOStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -431,16 +450,16 @@ describe("SessionCipher", function () {
         });
 
         describe("When bob's identity changes", function () {
-            let messageFromBob;
+            let messageFromBob: { body: string };
 
             before(async function () {
                 messageFromBob = await bobSessionCipher.encrypt(originalMessage);
 
-                generateIdentity(bobStore);
+                await generateIdentity(bobStore);
 
                 return aliceStore.saveIdentity(
                     BOB_ADDRESS.toString(),
-                    bobStore.get("identityKey").pubKey
+                    (bobStore.get("identityKey") as any).pubKey
                 );
             });
 

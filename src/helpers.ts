@@ -1,4 +1,4 @@
-import { JSONValue } from "./types";
+import { JSONValue } from "./session/types";
 
 type BinaryData = string | ArrayBuffer | Uint8Array;
 

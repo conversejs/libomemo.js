@@ -1,5 +1,6 @@
 import { internalCrypto, getRandomBytes } from "./crypto";
 import { isNonNegativeInteger } from "./helpers";
+import { KeyId } from "./session/types";
 import { KeyPair, PreKey, SignedPreKey } from "./types";
 
 export const KeyHelper = {
@@ -37,7 +38,7 @@ export const KeyHelper = {
         };
     },
 
-    async generatePreKey(keyId: number): Promise<PreKey> {
+    async generatePreKey(keyId: KeyId): Promise<PreKey> {
         if (!isNonNegativeInteger(keyId)) {
             throw new TypeError(`Invalid argument for keyId: ${keyId}`);
         }

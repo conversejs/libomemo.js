@@ -1,8 +1,9 @@
 import { assert } from "chai";
 import { OMEMOAddress } from "../src/index.js";
 import { assertEqualArrayBuffers } from "./utils.js";
+import { OMEMOStore } from "../src/session/types.js";
 
-export function testSessionStore(store) {
+export function testSessionStore(store: OMEMOStore): void {
     const number = "+5558675309";
     const testRecord = "an opaque string";
     describe("SessionStore", function () {
@@ -15,10 +16,10 @@ export function testSessionStore(store) {
             });
 
             it("stores sessions encoded as array buffers", async function () {
-                const testRecord = new Uint8Array([1, 2, 3]).buffer;
-                await store.storeSession(address.toString(), testRecord);
+                const testRecordBuffer = new Uint8Array([1, 2, 3]).buffer;
+                await store.storeSession(address.toString(), testRecordBuffer as unknown as string);
                 const record = await store.loadSession(address.toString());
-                assertEqualArrayBuffers(testRecord, record);
+                assertEqualArrayBuffers(testRecordBuffer, record as unknown as ArrayBuffer);
             });
         });
 

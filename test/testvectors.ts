@@ -1,11 +1,18 @@
 import { hexToArrayBuffer, hexToUint8Array } from "./utils.js";
 
-export const TestVectors = (function () {
+type TestVectorEntry = [string, Record<string, unknown>];
+
+interface TestVector {
+    name: string;
+    vectors: TestVectorEntry[];
+}
+
+export const TestVectors = (function (): TestVector[] {
     // We're gonna throw the finalized tests in here:
-    const tests = [];
+    const tests: TestVector[] = [];
 
     // The common-case ALICE test vectors themselves...
-    const TwoPartyTestVectorsAlice = [
+    const TwoPartyTestVectorsAlice: TestVectorEntry[] = [
         [
             "sendMessage",
             {
@@ -99,8 +106,8 @@ export const TestVectors = (function () {
         vectors: TwoPartyTestVectorsAlice,
     };
 
-    tests[tests.length] = (function () {
-        const test = [];
+    tests[tests.length] = (function (): TestVector {
+        const test: TestVectorEntry[] = [];
         test[0] = TwoPartyTestVectorsAlice[0];
         test[1] = TwoPartyTestVectorsAlice[1];
 
@@ -127,7 +134,7 @@ export const TestVectors = (function () {
     })();
 
     // The common-case BOB test vectors themselves...
-    const TwoPartyTestVectorsBob = [
+    const TwoPartyTestVectorsBob: TestVectorEntry[] = [
         [
             "receiveMessage",
             {
@@ -201,13 +208,11 @@ export const TestVectors = (function () {
         vectors: TwoPartyTestVectorsBob,
     };
 
-    const TwoPartyTestVectorsBobCopy = function () {
+    const TwoPartyTestVectorsBobCopy = function (): TestVectorEntry[] {
         const orig = TwoPartyTestVectorsBob;
-        const v = [];
+        const v: TestVectorEntry[] = [];
         for (let i = 0; i < TwoPartyTestVectorsBob.length; i++) {
-            v[i] = [];
-            v[i][0] = orig[i][0];
-            v[i][1] = orig[i][1];
+            v[i] = [orig[i][0], orig[i][1]] as TestVectorEntry;
         }
         return v;
     };
@@ -301,7 +306,7 @@ export const TestVectors = (function () {
     })();
 
     // Test vectors around an end-session
-    const EndSessionTestVectorsBob = [
+    const EndSessionTestVectorsBob: TestVectorEntry[] = [
         [
             "receiveMessage",
             {
@@ -397,13 +402,11 @@ export const TestVectors = (function () {
         vectors: EndSessionTestVectorsBob,
     };
 
-    const EndSessionTestVectorsBobCopy = function () {
+    const EndSessionTestVectorsBobCopy = function (): TestVectorEntry[] {
         const orig = EndSessionTestVectorsBob;
-        const v = [];
+        const v: TestVectorEntry[] = [];
         for (let i = 0; i < EndSessionTestVectorsBob.length; i++) {
-            v[i] = [];
-            v[i][0] = orig[i][0];
-            v[i][1] = orig[i][1];
+            v[i] = [orig[i][0], orig[i][1]] as TestVectorEntry;
         }
         return v;
     };
@@ -520,7 +523,7 @@ export const TestVectors = (function () {
     })();
 
     // Nearly same as above except as Alice
-    const EndSessionTestVectorsAlice = [
+    const EndSessionTestVectorsAlice: TestVectorEntry[] = [
         [
             "sendMessage",
             {

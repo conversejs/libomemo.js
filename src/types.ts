@@ -1,11 +1,3 @@
-export type JSONValue =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: JSONValue }
-    | JSONValue[];
-
 export enum ChainType {
     SENDING = 1,
     RECEIVING = 2,
@@ -15,6 +7,8 @@ export enum BaseKeyType {
     OURS = 1,
     THEIRS = 2,
 }
+
+export type Key = ArrayBuffer | string;
 
 export interface KeyPair {
     pubKey: ArrayBuffer;

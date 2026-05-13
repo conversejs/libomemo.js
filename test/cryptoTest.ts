@@ -146,7 +146,7 @@ describe("Crypto", function () {
         const sig = hexToArrayBuffer(
             "f029e99d7ed021db4c43a5b4fcca65fcd4984114ac6041df30c10b6f3a3eb50a84b890ca0203c90189239287144a7f234c3a369a79eca0aea94925631335e50d"
         );
-        describe("Ed25519Sign", async function () {
+        describe("Ed25519Sign", function () {
             // Some self-generated test vectors
             it("works", async function () {
                 const sigCalc = await internalCrypto.Ed25519Sign(priv, msg);
@@ -166,7 +166,7 @@ describe("Crypto", function () {
                     error = e;
                 }
                 expect(error).to.be.an.instanceof(Error);
-                assert.equal(error.message, "Invalid signature");
+                assert.equal((error as Error).message, "Invalid signature");
             });
 
             it("does not throw on good signature", function () {

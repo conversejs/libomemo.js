@@ -4,8 +4,8 @@ import { util } from "../src/index.js";
 describe("util", function () {
     describe("isEqual", function () {
         it("returns false when either a or b is undefined", function () {
-            assert.isFalse(util.isEqual("defined value", undefined));
-            assert.isFalse(util.isEqual(undefined, "defined value"));
+            assert.isFalse(util.isEqual("defined value", undefined as unknown as string));
+            assert.isFalse(util.isEqual(undefined as unknown as string, "defined value"));
         });
         it("returns true when a and b are equal", function () {
             const a = "same value";
@@ -102,7 +102,7 @@ describe("util", function () {
 
         it("roundtrips binary string through toArrayBuffer and toString", function () {
             const str = "\x00\xFF\x80\x7F\x01";
-            const buf = util.toArrayBuffer(str);
+            const buf = util.toArrayBuffer(str)!;
             const back = util.toString(buf);
             assert.strictEqual(back, str);
         });
@@ -112,7 +112,7 @@ describe("util", function () {
             const view = new Uint8Array(buf);
             view.set([0, 127, 128, 255, 42]);
             const str = util.toString(buf);
-            const back = util.toArrayBuffer(str);
+            const back = util.toArrayBuffer(str)!;
             const backView = new Uint8Array(back);
             for (let i = 0; i < 5; i++) {
                 assert.strictEqual(backView[i], view[i]);
@@ -122,14 +122,14 @@ describe("util", function () {
         it("throws for non-string, non-buffer types", function () {
             assert.throw(
                 function () {
-                    util.toArrayBuffer(42);
+                    util.toArrayBuffer(42 as unknown as string);
                 },
                 Error,
                 /non-string/
             );
             assert.throw(
                 function () {
-                    util.toArrayBuffer({});
+                    util.toArrayBuffer({} as unknown as string);
                 },
                 Error,
                 /non-string/

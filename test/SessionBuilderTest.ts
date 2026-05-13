@@ -1,8 +1,8 @@
 import { assert, expect } from "chai";
-import { SessionBuilder, SessionCipher, OMEMOAddress, KeyHelper, util } from "../src/index.js";
-import { SessionRecord } from "../src/session/record.js";
-import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from "./utils.js";
-import SignalProtocolStore from "./InMemorySignalProtocolStore.js";
+import { SessionBuilder, SessionCipher, OMEMOAddress, KeyHelper, util } from "../src/index";
+import { SessionRecord } from "../src/session/record";
+import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from "./utils";
+import TestOMEMOStore from "./InMemorySignalProtocolStore";
 
 describe("SessionBuilder", function () {
     this.timeout(5000);
@@ -11,9 +11,9 @@ describe("SessionBuilder", function () {
     const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
 
     describe("basic prekey v3", function () {
-        const aliceStore = new SignalProtocolStore();
+        const aliceStore = new TestOMEMOStore();
 
-        const bobStore = new SignalProtocolStore();
+        const bobStore = new TestOMEMOStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -24,15 +24,17 @@ describe("SessionBuilder", function () {
             await builder.processPreKey(preKeyBundle);
         });
 
-        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const originalMessage = util.toArrayBuffer(
+            "L'homme est condamné à être libre"
+        ) as ArrayBuffer;
         const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
         const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", async function () {
-            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
             const sessionRecord = SessionRecord.deserialize(record);
-            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isTrue(sessionRecord.hasOpenSession());
             assert.isDefined(sessionRecord.getOpenSession());
         });
 
@@ -63,10 +65,10 @@ describe("SessionBuilder", function () {
             );
             const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
             await builder.processPreKey(preKeyBundle);
-            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
             const sessionRecord = SessionRecord.deserialize(record);
-            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isTrue(sessionRecord.hasOpenSession());
             assert.isDefined(sessionRecord.getOpenSession());
         });
 
@@ -79,20 +81,25 @@ describe("SessionBuilder", function () {
                 await builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId: 12356,
+                    signedPreKey: {
+                        keyId: 1,
+                        publicKey: new ArrayBuffer(32),
+                        signature: new ArrayBuffer(32),
+                    },
                 });
             } catch (e) {
                 error = e;
             }
 
             expect(error).to.be.an.instanceof(Error);
-            assert.equal(error.message, "Identity key changed");
+            assert.equal((error as Error).message, "Identity key changed");
         });
     });
 
     describe("basic v3 NO PREKEY", function () {
-        const aliceStore = new SignalProtocolStore();
+        const aliceStore = new TestOMEMOStore();
 
-        const bobStore = new SignalProtocolStore();
+        const bobStore = new TestOMEMOStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -104,15 +111,17 @@ describe("SessionBuilder", function () {
             await builder.processPreKey(preKeyBundle);
         });
 
-        const originalMessage = util.toArrayBuffer("L'homme est condamné à être libre");
+        const originalMessage = util.toArrayBuffer(
+            "L'homme est condamné à être libre"
+        ) as ArrayBuffer;
         const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
         const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
 
         it("creates a session", async function () {
-            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
             const sessionRecord = SessionRecord.deserialize(record);
-            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isTrue(sessionRecord.hasOpenSession());
             assert.isDefined(sessionRecord.getOpenSession());
         });
 
@@ -145,10 +154,10 @@ describe("SessionBuilder", function () {
             delete preKeyBundle.preKey;
             const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
             await builder.processPreKey(preKeyBundle);
-            const record = await aliceStore.loadSession(BOB_ADDRESS.toString());
+            const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
             const sessionRecord = SessionRecord.deserialize(record);
-            assert.isTrue(sessionRecord.haveOpenSession());
+            assert.isTrue(sessionRecord.hasOpenSession());
             assert.isDefined(sessionRecord.getOpenSession());
         });
 
@@ -160,12 +169,17 @@ describe("SessionBuilder", function () {
                 await builder.processPreKey({
                     identityKey: newIdentity.pubKey,
                     registrationId: 12356,
+                    signedPreKey: {
+                        keyId: 1,
+                        publicKey: new ArrayBuffer(32),
+                        signature: new ArrayBuffer(32),
+                    },
                 });
             } catch (e) {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual(error.message, "Identity key changed");
+            assert.strictEqual((error as Error).message, "Identity key changed");
         });
     });
 });

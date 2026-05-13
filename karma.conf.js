@@ -4,18 +4,25 @@ import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
 import esbuild from "rollup-plugin-esbuild";
 import { onwarn } from "./rollup.config.js";
+import fs from "fs";
 
 function resolveTsFromJs() {
     return {
         name: "resolve-ts-from-js",
         resolveId(source, importer) {
-            if (
-                source.endsWith(".js") &&
-                (source.startsWith("../src/") || source.startsWith("./src/"))
-            ) {
-                if (importer) {
-                    const tsPath = source.replace(/\.js$/, ".ts");
-                    return path.resolve(path.dirname(importer), tsPath);
+            if (!source.endsWith(".js") || !importer) {
+                return null;
+            }
+            if (source.startsWith("../src/") || source.startsWith("./src/")) {
+                const tsPath = source.replace(/\.js$/, ".ts");
+                return path.resolve(path.dirname(importer), tsPath);
+            }
+            // Also resolve .js imports within test/ directory to .ts files
+            if (source.startsWith("./") || source.startsWith("../")) {
+                const tsPath = source.replace(/\.js$/, ".ts");
+                const resolved = path.resolve(path.dirname(importer), tsPath);
+                if (fs.existsSync(resolved)) {
+                    return resolved;
                 }
             }
             return null;
@@ -38,18 +45,18 @@ export default function (config) {
             "node_modules/mocha/mocha.js",
             "node_modules/mocha/mocha.css",
             {
-                pattern: "test/support/karma-setup.js",
+                pattern: "test/support/karma-setup.ts",
                 included: true,
                 served: true,
                 watched: false,
             },
-            "test/**/*.js",
+            "test/**/*.ts",
         ],
 
-        exclude: ["test/*~", "test/integration.js", "test/allTests.js"],
+        exclude: ["test/*~"],
 
         preprocessors: {
-            "test/**/*.js": ["rollup"],
+            "test/**/*.ts": ["rollup"],
         },
 
         rollupPreprocessor: {
