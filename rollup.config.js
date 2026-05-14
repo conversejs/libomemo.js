@@ -20,17 +20,26 @@ export default [
             {
                 file: "dist/libomemo.esm.js",
                 format: "es",
+                sourcemap: true,
             },
             {
                 file: "dist/libomemo.umd.js",
                 format: "umd",
                 name: "libomemo",
                 exports: "named",
+                sourcemap: true,
+            },
+            {
+                file: "dist/libomemo.umd.js",
+                format: "umd",
+                name: "libomemo",
+                exports: "named",
+                sourcemap: true,
             },
         ],
         plugins: [
             string({ include: "**/*.proto" }),
-            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: false }),
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
         ],
@@ -42,9 +51,10 @@ export default [
         output: {
             file: "dist/libomemo-worker.js",
             format: "iife",
+            sourcemap: true,
         },
         plugins: [
-            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: false }),
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
         ],
