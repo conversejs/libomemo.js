@@ -130,7 +130,7 @@ export class Curve25519 {
         const signature_ptr = this.#allocate(module, new Uint8Array(sig));
         const message_ptr = this.#allocate(module, new Uint8Array(message));
 
-        const res = module._xed25519_verify(
+        const res = module._curve25519_verify(
             signature_ptr,
             publicKey_ptr,
             message_ptr,
