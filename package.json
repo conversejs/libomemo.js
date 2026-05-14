@@ -26,7 +26,7 @@
         "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "lint:fix": "eslint --fix \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "typecheck": "tsc --noEmit",
-        "test": "rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
+        "test": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
         "test:browser": "karma start karma.conf.js --browsers Chrome"
     },
     "dependencies": {
