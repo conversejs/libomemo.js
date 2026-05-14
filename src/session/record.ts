@@ -19,7 +19,7 @@ const migrations: Migration[] = [
                 }
             } else {
                 for (const key in sessions) {
-                    if (sessions[key].indexInfo.closed === -1) {
+                    if (SessionRecord.isSessionOpen(sessions[key])) {
                         console.log(
                             "V1 session storage migration error: registrationId",
                             data.registrationId,
@@ -188,6 +188,10 @@ export class SessionRecord {
         );
     }
 
+    static isSessionOpen({ indexInfo }: SessionState | SerializedSessionState): boolean {
+        return indexInfo.closed === -1;
+    }
+
     serialize(): string {
         return jsonThing({
             sessions: this.sessions,
@@ -219,7 +223,7 @@ export class SessionRecord {
             if (!Object.prototype.hasOwnProperty.call(sessions, key)) {
                 continue;
             }
-            if (sessions[key].indexInfo.closed === -1) {
+            if (SessionRecord.isSessionOpen(sessions[key])) {
                 openSession = sessions[key];
             }
             if (sessions[key][searchKey] !== undefined) {
@@ -238,7 +242,7 @@ export class SessionRecord {
         this.detectDuplicateOpenSessions();
 
         for (const key in sessions) {
-            if (sessions[key].indexInfo.closed === -1) {
+            if (SessionRecord.isSessionOpen(sessions[key])) {
                 return sessions[key];
             }
         }
@@ -249,7 +253,7 @@ export class SessionRecord {
         let openSession: SessionState | undefined;
         const sessions = this.sessions;
         for (const key in sessions) {
-            if (sessions[key].indexInfo.closed === -1) {
+            if (SessionRecord.isSessionOpen(sessions[key])) {
                 if (openSession !== undefined) {
                     throw new Error("Datastore inconsistensy: multiple open sessions");
                 }
@@ -269,7 +273,7 @@ export class SessionRecord {
         let list: SessionState[] = [];
         let openSession: SessionState | undefined;
         for (const k in this.sessions) {
-            if (this.sessions[k].indexInfo.closed === -1) {
+            if (SessionRecord.isSessionOpen(this.sessions[k])) {
                 openSession = this.sessions[k];
             } else {
                 list.push(this.sessions[k]);
