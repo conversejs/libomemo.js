@@ -32,7 +32,7 @@ interface Curve25519EmscriptenModule {
         msg_len: number
     ): number;
 
-    /** Ed25519 verification (cross-curve variant for OMEMO).
+    /** Ed25519 verification (cross-curve variant for OMEMO, sign-bit forced to zero).
      *  @param sig_ptr Pointer to 64-byte signature
      *  @param pub_ptr Pointer to 32-byte public key
      *  @param msg_ptr Pointer to message buffer
@@ -40,6 +40,20 @@ interface Curve25519EmscriptenModule {
      *  @returns 0 if signature is valid, non-zero if invalid
      */
     _xed25519_verify(
+        sig_ptr: number,
+        pub_ptr: number,
+        msg_ptr: number,
+        msg_len: number
+    ): number;
+
+    /** Ed25519 verification (legacy variant, reads sign bit from signature).
+     *  @param sig_ptr Pointer to 64-byte signature
+     *  @param pub_ptr Pointer to 32-byte public key
+     *  @param msg_ptr Pointer to message buffer
+     *  @param msg_len Length of message in bytes
+     *  @returns 0 if signature is valid, non-zero if invalid
+     */
+    _curve25519_verify(
         sig_ptr: number,
         pub_ptr: number,
         msg_ptr: number,

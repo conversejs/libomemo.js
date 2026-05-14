@@ -1616,6 +1616,11 @@ var _free = Module["_free"] = function() {
 };
 
 /** @type {function(...*):?} */
+var _curve25519_verify = Module["_curve25519_verify"] = function() {
+  return (_curve25519_verify = Module["_curve25519_verify"] = Module["asm"]["curve25519_verify"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
 var _sph_sha512_init = Module["_sph_sha512_init"] = function() {
   return (_sph_sha512_init = Module["_sph_sha512_init"] = Module["asm"]["sph_sha512_init"]).apply(null, arguments);
 };
