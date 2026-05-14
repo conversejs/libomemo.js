@@ -1,17 +1,46 @@
-// @ts-nocheck
 import { assert } from "chai";
 import { SessionBuilder, SessionCipher, OMEMOAddress, util } from "../src/index";
 import { SessionRecord } from "../src/session/record";
 import { internalCrypto } from "../src/crypto";
 import { loadProtocolMessages, loadPushMessages } from "../src/protobufs";
 import { generateIdentity, generatePreKeyBundle } from "./utils";
-import { TestVectors } from "./testvectors";
-import TestOMEMOStore from "./InMemorySignalProtocolStore";
-import { BaseKeyType } from "../src/types";
+import { SendMessageData, ReceiveMessageData, TestVectors, TestVectorEntry } from "./testvectors";
+import { BaseKeyType, KeyPair, SignedPreKey } from "../src/types";
+import { OMEMOStore } from "../src/session/types";
+import InMemoryStore from "../src/session/store";
+
+enum PushMessageType {
+    CIPHERTEXT = 1,
+    PREKEY_BUNDLE = 3,
+}
+
+enum PushMessageFlags {
+    END_SESSION = 1,
+}
+
+interface PushMessageContentDecoded {
+    body?: string;
+    flags?: number;
+}
+
+interface PushMessageContentProto {
+    create(data?: { body?: string; flags?: number }): Record<string, unknown>;
+    encode(data: Record<string, unknown>): { finish(): Uint8Array };
+    decode(data: Uint8Array): PushMessageContentDecoded;
+}
+
+interface IncomingPushMessageSignalProto {
+    Type: typeof PushMessageType;
+}
+
+interface PushMessagesTyped {
+    IncomingPushMessageSignal: IncomingPushMessageSignalProto;
+    PushMessageContent: PushMessageContentProto;
+}
 
 describe("SessionCipher", function () {
     describe("getRemoteRegistrationId", function () {
-        const store = new TestOMEMOStore();
+        const store = new InMemoryStore();
         const registrationId = 1337;
         const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
@@ -59,7 +88,7 @@ describe("SessionCipher", function () {
     });
 
     describe("hasOpenSession", function () {
-        const store = new TestOMEMOStore();
+        const store = new InMemoryStore();
         const address = new OMEMOAddress("foo", 1);
         const sessionCipher = new SessionCipher(store, address.toString());
 
@@ -118,7 +147,11 @@ describe("SessionCipher", function () {
         });
     });
 
-    async function setupReceiveStep(store, data, privKeyQueue) {
+    async function setupReceiveStep(
+        store: OMEMOStore,
+        data: ReceiveMessageData,
+        privKeyQueue: ArrayBuffer[]
+    ) {
         if (data.newEphemeralKey !== undefined) {
             privKeyQueue.push(data.newEphemeralKey);
         }
@@ -131,15 +164,15 @@ describe("SessionCipher", function () {
         store.put("identityKey", keyPair);
 
         const signedKeyPair = await internalCrypto.createKeyPair(data.ourSignedPreKey);
-        store.storeSignedPreKey(data.signedPreKeyId, signedKeyPair);
+        await store.storeSignedPreKey(data.signedPreKeyId, signedKeyPair);
 
         if (data.ourPreKey !== undefined) {
             const keyPair = await internalCrypto.createKeyPair(data.ourPreKey);
-            store.storePreKey(data.preKeyId, keyPair);
+            await store.storePreKey(data.preKeyId, keyPair);
         }
     }
 
-    function getPaddedMessageLength(messageLength) {
+    function getPaddedMessageLength(messageLength: number) {
         const messageLengthWithTerminator = messageLength + 1;
         let messagePartCount = Math.floor(messageLengthWithTerminator / 160);
 
@@ -150,7 +183,7 @@ describe("SessionCipher", function () {
         return messagePartCount * 160;
     }
 
-    function pad(plaintext) {
+    function pad(plaintext: ArrayBuffer | Uint8Array<ArrayBufferLike>): ArrayBuffer {
         const paddedPlaintext = new Uint8Array(
             getPaddedMessageLength(plaintext.byteLength + 1) - 1
         );
@@ -160,9 +193,10 @@ describe("SessionCipher", function () {
         return paddedPlaintext.buffer;
     }
 
-    function unpad(paddedPlaintext) {
+    function unpad(paddedPlaintext: ArrayBuffer | Uint8Array) {
         paddedPlaintext = new Uint8Array(paddedPlaintext);
-        let plaintext;
+        let plaintext: Uint8Array = new Uint8Array();
+
         for (let i = paddedPlaintext.length - 1; i >= 0; i--) {
             if (paddedPlaintext[i] == 0x80) {
                 plaintext = paddedPlaintext.subarray(0, i);
@@ -171,45 +205,58 @@ describe("SessionCipher", function () {
                 throw new Error("Invalid padding");
             }
         }
+
+        if (!plaintext.length) {
+            console.error("Could not unpad", paddedPlaintext);
+            throw new Error("Could not unpad");
+        }
+
         return plaintext;
     }
 
-    function doReceiveStep(store, data, privKeyQueue, address) {
-        return setupReceiveStep(store, data, privKeyQueue)
-            .then(async () => {
-                const sessionCipher = new SessionCipher(store, address);
-                const pushMessages = await loadPushMessages();
-                const Type = pushMessages.IncomingPushMessageSignal.Type;
-                if (data.type == Type.CIPHERTEXT) {
-                    return sessionCipher.decryptWhisperMessage(data.message, "binary").then(unpad);
-                } else if (data.type == Type.PREKEY_BUNDLE) {
-                    return sessionCipher.decryptPreKeyWhisperMessage(data.message, "binary").then(unpad);
-                } else {
-                    throw new Error("Unknown data type in test vector");
-                }
-            })
-            .then(async (plaintext) => {
-                // Check result
-                const pushMessages = await loadPushMessages();
-                const content = pushMessages.PushMessageContent.decode(new Uint8Array(plaintext));
-                if (data.expectTerminateSession) {
-                    if (content.flags == pushMessages.PushMessageContent.Flags.END_SESSION) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-                return content.body == data.expectedSmsText;
-            })
-            .catch(function checkException(e) {
-                if (data.expectException) {
-                    return true;
-                }
-                throw e;
-            });
+    async function doReceiveStep(
+        store: OMEMOStore,
+        data: ReceiveMessageData,
+        privKeyQueue: ArrayBuffer[],
+        address: OMEMOAddress
+    ) {
+        await setupReceiveStep(store, data, privKeyQueue);
+
+        let plaintext: ArrayBuffer | Uint8Array<ArrayBufferLike> | undefined;
+        const sessionCipher = new SessionCipher(store, address);
+        const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
+        const Type = pushMessages.IncomingPushMessageSignal.Type;
+
+        if (data.type == Type.CIPHERTEXT) {
+            plaintext = await sessionCipher
+                .decryptWhisperMessage(data.message, "binary")
+                .then(unpad);
+        } else if (data.type == Type.PREKEY_BUNDLE) {
+            plaintext = await sessionCipher
+                .decryptPreKeyWhisperMessage(data.message, "binary")
+                .then(unpad);
+        } else {
+            throw new Error("Unknown data type in test vector");
+        }
+
+        if (!plaintext) throw new Error("Could not decrypt");
+
+        const content = pushMessages.PushMessageContent.decode(new Uint8Array(plaintext));
+        if (data.expectTerminateSession) {
+            if (content.flags == PushMessageFlags.END_SESSION) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return content.body == data.expectedSmsText;
     }
 
-    async function setupSendStep(store, data, privKeyQueue) {
+    async function setupSendStep(
+        store: OMEMOStore,
+        data: SendMessageData,
+        privKeyQueue: ArrayBuffer[]
+    ) {
         if (data.registrationId !== undefined) {
             store.put("registrationId", data.registrationId);
         }
@@ -227,111 +274,112 @@ describe("SessionCipher", function () {
         return Promise.resolve();
     }
 
-    function doSendStep(store, data, privKeyQueue, address) {
-        return setupSendStep(store, data, privKeyQueue)
-            .then(function () {
-                if (data.getKeys !== undefined) {
-                    const deviceObject = {
-                        encodedNumber: address.toString(),
-                        identityKey: data.getKeys.identityKey,
-                        preKey: data.getKeys.devices[0].preKey,
-                        signedPreKey: data.getKeys.devices[0].signedPreKey,
-                        registrationId: data.getKeys.devices[0].registrationId,
-                    };
+    async function doSendStep(
+        store: OMEMOStore,
+        data: SendMessageData,
+        privKeyQueue: ArrayBuffer[],
+        address: OMEMOAddress
+    ) {
+        await setupSendStep(store, data, privKeyQueue);
+        if (data.getKeys !== undefined) {
+            const deviceObject = {
+                identityKey: data.getKeys.identityKey,
+                signedPreKey: data.getKeys.devices[0].signedPreKey,
+                encodedNumber: address.toString(),
+                preKey: data.getKeys.devices[0].preKey,
+                registrationId: data.getKeys.devices[0].registrationId,
+            };
 
-                    const builder = new SessionBuilder(store, address);
+            const builder = new SessionBuilder(store, address);
+            await builder.processPreKey(deviceObject);
+        }
+        const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
+        const PushMessageContent = pushMessages.PushMessageContent;
+        const message = PushMessageContent.create({
+            flags: data.endSession ? PushMessageFlags.END_SESSION : undefined,
+            body: data.endSession ? undefined : data.smsText,
+        });
 
-                    return builder.processPreKey(deviceObject);
+        const buffer = PushMessageContent.encode(message).finish();
+        const paddedBuffer = pad(buffer);
+        const sessionCipher = new SessionCipher(store, address);
+
+        const res = await sessionCipher.encrypt(paddedBuffer).then(async (msg) => {
+            const expectedCiphertext = data.expectedCiphertext as Uint8Array<ArrayBufferLike>;
+
+            if (msg.type == 1) {
+                return util.isEqual(data.expectedCiphertext, msg.body);
+            } else {
+                if (expectedCiphertext[0] !== msg.body.charCodeAt(0)) {
+                    throw new Error("Bad version byte");
                 }
-            })
-            .then(async () => {
-                const { PushMessageContent } = await loadPushMessages();
-                const message = PushMessageContent.create({
-                    flags: data.endSession ? PushMessageContent.Flags.END_SESSION : undefined,
-                    body: data.endSession ? undefined : data.smsText,
-                });
-
-                const buffer = PushMessageContent.encode(message).finish();
-                const paddedBuffer = pad(buffer);
-                const sessionCipher = new SessionCipher(store, address);
-
-                return sessionCipher
-                    .encrypt(paddedBuffer)
-                    .then(async (msg) => {
-                        //XXX: This should be all we do: isEqual(data.expectedCiphertext, encryptedMsg, false);
-                        if (msg.type == 1) {
-                            return util.isEqual(data.expectedCiphertext, msg.body);
-                        } else {
-                            if (data.expectedCiphertext[0] !== msg.body.charCodeAt(0)) {
-                                throw new Error("Bad version byte");
-                            }
-                            const { PreKeyWhisperMessage } = await loadProtocolMessages();
-                            const decoded = PreKeyWhisperMessage.decode(
-                                data.expectedCiphertext.slice(1)
-                            );
-                            const expected = PreKeyWhisperMessage.encode(decoded).finish();
-                            if (!util.isEqual(expected, msg.body.slice(1))) {
-                                throw new Error("Result does not match expected ciphertext");
-                            }
-                            return true;
-                        }
-                    })
-                    .then(function (res) {
-                        if (data.endSession) {
-                            return sessionCipher.closeOpenSessionForDevice().then(function () {
-                                return res;
-                            });
-                        }
-                        return res;
-                    });
+                const { PreKeyWhisperMessage } = await loadProtocolMessages();
+                const decoded = PreKeyWhisperMessage.decode(expectedCiphertext.slice(1));
+                const expected = PreKeyWhisperMessage.encode(decoded).finish();
+                if (!util.isEqual(expected, msg.body.slice(1))) {
+                    throw new Error("Result does not match expected ciphertext");
+                }
+                return true;
+            }
+        });
+        if (data.endSession) {
+            return sessionCipher.closeOpenSessionForDevice().then(function () {
+                return res;
             });
+        }
+        return res;
     }
 
-    function getDescription(step) {
+    function getDescription(step: TestVectorEntry): string {
         const direction = step[0];
         const data = step[1];
         if (direction === "receiveMessage") {
-            if (data.expectTerminateSession) {
+            const receiveData = data as ReceiveMessageData;
+            if (receiveData.expectTerminateSession) {
                 return "receive end session message";
-            } else if (data.type === 3) {
-                return "receive prekey message " + data.expectedSmsText;
+            } else if (receiveData.type === 3) {
+                return "receive prekey message " + receiveData.expectedSmsText;
             } else {
-                return "receive message " + data.expectedSmsText;
+                return "receive message " + receiveData.expectedSmsText;
             }
         } else if (direction === "sendMessage") {
-            if (data.endSession) {
+            const sendData = data as SendMessageData;
+            if (sendData.endSession) {
                 return "send end session message";
-            } else if (data.ourIdentityKey) {
-                return "send prekey message " + data.smsText;
+            } else if (sendData.ourIdentityKey) {
+                return "send prekey message " + sendData.smsText;
             } else {
-                return "send message " + data.smsText;
+                return "send message " + sendData.smsText;
             }
         }
+        return "";
     }
 
     TestVectors.forEach(function (test) {
         describe(test.name, function () {
             this.timeout(20000);
 
-            const privKeyQueue = [];
+            const privKeyQueue: ArrayBuffer[] = [];
             const origCreateKeyPair = internalCrypto.createKeyPair;
 
             before(function () {
-                // Shim createKeyPair to return predetermined keys from
-                // privKeyQueue instead of random keys.
-                internalCrypto.createKeyPair = function (privKey) {
+                internalCrypto.createKeyPair = async function (
+                    privKey: ArrayBuffer
+                ): Promise<KeyPair> {
                     if (privKey !== undefined) {
                         return origCreateKeyPair(privKey);
                     }
+
                     if (privKeyQueue.length == 0) {
                         throw new Error("Out of private keys");
                     } else {
                         const newPrivKey = privKeyQueue.shift();
-                        return internalCrypto.createKeyPair(newPrivKey).then(function (keyPair) {
-                            if (util.toString(keyPair.privKey) != util.toString(newPrivKey))
-                                throw new Error("Failed to rederive private key!");
-                            else return keyPair;
-                        });
+                        if (!newPrivKey) throw new Error("Failed to fetch private key");
+
+                        const keyPair = await internalCrypto.createKeyPair(newPrivKey);
+                        if (util.toString(keyPair.privKey) != util.toString(newPrivKey))
+                            throw new Error("Failed to rederive private key!");
+                        else return keyPair;
                     }
                 };
             });
@@ -343,11 +391,11 @@ describe("SessionCipher", function () {
                 }
             });
 
-            const store = new TestOMEMOStore();
+            const store = new InMemoryStore();
             const address = OMEMOAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
                 it(getDescription(step), function (done) {
-                    let doStep;
+                    let doStep: typeof doReceiveStep | typeof doSendStep;
                     if (step[0] === "receiveMessage") {
                         doStep = doReceiveStep;
                     } else if (step[0] === "sendMessage") {
@@ -356,7 +404,7 @@ describe("SessionCipher", function () {
                         throw new Error("Invalid test");
                     }
 
-                    doStep(store, step[1], privKeyQueue, address).then(assert).then(done, done);
+                    doStep(store, step[1] as unknown as SendMessageData & ReceiveMessageData, privKeyQueue, address).then(assert).then(done, done);
                 });
             });
         });
@@ -368,8 +416,8 @@ describe("SessionCipher", function () {
         const originalMessage = util.toArrayBuffer(
             "L'homme est condamné à être libre"
         ) as ArrayBuffer;
-        const aliceStore = new TestOMEMOStore();
-        const bobStore = new TestOMEMOStore();
+        const aliceStore = new InMemoryStore();
+        const bobStore = new InMemoryStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -431,9 +479,9 @@ describe("SessionCipher", function () {
             "L'homme est condamné à être libre"
         ) as ArrayBuffer;
 
-        const aliceStore = new TestOMEMOStore();
+        const aliceStore = new InMemoryStore();
 
-        const bobStore = new TestOMEMOStore();
+        const bobStore = new InMemoryStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -459,24 +507,26 @@ describe("SessionCipher", function () {
 
                 return aliceStore.saveIdentity(
                     BOB_ADDRESS.toString(),
-                    (bobStore.get("identityKey") as any).pubKey
+                    (bobStore.get("identityKey") as KeyPair).pubKey
                 );
             });
 
-            it("alice cannot encrypt with the old session", function () {
+            it("alice cannot encrypt with the old session", async function () {
                 const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-                return aliceSessionCipher.encrypt(originalMessage).catch(function (e) {
-                    assert.strictEqual(e.message, "Identity key changed");
-                });
+                try {
+                    await aliceSessionCipher.encrypt(originalMessage);
+                } catch (e) {
+                    assert.strictEqual((e as Error).message, "Identity key changed");
+                }
             });
 
-            it("alice cannot decrypt from the old session", function () {
+            it("alice cannot decrypt from the old session", async function () {
                 const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-                return aliceSessionCipher
-                    .decryptWhisperMessage(messageFromBob.body, "binary")
-                    .catch(function (e) {
-                        assert.strictEqual(e.message, "Identity key changed");
-                    });
+                try {
+                    await aliceSessionCipher.decryptWhisperMessage(messageFromBob.body, "binary");
+                } catch (e) {
+                    assert.strictEqual((e as Error).message, "Identity key changed");
+                }
             });
         });
     });

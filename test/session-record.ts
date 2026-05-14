@@ -1,5 +1,6 @@
 import { assert } from "chai";
-import { SessionRecord } from "../src/session/record.js";
+import { SessionRecord } from "../src/session/record";
+import { MixedSessionState, RatchetState } from "../src/session/types";
 
 describe("SessionRecord", function () {
     describe("constructor", function () {
@@ -24,9 +25,14 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["mykey"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "mykey", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "mykey",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             const json = record.serialize();
             const data = JSON.parse(json);
@@ -48,15 +54,25 @@ describe("SessionRecord", function () {
             const original = new SessionRecord();
             original.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: 1234, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: 1234,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             original.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             const restored = SessionRecord.deserialize(original.serialize());
             assert.strictEqual(Object.keys(restored.sessions).length, 2);
@@ -105,9 +121,14 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.isTrue(record.hasOpenSession());
         });
@@ -116,9 +137,14 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: Date.now(),
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.isFalse(record.hasOpenSession());
         });
@@ -132,11 +158,16 @@ describe("SessionRecord", function () {
     describe("getOpenSession", function () {
         it("returns the open session", function () {
             const record = new SessionRecord();
-            const session: any = {
+            const session: MixedSessionState = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "open", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "open",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["open"] = session;
             assert.strictEqual(record.getOpenSession(), session);
@@ -146,9 +177,14 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: Date.now(),
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.isUndefined(record.getOpenSession());
         });
@@ -162,15 +198,25 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.throw(
                 function () {
@@ -185,11 +231,16 @@ describe("SessionRecord", function () {
     describe("archiveCurrentState", function () {
         it("sets the closed timestamp on the open session", function () {
             const record = new SessionRecord();
-            const session: any = {
+            const session: MixedSessionState = {
                 registrationId: 42,
                 oldRatchetList: [],
-                currentRatchet: {} as any,
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                currentRatchet: {} as RatchetState,
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key1"] = session;
             const before = Date.now();
@@ -205,8 +256,13 @@ describe("SessionRecord", function () {
             record.sessions["key1"] = {
                 registrationId: 42,
                 oldRatchetList: [],
-                currentRatchet: {} as any,
-                indexInfo: { closed: 1000, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                currentRatchet: {} as RatchetState,
+                indexInfo: {
+                    closed: 1000,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.archiveCurrentState();
             assert.strictEqual(record.sessions["key1"].indexInfo.closed, 1000);
@@ -216,11 +272,16 @@ describe("SessionRecord", function () {
     describe("promoteState", function () {
         it("sets closed to -1 on a closed session", function () {
             const record = new SessionRecord();
-            const session: any = {
+            const session: MixedSessionState = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: Date.now(), baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: Date.now(),
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.promoteState(session);
             assert.strictEqual(session.indexInfo.closed, -1);
@@ -232,15 +293,25 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: Date.now(), baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: Date.now(),
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.deleteAllSessions();
             assert.deepEqual(record.sessions, {});
@@ -252,15 +323,25 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: Date.now(), baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: Date.now(),
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.doesNotThrow(function () {
                 record.detectDuplicateOpenSessions();
@@ -271,15 +352,25 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             assert.throw(
                 function () {
@@ -296,27 +387,47 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 1,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: 3000, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: 3000,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key2"] = {
                 registrationId: 2,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: -1, baseKey: "key2", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key2",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key3"] = {
                 registrationId: 3,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: 1000, baseKey: "key3", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: 1000,
+                    baseKey: "key3",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.sessions["key4"] = {
                 registrationId: 4,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { closed: 2000, baseKey: "key4", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    closed: 2000,
+                    baseKey: "key4",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             const sessions = record.getSessions();
             assert.strictEqual(sessions.length, 4);
@@ -338,22 +449,32 @@ describe("SessionRecord", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { baseKey: "key1", baseKeyType: 2, closed: -1, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    closed: -1,
+                    remoteIdentityKey: "x",
+                },
             };
-            assert.isObject(record.getSessionByBaseKey("key1" as any));
+            assert.isObject(record.getSessionByBaseKey("key1"));
         });
 
         it("returns undefined when baseKeyType is OURS", function () {
             const record = new SessionRecord();
             record.sessions["key1"] = {
                 registrationId: 42,
-                currentRatchet: {} as any,
+                currentRatchet: {} as RatchetState,
                 oldRatchetList: [],
-                indexInfo: { baseKey: "key1", baseKeyType: 1, closed: -1, remoteIdentityKey: "x" as any },
+                indexInfo: {
+                    baseKey: "key1",
+                    baseKeyType: 1,
+                    closed: -1,
+                    remoteIdentityKey: "x",
+                },
             };
-            assert.isUndefined(record.getSessionByBaseKey("key1" as any));
+            assert.isUndefined(record.getSessionByBaseKey("key1"));
         });
     });
 
@@ -363,8 +484,13 @@ describe("SessionRecord", function () {
             record.sessions["key1"] = {
                 registrationId: 42,
                 oldRatchetList: [],
-                currentRatchet: {} as any,
-                indexInfo: { closed: -1, baseKey: "key1", baseKeyType: 2, remoteIdentityKey: "x" as any },
+                currentRatchet: {} as RatchetState,
+                indexInfo: {
+                    closed: -1,
+                    baseKey: "key1",
+                    baseKeyType: 2,
+                    remoteIdentityKey: "x",
+                },
             };
             record.archiveCurrentState();
             const closed = record.sessions["key1"].indexInfo.closed;

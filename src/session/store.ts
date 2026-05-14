@@ -1,8 +1,8 @@
-import { util, OMEMOAddress } from "../src/index";
-import { type KeyPair } from "../src/types";
-import { Direction, OMEMOStore } from "../src/session/types";
+import { util, OMEMOAddress } from "../index";
+import { type KeyPair } from "../types";
+import { Direction, OMEMOStore } from "../session/types";
 
-export default class TestOMEMOStore implements OMEMOStore {
+export default class InMemoryStore implements OMEMOStore {
     store: Record<string | number, unknown>;
 
     constructor() {

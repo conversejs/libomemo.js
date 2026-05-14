@@ -1,4 +1,4 @@
-import { BaseKeyType, ChainType, Key, KeyPair } from "../types";
+import { BaseKeyType, ChainType, Key, KeyPair, PublicPreKey } from "../types";
 
 export type JSONValue =
     | string
@@ -32,7 +32,7 @@ interface IndexInfo {
     remoteIdentityKey: Key;
 }
 
-interface RatchetState {
+export interface RatchetState {
     rootKey: ArrayBuffer;
     lastRemoteEphemeralKey: ArrayBuffer;
     previousCounter: number;
@@ -57,10 +57,7 @@ export interface PreKeyBundle {
         signature: ArrayBuffer;
         keyId: number;
     };
-    preKey?: {
-        publicKey: ArrayBuffer;
-        keyId: number;
-    };
+    preKey?: PublicPreKey;
     registrationId: number;
 }
 
