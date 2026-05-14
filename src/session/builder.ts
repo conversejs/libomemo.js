@@ -111,7 +111,7 @@ export class SessionBuilder {
         const session = record.getOpenSession();
 
         if (signedPreKeyPair === undefined) {
-            if (session !== undefined && (session as any).currentRatchet !== undefined) {
+            if (session !== undefined && session.currentRatchet !== undefined) {
                 return;
             } else {
                 throw new Error("Missing Signed PreKey for PreKeyWhisperMessage");
@@ -241,14 +241,10 @@ export class SessionBuilder {
 
         const sharedSecret = await internalCrypto.ECDHE(
             remoteKey,
-            util.toArrayBuffer(ratchet.ephemeralKeyPair.privKey)!
+            ratchet.ephemeralKeyPair.privKey
         );
 
-        const masterKey = await HKDF(
-            sharedSecret,
-            util.toArrayBuffer(ratchet.rootKey)!,
-            "WhisperRatchet"
-        );
+        const masterKey = await HKDF(sharedSecret, ratchet.rootKey, "WhisperRatchet");
 
         session[util.toString(ratchet.ephemeralKeyPair.pubKey)] = {
             messageKeys: {},

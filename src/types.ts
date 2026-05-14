@@ -8,8 +8,6 @@ export enum BaseKeyType {
     THEIRS = 2,
 }
 
-export type Key = ArrayBuffer | string;
-
 export interface KeyPair {
     pubKey: ArrayBuffer;
     privKey: ArrayBuffer;
