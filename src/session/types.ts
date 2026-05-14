@@ -1,4 +1,4 @@
-import { BaseKeyType, ChainType, Key, KeyPair, PublicPreKey } from "../types";
+import { BaseKeyType, ChainType, KeyPair, PublicPreKey } from "../types";
 
 export type JSONValue =
     | string
@@ -25,13 +25,6 @@ export interface EncryptResult {
     registrationId: number;
 }
 
-interface IndexInfo {
-    baseKey?: Key;
-    baseKeyType?: BaseKeyType;
-    closed: number;
-    remoteIdentityKey: Key;
-}
-
 export interface RatchetState {
     rootKey: ArrayBuffer;
     lastRemoteEphemeralKey: ArrayBuffer;
@@ -42,12 +35,6 @@ export interface RatchetState {
 interface OldRatchetEntry {
     added: number;
     ephemeralKey: ArrayBuffer;
-}
-
-interface PendingPreKey {
-    signedKeyId: number;
-    baseKey: ArrayBuffer;
-    preKeyId?: number;
 }
 
 export interface PreKeyBundle {
@@ -64,32 +51,22 @@ export interface PreKeyBundle {
 export type SessionState = {
     registrationId: number;
     currentRatchet: RatchetState;
-    indexInfo: IndexInfo;
+    indexInfo: {
+        baseKey?: ArrayBuffer;
+        baseKeyType?: BaseKeyType;
+        closed: number;
+        remoteIdentityKey: ArrayBuffer;
+    };
     oldRatchetList: OldRatchetEntry[];
-    pendingPreKey?: PendingPreKey;
+    pendingPreKey?: {
+        signedKeyId: number;
+        baseKey: ArrayBuffer;
+        preKeyId?: number;
+    };
     [ephemeralKey: string]: unknown;
 };
 
-export interface MixedSessionState {
-    registrationId: number;
-    currentRatchet: {
-        rootKey: Key;
-        lastRemoteEphemeralKey: Key;
-        previousCounter: number;
-        ephemeralKeyPair: { pubKey: Key; privKey: Key };
-    };
-    indexInfo: {
-        baseKey?: Key;
-        baseKeyType?: BaseKeyType;
-        closed: number;
-        remoteIdentityKey: Key;
-    };
-    oldRatchetList: { added: number; ephemeralKey: Key }[];
-    pendingPreKey?: { signedKeyId: number; baseKey: Key; preKeyId?: number };
-    [ephemeralKey: string]: unknown;
-}
-
-export interface SerializableSessionState {
+export interface SerializedSessionState {
     registrationId: number;
     currentRatchet: {
         rootKey: string;
@@ -109,7 +86,7 @@ export interface SerializableSessionState {
 }
 
 export interface SessionRecordData {
-    sessions: Record<string, SerializableSessionState>;
+    sessions: Record<string, SerializedSessionState>;
     version: string;
     registrationId?: number;
 }
@@ -136,7 +113,7 @@ export interface OMEMOStore {
         direction: Direction
     ): Promise<boolean> | boolean;
     loadIdentityKey(name: string): Promise<ArrayBuffer | undefined> | ArrayBuffer | undefined;
-    saveIdentity(name: string, identityKey: Key): Promise<boolean> | boolean;
+    saveIdentity(name: string, identityKey: ArrayBuffer): Promise<boolean> | boolean;
 
     loadPreKey(keyId: KeyId): Promise<KeyPairWrapper | undefined>;
     storePreKey(keyId: KeyId, keyPair: KeyPair): Promise<void> | void;

@@ -31,8 +31,12 @@ function ensureStringed(thing: unknown): JSONValue {
             if (!Object.prototype.hasOwnProperty.call(thing, key)) {
                 continue;
             }
+            const val = (thing as Record<string, unknown>)[key];
+            if (val === undefined) {
+                continue;
+            }
             try {
-                obj[key] = ensureStringed((thing as Record<string, unknown>)[key]);
+                obj[key] = ensureStringed(val);
             } catch (ex) {
                 console.log("Error serializing key", key);
                 throw ex;
@@ -50,6 +54,15 @@ export function jsonThing(thing: unknown): string {
     return JSON.stringify(ensureStringed(thing));
 }
 
+export function strToBytes(s: string): ArrayBuffer {
+    const buf = new ArrayBuffer(s.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < s.length; i++) {
+        view[i] = s.charCodeAt(i) & 0xff;
+    }
+    return buf;
+}
+
 function toArrayBuffer(thing: BinaryData | undefined): ArrayBuffer | undefined {
     if (thing === undefined) {
         return undefined;
@@ -63,13 +76,8 @@ function toArrayBuffer(thing: BinaryData | undefined): ArrayBuffer | undefined {
     if (typeof thing !== "string") {
         throw new Error(`Tried to convert a non-string of type ${typeof thing} to an array buffer`);
     }
-    const len = thing.length;
-    const buf = new ArrayBuffer(len);
-    const view = new Uint8Array(buf);
-    for (let i = 0; i < len; i++) {
-        view[i] = thing.charCodeAt(i) & 0xff;
-    }
-    return buf;
+
+    return strToBytes(thing);
 }
 
 function normalizeBuffer(input: BinaryData, encoding: string): Uint8Array {
