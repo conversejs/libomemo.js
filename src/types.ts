@@ -15,10 +15,15 @@ export interface KeyPair {
     privKey: ArrayBuffer;
 }
 
-export interface PreKey {
+export type PreKey = {
     keyId: number;
     keyPair: KeyPair;
-}
+};
+
+export type PublicPreKey = {
+    publicKey?: ArrayBuffer;
+    keyId: number;
+};
 
 export interface SignedPreKey {
     keyId: number;

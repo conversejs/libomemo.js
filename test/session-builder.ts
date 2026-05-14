@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import { SessionBuilder, SessionCipher, OMEMOAddress, KeyHelper, util } from "../src/index";
 import { SessionRecord } from "../src/session/record";
 import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from "./utils";
-import TestOMEMOStore from "./InMemorySignalProtocolStore";
+import InMemoryStore from "../src/session/store";
 
 describe("SessionBuilder", function () {
     this.timeout(5000);
@@ -11,9 +11,9 @@ describe("SessionBuilder", function () {
     const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
 
     describe("basic prekey v3", function () {
-        const aliceStore = new TestOMEMOStore();
+        const aliceStore = new InMemoryStore();
 
-        const bobStore = new TestOMEMOStore();
+        const bobStore = new InMemoryStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
@@ -97,9 +97,9 @@ describe("SessionBuilder", function () {
     });
 
     describe("basic v3 NO PREKEY", function () {
-        const aliceStore = new TestOMEMOStore();
+        const aliceStore = new InMemoryStore();
 
-        const bobStore = new TestOMEMOStore();
+        const bobStore = new InMemoryStore();
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 

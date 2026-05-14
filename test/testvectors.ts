@@ -1,6 +1,54 @@
-import { hexToArrayBuffer, hexToUint8Array } from "./utils.js";
+import { PreKey, SignedPreKey } from "../src/types";
+import { hexToArrayBuffer, hexToUint8Array } from "./utils";
 
-type TestVectorEntry = [string, Record<string, unknown>];
+type MessageData = {
+    preKeyId: number;
+    signedPreKeyId: number;
+
+    ourIdentityKey: ArrayBuffer;
+    ourSignedPreKey?: ArrayBuffer;
+};
+
+export type ReceiveMessageData = MessageData & {
+    type: number;
+    message: string;
+
+    ourPreKey: ArrayBuffer;
+    ourEphemeralKey: ArrayBuffer;
+    newEphemeralKey?: ArrayBuffer;
+
+    expectTerminateSession: boolean;
+    expectedSmsText: string;
+};
+
+export type SendMessageData = MessageData & {
+    smsText: string;
+    ourBaseKey: ArrayBuffer;
+    ourEphemeralKey: ArrayBuffer;
+
+    endSession: boolean;
+
+    registrationId: number;
+
+    getKeys: {
+        identityKey: ArrayBuffer;
+        devices: [
+            {
+                deviceId: number;
+                preKey: PreKey;
+                signedPreKey: {
+                    publicKey: ArrayBuffer;
+                    signature: ArrayBuffer;
+                    keyId: number;
+                };
+                registrationId: number;
+            },
+        ];
+    };
+    expectedCiphertext: ArrayBuffer | Uint8Array<ArrayBufferLike>;
+};
+
+export type TestVectorEntry = [string, Record<string, unknown>];
 
 interface TestVector {
     name: string;
