@@ -2,6 +2,7 @@ node_modules
 dist
 .aider*
 .prompts
-build/dts
 build/curve25519_compiled.*
+build/dts
 build/test-node/
+build/test/
