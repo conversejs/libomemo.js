@@ -8,12 +8,14 @@ if (!webCrypto || !webCrypto.subtle || typeof webCrypto.getRandomValues !== "fun
     throw new Error("WebCrypto not found");
 }
 
+/** Generate cryptographically secure random bytes. */
 export function getRandomBytes(size: number): ArrayBuffer {
     const array = new Uint8Array(size);
     webCrypto.getRandomValues(array);
     return array.buffer;
 }
 
+/** AES-CBC encryption. */
 export async function encrypt(
     key: ArrayBuffer,
     data: ArrayBuffer,
@@ -24,6 +26,7 @@ export async function encrypt(
     return webCrypto.subtle.encrypt({ ...algo, iv: new Uint8Array(iv) }, importedKey, data);
 }
 
+/** AES-CBC decryption. */
 export async function decrypt(
     key: ArrayBuffer,
     data: ArrayBuffer,
@@ -34,6 +37,7 @@ export async function decrypt(
     return webCrypto.subtle.decrypt({ ...algo, iv: new Uint8Array(iv) }, importedKey, data);
 }
 
+/** HMAC-SHA256 signing. */
 export async function sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
     const importedKey = await webCrypto.subtle.importKey(
         "raw",
@@ -45,10 +49,12 @@ export async function sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBu
     return webCrypto.subtle.sign({ name: "HMAC", hash: "SHA-256" }, importedKey, data);
 }
 
+/** SHA-512 hash. */
 export function hash(data: ArrayBuffer): Promise<ArrayBuffer> {
     return webCrypto.subtle.digest({ name: "SHA-512" }, data);
 }
 
+/** HKDF key derivation producing three 32-byte keys. Internal implementation. */
 export async function HKDFInternal(
     input: ArrayBuffer,
     salt: ArrayBuffer,

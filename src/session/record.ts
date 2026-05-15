@@ -47,6 +47,7 @@ function migrate(data: SessionRecordData): void {
     }
 }
 
+/** Manages session state persistence, including serialization, deserialization, and lifecycle. */
 export class SessionRecord {
     sessions: Record<string, SessionState> = {};
     version = SESSION_RECORD_VERSION;

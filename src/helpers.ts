@@ -2,6 +2,7 @@ import { JSONValue } from "./session/types";
 
 type BinaryData = string | ArrayBuffer | Uint8Array;
 
+/** Check if a value is a non-negative integer. */
 export function isNonNegativeInteger(n: unknown): n is number {
     return typeof n === "number" && n % 1 === 0 && n >= 0;
 }
@@ -50,6 +51,7 @@ function ensureStringed(thing: unknown): JSONValue {
     }
 }
 
+/** Serialize a value to JSON, converting binary data to strings. */
 export function jsonThing(thing: unknown): string {
     return JSON.stringify(ensureStringed(thing));
 }

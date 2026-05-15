@@ -15,6 +15,10 @@ interface PushMessages {
 let cachedProtocolMessages: ProtocolMessages | null = null;
 let cachedPushMessages: PushMessages | null = null;
 
+/**
+ * Load protobuf definitions for the Signal protocol messages.
+ * Cached after first load.
+ */
 export async function loadProtocolMessages(): Promise<ProtocolMessages> {
     if (cachedProtocolMessages) {
         return cachedProtocolMessages;
@@ -28,6 +32,7 @@ export async function loadProtocolMessages(): Promise<ProtocolMessages> {
     return cachedProtocolMessages;
 }
 
+/** Load protobuf definitions for push message signals. Cached after first load. */
 export async function loadPushMessages(): Promise<PushMessages> {
     if (cachedPushMessages) {
         return cachedPushMessages;

@@ -8,6 +8,7 @@ import { OMEMOAddress } from "./address";
 import { ChainType } from "../types";
 import { EncryptResult, SessionState, OMEMOStore, Direction, Chain } from "./types";
 
+/** Encrypts and decrypts messages for established OMEMO sessions. */
 export class SessionCipher {
     #remoteAddress: OMEMOAddress;
     #store: OMEMOStore;
@@ -216,6 +217,7 @@ export class SessionCipher {
         }
     }
 
+    /** Encrypt a message for the remote device. */
     encrypt(buffer: ArrayBuffer | string | Uint8Array): Promise<EncryptResult> {
         let buf: ArrayBuffer;
         if (!(buffer instanceof ArrayBuffer)) {
@@ -339,6 +341,7 @@ export class SessionCipher {
         });
     }
 
+    /** Decrypt a WhisperMessage using an existing session. */
     async decryptWhisperMessage(
         buffer: string | ArrayBuffer | Uint8Array,
         encoding: string
