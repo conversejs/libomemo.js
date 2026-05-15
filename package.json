@@ -7,6 +7,9 @@
     "main": "./dist/libomemo.umd.js",
     "module": "./dist/libomemo.esm.js",
     "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
