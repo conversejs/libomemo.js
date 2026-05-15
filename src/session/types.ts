@@ -98,6 +98,26 @@ export interface Migration {
 
 type KeyPairWrapper = { keyPair: KeyPair };
 
+export interface WhisperMessageProto {
+    ephemeralKey: Uint8Array;
+    counter: number;
+    previousCounter: number;
+    ciphertext: Uint8Array;
+}
+
+export interface PreKeyWhisperMessageProto {
+    registrationId: number;
+    preKeyId?: number;
+    signedPreKeyId: number;
+    baseKey: Uint8Array;
+    identityKey: Uint8Array;
+    message: Uint8Array;
+}
+
+export interface IdentityKeyError extends Error {
+    identityKey: ArrayBuffer;
+}
+
 export type KeyId = number | string;
 
 export interface OMEMOStore {

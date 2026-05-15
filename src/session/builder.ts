@@ -4,7 +4,14 @@ import { queueJobForNumber } from "./lock";
 import { internalCrypto, HKDF } from "../crypto";
 import { OMEMOAddress } from "./address";
 import { BaseKeyType, ChainType, KeyPair } from "../types";
-import { PreKeyBundle, SessionState, OMEMOStore, Direction } from "./types";
+import {
+    PreKeyBundle,
+    SessionState,
+    OMEMOStore,
+    Direction,
+    PreKeyWhisperMessageProto,
+    IdentityKeyError,
+} from "./types";
 
 /**
  * Establishes a new OMEMO session from a PreKey bundle.
@@ -82,13 +89,16 @@ export class SessionBuilder {
         });
     }
 
-    async processV3(record: SessionRecord, message: any): Promise<number | undefined> {
+    async processV3(
+        record: SessionRecord,
+        message: PreKeyWhisperMessageProto
+    ): Promise<number | undefined> {
         if (record.getSessionByBaseKey(message.baseKey)) {
             console.log("Duplicate PreKeyMessage for session");
             return;
         }
 
-        const identityKeyAB = message.identityKey.slice().buffer as ArrayBuffer;
+        const identityKeyAB = message.identityKey.slice().buffer;
 
         const trusted = await this.#store.isTrustedIdentity(
             this.#remoteAddress.getName(),
@@ -97,13 +107,13 @@ export class SessionBuilder {
         );
 
         if (!trusted) {
-            const e = new Error("Unknown identity key");
-            (e as any).identityKey = identityKeyAB;
+            const e = new Error("Unknown identity key") as IdentityKeyError;
+            e.identityKey = identityKeyAB;
             throw e;
         }
 
         const results = await Promise.all([
-            this.#store.loadPreKey(message.preKeyId),
+            message.preKeyId ? this.#store.loadPreKey(message.preKeyId) : Promise.resolve(),
             this.#store.loadSignedPreKey(message.signedPreKeyId),
         ]);
 
@@ -127,7 +137,7 @@ export class SessionBuilder {
             console.log("Invalid prekey id", message.preKeyId);
         }
 
-        const baseKeyAB = message.baseKey.slice().buffer as ArrayBuffer;
+        const baseKeyAB = message.baseKey.slice().buffer;
         const newSession = await this.#initSession(
             false,
             preKeyPair ? preKeyPair.keyPair : undefined,

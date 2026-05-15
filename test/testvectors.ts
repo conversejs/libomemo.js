@@ -1,4 +1,4 @@
-import { PreKey, SignedPreKey } from "../src/types";
+import { PreKey } from "../src/types";
 import { hexToArrayBuffer, hexToUint8Array } from "./utils";
 
 type MessageData = {

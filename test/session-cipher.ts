@@ -5,14 +5,9 @@ import { internalCrypto } from "../src/crypto";
 import { loadProtocolMessages, loadPushMessages } from "../src/protobufs";
 import { generateIdentity, generatePreKeyBundle } from "./utils";
 import { SendMessageData, ReceiveMessageData, TestVectors, TestVectorEntry } from "./testvectors";
-import { BaseKeyType, KeyPair, SignedPreKey } from "../src/types";
+import { BaseKeyType, KeyPair } from "../src/types";
 import { OMEMOStore } from "../src/session/types";
 import InMemoryStore from "../src/session/store";
-
-enum PushMessageType {
-    CIPHERTEXT = 1,
-    PREKEY_BUNDLE = 3,
-}
 
 enum PushMessageFlags {
     END_SESSION = 1,
@@ -30,7 +25,7 @@ interface PushMessageContentProto {
 }
 
 interface IncomingPushMessageSignalProto {
-    Type: typeof PushMessageType;
+    Type: { CIPHERTEXT: 1; PREKEY_BUNDLE: 3 };
 }
 
 interface PushMessagesTyped {
@@ -404,7 +399,14 @@ describe("SessionCipher", function () {
                         throw new Error("Invalid test");
                     }
 
-                    doStep(store, step[1] as unknown as SendMessageData & ReceiveMessageData, privKeyQueue, address).then(assert).then(done, done);
+                    void                     void doStep(
+                        store,
+                        step[1] as unknown as SendMessageData & ReceiveMessageData,
+                        privKeyQueue,
+                        address
+                    )
+                        .then(assert)
+                        .then(done, done);
                 });
             });
         });

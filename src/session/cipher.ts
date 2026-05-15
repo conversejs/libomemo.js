@@ -6,7 +6,7 @@ import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "../cryp
 import { SessionBuilder } from "./builder";
 import { OMEMOAddress } from "./address";
 import { ChainType } from "../types";
-import { EncryptResult, SessionState, OMEMOStore, Direction, Chain } from "./types";
+import { EncryptResult, SessionState, OMEMOStore, Direction, Chain, WhisperMessageProto, PreKeyWhisperMessageProto } from "./types";
 
 /** Encrypts and decrypts messages for established OMEMO sessions. */
 export class SessionCipher {
@@ -140,8 +140,8 @@ export class SessionCipher {
         const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
 
         const { WhisperMessage } = await loadProtocolMessages();
-        const message = WhisperMessage.decode(messageProto) as any;
-        const remoteEphemeralKey = message.ephemeralKey.slice().buffer as ArrayBuffer;
+        const message = WhisperMessage.decode(messageProto) as unknown as WhisperMessageProto;
+        const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
 
         if (session === undefined) {
             return Promise.reject(
@@ -186,7 +186,7 @@ export class SessionCipher {
 
         const plaintext = await decrypt(
             keys[0],
-            message.ciphertext.slice().buffer as ArrayBuffer,
+            message.ciphertext.slice().buffer,
             keys[2].slice(0, 16)
         );
         delete session.pendingPreKey;
@@ -235,7 +235,7 @@ export class SessionCipher {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
             const { WhisperMessage } = await loadProtocolMessages();
-            const msg = WhisperMessage.create() as any;
+            const msg = WhisperMessage.create() as unknown as Partial<WhisperMessageProto>;
 
             let session: SessionState | undefined;
             let chain: Chain;
@@ -397,7 +397,7 @@ export class SessionCipher {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
             const { PreKeyWhisperMessage } = await loadProtocolMessages();
-            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer)) as any;
+            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer)) as unknown as PreKeyWhisperMessageProto;
 
             let record = await this.#getRecord(address);
             if (!record) {
@@ -412,7 +412,7 @@ export class SessionCipher {
 
             const session = record.getSessionByBaseKey(preKeyProto.baseKey);
             const plaintext = await this.#doDecryptWhisperMessage(
-                preKeyProto.message.slice().buffer as ArrayBuffer,
+                preKeyProto.message.slice().buffer,
                 session
             );
             record.updateSessionState(session!);

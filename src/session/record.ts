@@ -205,7 +205,7 @@ export class SessionRecord {
         return !!openSession && typeof openSession.registrationId === "number";
     }
 
-    getSessionByBaseKey(baseKey: ArrayBuffer | string): SessionState | undefined {
+    getSessionByBaseKey(baseKey: ArrayBuffer | string | Uint8Array): SessionState | undefined {
         const session = this.sessions[util.toString(baseKey)];
         if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
             console.log("Tried to lookup a session using our basekey");

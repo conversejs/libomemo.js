@@ -27,7 +27,7 @@ export const KeyHelper = {
             throw new TypeError("Invalid argument for identityKeyPair");
         }
         if (!isNonNegativeInteger(signedKeyId)) {
-            throw new TypeError(`Invalid argument for signedKeyId: ${signedKeyId}`);
+            throw new TypeError(`Invalid argument for signedKeyId: ${String(signedKeyId)}`);
         }
 
         const keyPair = await internalCrypto.createKeyPair();
