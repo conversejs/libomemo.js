@@ -24,5 +24,20 @@ export {
 } from "./crypto";
 
 export { BaseKeyType, ChainType } from "./types";
+export type {
+    KeyPair,
+    PreKey,
+    SignedPreKey,
+    PublicPreKey,
+} from "./types";
+
 export { SessionRecord } from "./session/record";
 export { default as InMemoryStore } from "./session/store";
+export type {
+    Direction,
+    PreKeyBundle,
+    OMEMOStore,
+    KeyId,
+    EncryptResult,
+    IdentityKeyError,
+} from "./session/types";
