@@ -9,6 +9,7 @@ declare const __WASM_BASE__: string | undefined;
 const basepoint = new Uint8Array(32);
 basepoint[0] = 9;
 
+/** Wrapper around the compiled Curve25519 WebAssembly module for cryptographic operations. */
 export class Curve25519 {
     #module: Promise<Curve25519EmscriptenModule>;
 

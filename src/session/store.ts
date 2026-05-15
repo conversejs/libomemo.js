@@ -2,6 +2,9 @@ import { util, OMEMOAddress } from "../index";
 import { type KeyPair } from "../types";
 import { Direction, OMEMOStore } from "../session/types";
 
+/**
+ * Reference in-memory implementation of the OMEMOStore interface for testing and development.
+ * */
 export default class InMemoryStore implements OMEMOStore {
     store: Record<string | number, unknown>;
 

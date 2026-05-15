@@ -7,7 +7,7 @@ import { BaseKeyType, ChainType, KeyPair } from "../types";
 import { PreKeyBundle, SessionState, OMEMOStore, Direction } from "./types";
 
 /**
- * Establishes a new Signal Protocol session from a PreKey bundle.
+ * Establishes a new OMEMO session from a PreKey bundle.
  */
 export class SessionBuilder {
     #remoteAddress: OMEMOAddress;
@@ -21,6 +21,7 @@ export class SessionBuilder {
         this.#store = store;
     }
 
+    /** Process a PreKey bundle to establish a new session. */
     processPreKey(device: PreKeyBundle): Promise<void> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const trusted = await this.#store.isTrustedIdentity(

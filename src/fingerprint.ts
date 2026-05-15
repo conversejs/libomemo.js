@@ -2,6 +2,7 @@ import { hash } from "./crypto";
 
 const VERSION = 0;
 
+/** Generates fingerprints for identity verification. */
 export class FingerprintGenerator {
     #iterations: number;
 
@@ -67,6 +68,10 @@ export class FingerprintGenerator {
         );
     }
 
+    /**
+     * Create a fingerprint string for two parties.
+     * Returns a sorted concatenation of both parties' fingerprint codes.
+     */
     async createFor(
         localIdentifier: string,
         localIdentityKey: ArrayBuffer,

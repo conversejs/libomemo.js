@@ -1,3 +1,4 @@
+/** Identifies a specific OMEMO device by name and device ID. */
 export class OMEMOAddress {
     #name: string;
     #deviceId: number;

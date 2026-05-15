@@ -39,7 +39,7 @@ class Curve25519Worker implements CurveAsyncMethods {
         if (e.data.error && typeof job.onerror === "function") {
             job.onerror(new Error(e.data.error));
         } else if (typeof job.onsuccess === "function") {
-            job.onsuccess(e.data.result!);
+            job.onsuccess(e.data.result);
         }
         delete this.#jobs[e.data.id];
     }
@@ -53,7 +53,7 @@ class Curve25519Worker implements CurveAsyncMethods {
     }
 
     generateKeyPair(): Promise<KeyPair> {
-        const privKey = crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
+        const privKey = crypto.getRandomValues(new Uint8Array(32)).buffer;
         return this.createKeyPair(privKey);
     }
 

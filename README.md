@@ -140,7 +140,7 @@ store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
 
 An OMEMO client needs to implement a storage interface that will manage
 loading and storing of identity, prekeys, signed prekeys, and session state.
-See `test/omemo-store.ts` for an example.
+See `src/session/store.ts` for an example.
 
 Once this is implemented, building a session is fairly straightforward:
 

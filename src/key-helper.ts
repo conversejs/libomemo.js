@@ -3,6 +3,7 @@ import { isNonNegativeInteger } from "./helpers";
 import { KeyId } from "./session/types";
 import { KeyPair, PreKey, SignedPreKey } from "./types";
 
+/** Helpers for generating cryptographic keys for OMEMO. */
 export const KeyHelper = {
     generateIdentityKeyPair(): Promise<KeyPair> {
         return internalCrypto.createKeyPair();
