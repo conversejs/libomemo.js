@@ -41,6 +41,7 @@ export default function (config) {
             { pattern: "protos/push.proto", served: true, included: false },
             { pattern: "build/curve25519_compiled.wasm", served: true, included: false },
             { pattern: "dist/curve25519_compiled.wasm", served: true, included: false },
+            { pattern: "dist/libomemo-worker.js", served: true, included: false },
             {
                 pattern: "test/support/karma-setup.ts",
                 included: true,

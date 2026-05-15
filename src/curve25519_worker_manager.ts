@@ -18,7 +18,7 @@ interface CurveAsyncMethods {
     generateKeyPair(): Promise<KeyPair>;
     createKeyPair(privKey: ArrayBuffer): Promise<KeyPair>;
     calculateAgreement(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer>;
-    verifySignature(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<boolean>;
+    verifySignature(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void>;
     calculateSignature(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer>;
 }
 
@@ -58,19 +58,19 @@ class Curve25519Worker implements CurveAsyncMethods {
     }
 
     createKeyPair(privKey: ArrayBuffer): Promise<KeyPair> {
-        return this.#postMessage("keyPair", [privKey]) as Promise<KeyPair>;
+        return this.#postMessage("createKeyPair", [privKey]) as Promise<KeyPair>;
     }
 
     calculateAgreement(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer> {
-        return this.#postMessage("sharedSecret", [pubKey, privKey]) as Promise<ArrayBuffer>;
+        return this.#postMessage("calculateAgreement", [pubKey, privKey]) as Promise<ArrayBuffer>;
     }
 
     calculateSignature(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer> {
-        return this.#postMessage("sign", [privKey, message]) as Promise<ArrayBuffer>;
+        return this.#postMessage("calculateSignature", [privKey, message]) as Promise<ArrayBuffer>;
     }
 
-    verifySignature(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<boolean> {
-        return this.#postMessage("verify", [pubKey, msg, sig]) as Promise<boolean>;
+    verifySignature(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void> {
+        return this.#postMessage("verifySignature", [pubKey, msg, sig]) as Promise<void>;
     }
 }
 
