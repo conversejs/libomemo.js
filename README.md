@@ -1,8 +1,41 @@
 # libomemo.js
 
 [![CI Tests](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml)
-A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript),
-modified to provide an [OMEMO](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol implementation in TypeScript.
+[![npm version](https://img.shields.io/npm/v/libomemo.js.svg)](https://www.npmjs.com/package/libomemo.js)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
+**libomemo.js** is a TypeScript implementation of the [OMEMO Multi-End Message and Object Encryption](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol for [XMPP](https://xmpp.org). It provides ratcheting forward secrecy for synchronous and asynchronous messaging environments, enabling secure multi-device encrypted communication.
+
+A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript) by Open Whisper Systems, adapted for the XMPP OMEMO specification.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+    - [Setup](#setup)
+    - [Building a Session](#building-a-session)
+    - [Encrypting Messages](#encrypting-messages)
+    - [Decrypting Messages](#decrypting-messages)
+- [API Reference](#api-reference)
+    - [KeyHelper](#keyhelper)
+    - [SessionBuilder](#sessionbuilder)
+    - [SessionCipher](#sessioncipher)
+    - [OMEMOAddress](#omemoaddress)
+    - [Crypto Utilities](#crypto-utilities)
+- [Building from Source](#building-from-source)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+
+- **Double Ratchet Protocol** — Forward secrecy and post-compromise security
+- **Multi-device support** — Encrypt messages for multiple devices simultaneously
+- **PreKey management** — Asynchronous session establishment via PreKey bundles
+- **TypeScript native** — Full type definitions included
+- **Browser & Node.js compatible** — ESM, UMD, and CommonJS support
+- **Curve25519** — High-performance elliptic curve cryptography (compiled via Emscripten)
 
 ## Installation
 
@@ -16,115 +49,43 @@ Or include the UMD build directly in your webpage:
 <script src="dist/libomemo.umd.js"></script>
 ```
 
-## Overview
-
-A ratcheting forward secrecy protocol that works in synchronous and
-asynchronous messaging environments.
-
-### PreKeys
-
-This protocol uses a concept called 'PreKeys'. A PreKey is an ECPublicKey and
-an associated unique ID which are stored together by a server. PreKeys can also
-be signed.
-
-At install time, clients generate a single signed PreKey, as well as a large
-list of unsigned PreKeys, and transmit all of them to the server.
-
-### Sessions
-
-The OMEMO protocol is session-oriented. Clients establish a "session," which is
-then used for all subsequent encrypt/decrypt operations. There is no need to
-ever tear down a session once one has been established.
-
-Sessions are established in one of two ways:
-
-1. PreKeyBundles. A client that wishes to send a message to a recipient can
-   establish a session by retrieving a PreKeyBundle for that recipient from the
-   server.
-1. PreKeySignalMessages. A client can receive a PreKeySignalMessage from a
-   recipient and use it to establish a session.
-
-### State
-
-An established session encapsulates a lot of state between two clients. That
-state is maintained in durable records which need to be kept for the life of
-the session.
-
-State is kept in the following places:
-
-- Identity State. Clients will need to maintain the state of their own identity
-  key pair, as well as identity keys received from other clients.
-- PreKey State. Clients will need to maintain the state of their generated
-  PreKeys.
-- Signed PreKey States. Clients will need to maintain the state of their signed
-  PreKeys.
-- Session State. Clients will need to maintain the state of the sessions they
-  have established.
-
 ## Requirements
 
-This implementation currently depends on the presence of the following
-types/interfaces, which are available in most modern browsers.
+This library requires a modern JavaScript environment with support for:
 
-- [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
-- [TypedArray](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray)
-- [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [WebCrypto](https://developer.mozilla.org/en-US/docs/Web/API/Crypto) with support for:
+- [`ArrayBuffer`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
+- [`TypedArray`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray)
+- [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+- [`WebCrypto`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto) with:
     - AES-CBC
     - HMAC SHA-256
 
-## Usage
+These are available in all modern browsers and Node.js 15+.
 
-### ES Module
+## Quick Start
+
+### Import
 
 ```js
+// ES Modules
 import { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } from "libomemo.js";
-```
 
-### CommonJS
-
-```js
+// CommonJS
 const { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } = require("libomemo.js");
+
+// Browser (UMD)
+const { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } = libomemo;
 ```
-
-### CommonJS
-
-```js
-const { KeyHelper, SessionBuilder, SessionCipher, OMEMOAddress } = require("libomemo.js");
-```
-
-### Browser (UMD)
-
-When loaded via `<script>`, the library is available as the global `libomemo` object.
-
-## Exports
-
-The library exports the following:
-
-- **KeyHelper** – Key generation utilities
-- **Curve25519** – Curve25519 operations
-- **OMEMOAddress** – Address class for identifying recipients
-- **SessionBuilder** – Session establishment
-- **SessionCipher** – Encryption/decryption
-- **FingerprintGenerator** – Fingerprint generation
-- **util** – General utility helpers
-- **crypto** functions – `getRandomBytes`, `encrypt`, `decrypt`, `sign`, `hash`, `HKDF`, `HKDFInternal`, `verifyMAC`, `internalCrypto`, `createKeyPair`, `ECDHE`, `Ed25519Sign`, `Ed25519Verify`
-- **BaseKeyType**, **ChainType** – Enum types
-- **SessionRecord** – Type export
 
 ### Setup
 
-At install time, an OMEMO client needs to generate its identity keys,
-registration id, and prekeys.
+Generate identity keys, registration ID, and PreKeys at install time:
 
 ```js
-const KeyHelper = libomemo.KeyHelper;
-
 const registrationId = KeyHelper.generateRegistrationId();
 // Store registrationId somewhere durable and safe.
 
 const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
-// keyPair -> { pubKey: ArrayBuffer, privKey: ArrayBuffer }
 // Store identityKeyPair somewhere durable and safe.
 
 const preKey = await KeyHelper.generatePreKey(keyId);
@@ -133,112 +94,167 @@ store.storePreKey(preKey.keyId, preKey.keyPair);
 const signedPreKey = await KeyHelper.generateSignedPreKey(identityKeyPair, keyId);
 store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
 
-// Register preKeys and signedPreKey with the server
+// Register preKeys and signedPreKey with the XMPP server
 ```
 
-### Building a session
+### Building a Session
 
-An OMEMO client needs to implement a storage interface that will manage
-loading and storing of identity, prekeys, signed prekeys, and session state.
-See `src/session/store.ts` for an example.
-
-Once this is implemented, building a session is fairly straightforward:
+Implement a storage interface for managing keys and session state (see `src/session/store.ts` for an example), then establish sessions:
 
 ```js
-const store   = new MyOMEMOProtocolStore();
-const address = new libomemo.OMEMOAddress(recipientId, deviceId);
+const store = new MyOMEMOProtocolStore();
+const address = new OMEMOAddress(recipientId, deviceId);
+const sessionBuilder = new SessionBuilder(store, address);
 
-// Instantiate a SessionBuilder for a remote recipientId + deviceId tuple.
-const sessionBuilder = new libomemo.SessionBuilder(store, address);
-
-// Process a prekey fetched from the server. Resolves once a session is created
-// and saved in the store, or rejects if the identityKey differs from a
-// previously seen identity for this address.
+// Process a PreKey bundle from the server
 try {
     await sessionBuilder.processPreKey({
         registrationId: <Number>,
         identityKey: <ArrayBuffer>,
         signedPreKey: {
-            keyId     : <Number>,
-            publicKey : <ArrayBuffer>,
-            signature : <ArrayBuffer>
+            keyId: <Number>,
+            publicKey: <ArrayBuffer>,
+            signature: <ArrayBuffer>
         },
         preKey: {
-            keyId     : <Number>,
-            publicKey : <ArrayBuffer>
+            keyId: <Number>,
+            publicKey: <ArrayBuffer>
         }
     });
-    // encrypt messages
+    // Session established — ready to encrypt
 } catch (error) {
-    // handle identity key conflict
+    // Handle identity key conflict
 }
 ```
 
-### Encrypting
-
-Once you have a session established with an address, you can encrypt messages
-using SessionCipher.
+### Encrypting Messages
 
 ```js
-const plaintext = "Hello world";
-const sessionCipher = new libomemo.SessionCipher(store, address);
-const ciphertext = await sessionCipher.encrypt(plaintext);
+const sessionCipher = new SessionCipher(store, address);
+const ciphertext = await sessionCipher.encrypt("Hello world");
 // ciphertext -> { type: <Number>, body: <string> }
-handle(ciphertext.type, ciphertext.body);
 ```
 
-### Decrypting
-
-Ciphertexts come in two flavors:
-
-- WhisperMessage
-- PreKeyWhisperMessage.
-  Like a WhisperMessage but it also contains a prekey with which to create a
-  new session.
+### Decrypting Messages
 
 ```js
-const address = new libomemo.OMEMOAddress(recipientId, deviceId);
-const sessionCipher = new libomemo.SessionCipher(store, address);
+const sessionCipher = new SessionCipher(store, address);
 
-// Decrypt a PreKeyWhisperMessage by first establishing a new session.
-// Resolves when the message is decrypted or rejects if the identityKey
-// differs from a previously seen identity for this address.
+// Decrypt a PreKey message (establishes session if needed)
 try {
     const plaintext = await sessionCipher.decryptPreKeyWhisperMessage(ciphertext);
-    // handle plaintext ArrayBuffer
 } catch (error) {
-    // handle identity key conflict
+    // Handle identity key conflict
 }
 
-// Decrypt a normal message using an existing session
+// Decrypt a regular message using existing session
 const plaintext = await sessionCipher.decryptWhisperMessage(ciphertext);
-// handle plaintext ArrayBuffer
 ```
 
-## Building
+## API Reference
 
-To compile curve25519 from C source files in `/native`, install
-[emscripten](https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html).
+### KeyHelper
+
+Key generation utilities for OMEMO protocol setup.
+
+| Method                                         | Description                       |
+| ---------------------------------------------- | --------------------------------- |
+| `generateRegistrationId()`                     | Generate a unique registration ID |
+| `generateIdentityKeyPair()`                    | Generate an identity key pair     |
+| `generatePreKey(keyId)`                        | Generate an unsigned PreKey       |
+| `generateSignedPreKey(identityKeyPair, keyId)` | Generate a signed PreKey          |
+
+### SessionBuilder
+
+Handles session establishment with remote recipients.
+
+| Method                        | Description                          |
+| ----------------------------- | ------------------------------------ |
+| `processPreKey(preKeyBundle)` | Build a session from a PreKey bundle |
+
+### SessionCipher
+
+Encrypts and decrypts messages for established sessions.
+
+| Method                                    | Description                    |
+| ----------------------------------------- | ------------------------------ |
+| `encrypt(plaintext)`                      | Encrypt a message              |
+| `decryptPreKeyWhisperMessage(ciphertext)` | Decrypt and establish session  |
+| `decryptWhisperMessage(ciphertext)`       | Decrypt using existing session |
+
+### OMEMOAddress
+
+Represents a recipient address (JID + device ID tuple).
+
+```js
+const address = new OMEMOAddress(recipientId, deviceId);
+```
+
+### Crypto Utilities
+
+Low-level cryptographic functions for advanced use cases:
+
+`getRandomBytes`, `encrypt`, `decrypt`, `sign`, `hash`, `HKDF`, `verifyMAC`, `createKeyPair`, `ECDHE`, `Ed25519Sign`, `Ed25519Verify`
+
+## Building from Source
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) (for compiling native Curve25519 code)
+
+### Build Commands
 
 ```bash
+# Install dependencies
+npm install
+
+# Compile native Curve25519 code (requires Emscripten)
 npm run compile
-```
 
-Then build the distribution bundle:
-
-```bash
+# Build TypeScript distribution
 npm run dist
+
+# Full build (compile + dist)
+npm run build
+
+# Watch mode for development
+npm run dev
 ```
 
-Or run both in one command:
+## Testing
 
 ```bash
-npm run build
+# Run all tests (Node.js + Headless Chrome)
+npm test
+
+# Run tests in Chrome browser
+npm run test:browser
+
+# Run tests in headless Chrome only
+npm run test:headless
+
+# Run Node.js tests only
+npm run test:node
 ```
+
+## Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`npm test`) and linting (`npm run lint`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+Please ensure all new functionality includes tests and follows existing code conventions.
 
 ## License
 
 Copyright 2015-2018 Open Whisper Systems
 Copyright 2022-2026 JC Brand
 
-Licensed under the GPLv3: http://www.gnu.org/licenses/gpl-3.0.html
+Licensed under the GPLv3: [http://www.gnu.org/licenses/gpl-3.0.html](http://www.gnu.org/licenses/gpl-3.0.html)
