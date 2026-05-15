@@ -2,7 +2,7 @@
 
 ## 0.0.2
 
-- Include dist files in package
+- Include build and dist files in package
 
 ## 0.0.1
 
