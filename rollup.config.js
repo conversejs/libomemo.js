@@ -29,13 +29,6 @@ export default [
                 exports: "named",
                 sourcemap: true,
             },
-            {
-                file: "dist/libomemo.umd.js",
-                format: "umd",
-                name: "libomemo",
-                exports: "named",
-                sourcemap: true,
-            },
         ],
         plugins: [
             string({ include: "**/*.proto" }),
@@ -52,6 +45,7 @@ export default [
             file: "dist/libomemo-worker.js",
             format: "iife",
             sourcemap: true,
+            banner: "// Shim for Emscripten: provide document in worker context\nif (typeof document === 'undefined') { self.document = { baseURI: self.location.href }; }",
         },
         plugins: [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),

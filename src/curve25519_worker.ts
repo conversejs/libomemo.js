@@ -30,7 +30,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         return;
     }
 
-    Promise.resolve((method as (...a: unknown[]) => Promise<unknown>)(...args))
+    Promise.resolve((method.bind(curve) as (...a: unknown[]) => Promise<unknown>)(...args))
         .then((result: unknown) => {
             postMessage({ id, result });
         })

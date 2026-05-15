@@ -6,8 +6,14 @@ import {
     sign as cryptoSign,
     HKDFInternal as cryptoHKDF,
 } from "../src/crypto.js";
-import { startWorker, stopWorker } from "../src/curve25519_worker_manager.js";
 import { hexToArrayBuffer, assertEqualArrayBuffers } from "./utils.js";
+
+interface CurveCrypto {
+    createKeyPair(privKey?: ArrayBuffer): Promise<{ pubKey: ArrayBuffer; privKey: ArrayBuffer }>;
+    ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer>;
+    Ed25519Sign(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer>;
+    Ed25519Verify(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void>;
+}
 
 describe("Crypto", function () {
     describe("Encrypt AES-CBC", function () {
@@ -60,7 +66,6 @@ describe("Crypto", function () {
 
     describe("HKDF", function () {
         it("works", async function () {
-            // HMAC RFC5869 Test vectors
             const T1 = hexToArrayBuffer(
                 "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf"
             );
@@ -80,7 +85,7 @@ describe("Crypto", function () {
         });
     });
 
-    function testCurve25519() {
+    function testCurve25519(getCrypto: () => CurveCrypto) {
         const alice_bytes = hexToArrayBuffer(
             "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a"
         );
@@ -105,19 +110,19 @@ describe("Crypto", function () {
 
         describe("createKeyPair", function () {
             it("converts alice private keys to a keypair", async function () {
-                const keypair = await internalCrypto.createKeyPair(alice_bytes);
+                const keypair = await getCrypto().createKeyPair(alice_bytes);
                 assertEqualArrayBuffers(keypair.privKey, alice_priv);
                 assertEqualArrayBuffers(keypair.pubKey, alice_pub);
             });
 
             it("converts bob private keys to a keypair", async function () {
-                const keypair = await internalCrypto.createKeyPair(bob_bytes);
+                const keypair = await getCrypto().createKeyPair(bob_bytes);
                 assertEqualArrayBuffers(keypair.privKey, bob_priv);
                 assertEqualArrayBuffers(keypair.pubKey, bob_pub);
             });
 
             it("generates a key if one is not provided", async function () {
-                const keypair = await internalCrypto.createKeyPair();
+                const keypair = await getCrypto().createKeyPair();
                 assert.strictEqual(keypair.privKey.byteLength, 32);
                 assert.strictEqual(keypair.pubKey.byteLength, 33);
                 assert.strictEqual(new Uint8Array(keypair.pubKey)[0], 5);
@@ -126,12 +131,12 @@ describe("Crypto", function () {
 
         describe("ECDHE", function () {
             it("computes the shared secret for alice", async function () {
-                const secret = await internalCrypto.ECDHE(bob_pub, alice_priv);
+                const secret = await getCrypto().ECDHE(bob_pub, alice_priv);
                 assertEqualArrayBuffers(shared_sec, secret);
             });
 
             it("computes the shared secret for bob", async function () {
-                const secret = await internalCrypto.ECDHE(alice_pub, bob_priv);
+                const secret = await getCrypto().ECDHE(alice_pub, bob_priv);
                 assertEqualArrayBuffers(shared_sec, secret);
             });
         });
@@ -147,9 +152,8 @@ describe("Crypto", function () {
             "f029e99d7ed021db4c43a5b4fcca65fcd4984114ac6041df30c10b6f3a3eb50a84b890ca0203c90189239287144a7f234c3a369a79eca0aea94925631335e50d"
         );
         describe("Ed25519Sign", function () {
-            // Some self-generated test vectors
             it("works", async function () {
-                const sigCalc = await internalCrypto.Ed25519Sign(priv, msg);
+                const sigCalc = await getCrypto().Ed25519Sign(priv, msg);
                 assertEqualArrayBuffers(sig, sigCalc);
             });
         });
@@ -161,7 +165,7 @@ describe("Crypto", function () {
 
                 let error;
                 try {
-                    await internalCrypto.Ed25519Verify(pub, msg, badsig);
+                    await getCrypto().Ed25519Verify(pub, msg, badsig);
                 } catch (e) {
                     error = e;
                 }
@@ -170,14 +174,14 @@ describe("Crypto", function () {
             });
 
             it("does not throw on good signature", function () {
-                return internalCrypto.Ed25519Verify(pub, msg, sig);
+                return getCrypto().Ed25519Verify(pub, msg, sig);
             });
         });
     }
 
     describe("curve25519", function () {
         this.timeout(5000);
-        testCurve25519();
+        testCurve25519(() => internalCrypto);
     });
 
     describe("curve25519 in a worker", function () {
@@ -185,10 +189,62 @@ describe("Crypto", function () {
             it.skip("is not available in Node.js", function () {});
             return;
         }
-        before(() => startWorker("../dist/libomemo-worker.js"));
-        after(() => stopWorker());
+
+        let worker: Worker | null = null;
+        let nextId = 0;
+
+        function callWorker(methodName: string, args: unknown[]): Promise<unknown> {
+            return new Promise((resolve, reject) => {
+                const id = nextId++;
+                const handler = (e: MessageEvent) => {
+                    if (e.data.id !== id) return;
+                    worker!.removeEventListener("message", handler);
+                    if (e.data.error) {
+                        reject(new Error(e.data.error));
+                    } else {
+                        resolve(e.data.result);
+                    }
+                };
+                worker!.addEventListener("message", handler);
+                worker!.postMessage({ id, methodName, args });
+            });
+        }
+
+        let workerCrypto: CurveCrypto;
+
+        before(function () {
+            const workerUrl = "/base/dist/libomemo-worker.js";
+            worker = new Worker(workerUrl);
+            worker.onerror = (err: ErrorEvent) => {
+                console.error("Worker error:", err.message, err.filename);
+            };
+            workerCrypto = {
+                createKeyPair: (privKey?: ArrayBuffer) => {
+                    if (privKey === undefined) {
+                        privKey = crypto.getRandomValues(new Uint8Array(32)).buffer;
+                    }
+                    return callWorker("createKeyPair", [privKey]) as Promise<{
+                        pubKey: ArrayBuffer;
+                        privKey: ArrayBuffer;
+                    }>;
+                },
+                ECDHE: (pubKey, privKey) =>
+                    callWorker("calculateAgreement", [pubKey, privKey]) as Promise<ArrayBuffer>,
+                Ed25519Sign: (privKey, message) =>
+                    callWorker("calculateSignature", [privKey, message]) as Promise<ArrayBuffer>,
+                Ed25519Verify: (pubKey, msg, sig) =>
+                    callWorker("verifySignature", [pubKey, msg, sig]) as Promise<void>,
+            };
+        });
+
+        after(function () {
+            if (worker) {
+                worker.terminate();
+                worker = null;
+            }
+        });
 
         this.timeout(5000);
-        testCurve25519();
+        testCurve25519(() => workerCrypto!);
     });
 });
