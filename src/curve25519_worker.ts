@@ -8,13 +8,33 @@ interface WorkerMessage {
 
 const curve = new Curve25519();
 
+const ALLOWED_METHODS = new Set<keyof Curve25519>([
+    "generateKeyPair",
+    "createKeyPair",
+    "calculateAgreement",
+    "calculateSignature",
+    "verifySignature",
+]);
+
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
-    const method = curve[e.data.methodName];
-    Promise.resolve(method(...(e.data.args as [any, any, any])))
+    const { id, methodName, args } = e.data;
+
+    if (!ALLOWED_METHODS.has(methodName)) {
+        postMessage({ id, error: "Unsupported method." });
+        return;
+    }
+
+    const method = curve[methodName];
+    if (typeof method !== "function") {
+        postMessage({ id, error: "Unsupported method." });
+        return;
+    }
+
+    Promise.resolve((method as (...a: unknown[]) => Promise<unknown>)(...args))
         .then((result: unknown) => {
-            postMessage({ id: e.data.id, result });
+            postMessage({ id, result });
         })
         .catch((error: Error) => {
-            postMessage({ id: e.data.id, error: error.message });
+            postMessage({ id, error: error.message });
         });
 };
