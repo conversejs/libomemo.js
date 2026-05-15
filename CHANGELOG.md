@@ -1,5 +1,9 @@
 # CHANGES
 
+## 0.0.2
+
+- Include dist files in package
+
 ## 0.0.1
 
 > Note: This version still targets XMPP OMEMO version 0.3.0. Support for the

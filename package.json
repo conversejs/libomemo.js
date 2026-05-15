@@ -1,14 +1,15 @@
 {
     "name": "libomemo.js",
     "repository": "github:conversejs/libomemo.js",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "license": "GPL-3.0",
     "type": "module",
     "main": "./dist/libomemo.umd.js",
     "module": "./dist/libomemo.esm.js",
     "types": "./dist/index.d.ts",
     "files": [
-        "dist"
+        "dist",
+        "build/curve25519_compiled.d.ts"
     ],
     "exports": {
         ".": {
