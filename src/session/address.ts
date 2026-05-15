@@ -27,7 +27,7 @@ export class OMEMOAddress {
     }
 
     static fromString(encodedAddress: string): OMEMOAddress {
-        if (typeof encodedAddress !== "string" || !encodedAddress.match(/.*\.\d+/)) {
+        if (typeof encodedAddress !== "string" || !encodedAddress.match(/^[^.]+\.\d+$/)) {
             throw new Error("Invalid OMEMOAddress string");
         }
         const parts = encodedAddress.split(".");
