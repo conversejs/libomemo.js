@@ -3,6 +3,7 @@
 [![CI Tests](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml/badge.svg)](https://github.com/conversejs/libomemo.js/actions/workflows/karma-tests.yml)
 [![npm version](https://img.shields.io/npm/v/libomemo.js.svg)](https://www.npmjs.com/package/libomemo.js)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
+
 **libomemo.js** is a TypeScript implementation of the [OMEMO Multi-End Message and Object Encryption](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol for [XMPP](https://xmpp.org). It provides ratcheting forward secrecy for synchronous and asynchronous messaging environments, enabling secure multi-device encrypted communication.
 
 A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript) by Open Whisper Systems, adapted for the XMPP OMEMO specification.

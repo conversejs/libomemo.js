@@ -1,6 +1,12 @@
 # CHANGES
 
-## 3.0.0
+## 0.0.1
+
+> Note: This version still targets XMPP OMEMO version 0.3.0. Support for the
+> latest version of OMEMO will be added in a subsequent release.
+
+Here follows a breakdown of changes made to the original
+`libsignal-protocol-javascript` which this library is a fork of:
 
 ### Breaking: Multiple public functions converted to `async`
 
@@ -76,3 +82,194 @@ Many functions were converted from returning plain Promises to being
 - `ECDHE(pubKey, privKey)`
 - `Ed25519Sign(privKey, message)`
 - `Ed25519Verify(pubKey, msg, sig)`
+
+### Full TypeScript Rewrite
+
+All source files have been migrated from JavaScript to TypeScript with strict
+type checking. The library now ships bundled `.d.ts` type declarations.
+
+### Module System
+
+- **ES modules** with named exports are now the primary distribution format.
+- **UMD bundle** available as `libomemo.umd.js` with a `libomemo` global
+  (replaces the old `libsignal` global).
+- The `Internal` namespace has been removed. All functionality is exported
+  directly.
+
+### Package Renamed
+
+- Package name is now `libomemo.js` (was `libsignal-protocol-javascript`).
+- Repository moved to `github:conversejs/libomemo.js`.
+
+### Removed Dependencies
+
+- **`dcodeIO.ByteBuffer`** — removed. Use `util.toString()` and
+  `util.toArrayBuffer()` or native `TextEncoder`/`Uint8Array`.
+- **`Long`** — removed.
+- **`dcodeIO.ProtoBuf`** — replaced with `protobufjs` v8. Proto files are
+  loaded from string variables at build time (no network fetch needed).
+
+### `OMEMOAddress` (formerly `SignalProtocolAddress`)
+
+- Renamed from `SignalProtocolAddress` to `OMEMOAddress`.
+- Added static `OMEMOAddress.fromString(encodedAddress)` for parsing
+  `"name.deviceId"` format.
+- Added `equals(other)` method for comparison.
+- **Security fix**: ReDoS vulnerability in `fromString` fixed by replacing
+  the regex with a safe validation pattern (`/^[^.]+\.\d+$/`).
+
+### `SessionRecord`
+
+- Completely rewritten with improved serialization/deserialization logic.
+- Added `SessionRecord.isSessionOpen(sessionState)` static method.
+- `getSessionByBaseKey()` now accepts `ArrayBuffer | string | Uint8Array`.
+- Added `deleteAllSessions()` method.
+- Exported as a value (not just a type) so consumers can call static methods.
+
+### `InMemoryStore`
+
+- Reference implementation of `OMEMOStore` is now exported directly from the
+  library. Useful for testing and as a template for persistent stores.
+
+### New Type Exports
+
+The following types are now exported for consumers implementing custom stores
+or handling encryption results:
+
+- `Direction` — `SENDING = 1`, `RECEIVING = 2`
+- `PreKeyBundle` — bundle format for `SessionBuilder.processPreKey()`
+- `OMEMOStore` — interface for custom store implementations
+- `KeyId` — `number | string`
+- `EncryptResult` — return type of `SessionCipher.encrypt()`
+- `IdentityKeyError` — error with `.identityKey` property
+- `KeyPair`, `PreKey`, `SignedPreKey`, `PublicPreKey`
+
+### Web Worker Security
+
+- Added `ALLOWED_METHODS` whitelist to the curve25519 worker to prevent
+  arbitrary method calls via worker messages.
+
+### Source Maps
+
+- Source maps are now enabled for all build outputs (ESM, UMD, and worker).
+
+### Build System
+
+- **Grunt replaced with Rollup** for bundling.
+- `npm run compile` compiles native C code with Emscripten.
+- `npm run dist` builds TypeScript to ESM + UMD bundles.
+- `npm run build:dts` generates `.d.ts` type declarations.
+
+### Curve25519 / OMEMO Spec Compliance
+
+- `xed25519_sign` replaces `curve25519_sign` for OMEMO spec compliance.
+- `xed25519_verify` replaces `curve25519_verify` to match.
+- `curve25519_sign` and `curve25519_verify` are no longer exported from the
+  WASM module.
+
+### `FingerprintGenerator`
+
+- New class for generating safety number fingerprints for identity
+  verification. Constructor takes an `iterations` count. Call
+  `createFor(localIdentifier, localIdentityKey, remoteIdentifier,
+remoteIdentityKey)` to get a fingerprint string.
+
+### Job Queue / Locking
+
+- All session operations for a given address are now serialized through
+  `queueJobForNumber` to prevent race conditions.
+
+### Full TypeScript Rewrite
+
+All source files have been migrated from JavaScript to TypeScript with strict
+type checking. The library now ships bundled `.d.ts` type declarations.
+
+### Module System
+
+- **ES modules** with named exports are now the primary distribution format.
+- **UMD bundle** available as `libomemo.umd.js` with a `libomemo` global
+  (replaces the old `libsignal` global).
+- The `Internal` namespace has been removed. All functionality is exported
+  directly.
+
+### Package Renamed
+
+- Package name is now `libomemo.js` (was `libsignal-protocol-javascript`).
+- Repository moved to `github:conversejs/libomemo.js`.
+
+### Removed Dependencies
+
+- **`dcodeIO.ByteBuffer`** — removed. Use `util.toString()` and
+  `util.toArrayBuffer()` or native `TextEncoder`/`Uint8Array`.
+- **`Long`** — removed.
+- **`dcodeIO.ProtoBuf`** — replaced with `protobufjs` v8. Proto files are
+  loaded from string variables at build time (no network fetch needed).
+
+### `OMEMOAddress` (formerly `SignalProtocolAddress`)
+
+- Renamed from `SignalProtocolAddress` to `OMEMOAddress`.
+- Added static `OMEMOAddress.fromString(encodedAddress)` for parsing
+  `"name.deviceId"` format.
+- Added `equals(other)` method for comparison.
+- **Security fix**: ReDoS vulnerability in `fromString` fixed by replacing
+  the regex with a safe validation pattern (`/^[^.]+\.\d+$/`).
+
+### `SessionRecord`
+
+- Completely rewritten with improved serialization/deserialization logic.
+- Added `SessionRecord.isSessionOpen(sessionState)` static method.
+- `getSessionByBaseKey()` now accepts `ArrayBuffer | string | Uint8Array`.
+- Added `deleteAllSessions()` method.
+- Exported as a value (not just a type) so consumers can call static methods.
+
+### `InMemoryStore`
+
+- Reference implementation of `OMEMOStore` is now exported directly from the
+  library. Useful for testing and as a template for persistent stores.
+
+### New Type Exports
+
+The following types are now exported for consumers implementing custom stores
+or handling encryption results:
+
+- `Direction` — `SENDING = 1`, `RECEIVING = 2`
+- `PreKeyBundle` — bundle format for `SessionBuilder.processPreKey()`
+- `OMEMOStore` — interface for custom store implementations
+- `KeyId` — `number | string`
+- `EncryptResult` — return type of `SessionCipher.encrypt()`
+- `IdentityKeyError` — error with `.identityKey` property
+- `KeyPair`, `PreKey`, `SignedPreKey`, `PublicPreKey`
+
+### Web Worker Security
+
+- Added `ALLOWED_METHODS` whitelist to the curve25519 worker to prevent
+  arbitrary method calls via worker messages.
+
+### Source Maps
+
+- Source maps are now enabled for all build outputs (ESM, UMD, and worker).
+
+### Build System
+
+- **Grunt replaced with Rollup** for bundling.
+- `npm run compile` compiles native C code with Emscripten.
+- `npm run dist` builds TypeScript to ESM + UMD bundles.
+- `npm run build:dts` generates `.d.ts` type declarations.
+
+### Curve25519 / OMEMO Spec Compliance
+
+- `xed25519_sign` replaces `curve25519_sign` for OMEMO spec compliance.
+- `xed25519_verify` replaces `curve25519_verify` to match.
+- `curve25519_sign` and `curve25519_verify` are no longer exported from the
+  WASM module.
+
+### `FingerprintGenerator`
+
+- New class for generating safety number fingerprints for identity
+  verification. Constructor takes an `iterations` count. Call
+  `createFor(localIdentifier, localIdentityKey, remoteIdentifier, remoteIdentityKey)` to get a fingerprint string.
+
+### Job Queue / Locking
+
+- All session operations for a given address are now serialized through
+  `queueJobForNumber` to prevent race conditions.
