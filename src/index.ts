@@ -24,4 +24,5 @@ export {
 } from "./crypto";
 
 export { BaseKeyType, ChainType } from "./types";
-export type { SessionRecord } from "./session/record";
+export { SessionRecord } from "./session/record";
+export { default as InMemoryStore } from "./session/store";
