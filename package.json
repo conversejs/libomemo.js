@@ -9,9 +9,9 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
+            "types": "./dist/index.d.ts",
             "import": "./dist/libomemo.esm.js",
-            "require": "./dist/libomemo.umd.js",
-            "types": "./dist/index.d.ts"
+            "require": "./dist/libomemo.umd.js"
         }
     },
     "scripts": {
@@ -26,8 +26,10 @@
         "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "lint:fix": "eslint --fix \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "typecheck": "tsc --noEmit",
-        "test": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run; pkill -f 'ChromeHeadless' 2>/dev/null; true",
-        "test:browser": "karma start karma.conf.js --browsers Chrome"
+        "test:headless": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run",
+        "test:browser": "karma start karma.conf.js --browsers Chrome",
+        "test:node": "node scripts/build-test-node.js && mocha build/test-node/*.js",
+        "test": "npm run test:node && npm run test:headless"
     },
     "dependencies": {
         "protobufjs": "^8.0.0"
@@ -40,7 +42,7 @@
         "@types/node": "^22.0.0",
         "@typescript-eslint/eslint-plugin": "^8.59.3",
         "@typescript-eslint/parser": "^8.59.3",
-        "chai": "^3.5.0",
+        "chai": "^5.3.3",
         "esbuild": "^0.28.0",
         "eslint": "^8.19.0",
         "globals": "^17.6.0",

@@ -181,6 +181,10 @@ describe("Crypto", function () {
     });
 
     describe("curve25519 in a worker", function () {
+        if (typeof Worker === "undefined") {
+            it.skip("is not available in Node.js", function () {});
+            return;
+        }
         before(() => startWorker("../dist/libomemo-worker.js"));
         after(() => stopWorker());
 

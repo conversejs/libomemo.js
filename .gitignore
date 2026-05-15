@@ -4,3 +4,4 @@ dist
 .prompts
 build/dts
 build/curve25519_compiled.*
+build/test-node/

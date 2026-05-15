@@ -41,9 +41,6 @@ export default function (config) {
             { pattern: "protos/push.proto", served: true, included: false },
             { pattern: "build/curve25519_compiled.wasm", served: true, included: false },
             { pattern: "dist/curve25519_compiled.wasm", served: true, included: false },
-            "node_modules/chai/chai.js",
-            "node_modules/mocha/mocha.js",
-            "node_modules/mocha/mocha.css",
             {
                 pattern: "test/support/karma-setup.ts",
                 included: true,
@@ -62,7 +59,6 @@ export default function (config) {
         rollupPreprocessor: {
             output: {
                 format: "iife",
-                globals: { chai: "chai" },
                 sourcemap: "inline",
                 dir: "build/test",
             },
@@ -78,7 +74,6 @@ export default function (config) {
                 resolve({ browser: true }),
                 commonjs(),
             ],
-            external: ["chai"],
         },
 
         reporters: ["progress"],
@@ -95,9 +90,9 @@ export default function (config) {
 
         browsers: ["ChromeHeadless"],
 
-        processKillTimeout: 2000,
+        processKillTimeout: 10000,
         captureTimeout: 60000,
-        browserDisconnectTimeout: 2000,
+        browserDisconnectTimeout: 10000,
         browserDisconnectTolerance: 0,
         browserNoActivityTimeout: 30000,
 
