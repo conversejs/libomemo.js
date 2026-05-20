@@ -8,8 +8,7 @@
     "module": "./dist/libomemo.esm.js",
     "types": "./dist/index.d.ts",
     "files": [
-        "dist",
-        "build/curve25519_compiled.d.ts"
+        "dist"
     ],
     "exports": {
         ".": {
@@ -21,7 +20,7 @@
     "scripts": {
         "build": "npm run compile && npm run bundle",
         "build:dts": "tsc -p tsconfig.dts.json",
-        "bundle": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/",
+        "bundle": "npm run build:dts && rollup -c",
         "check": "npm run bundle && npm run lint && npm run test",
         "clean": "rm -rf node_modules",
         "compile": "node scripts/compile.js",

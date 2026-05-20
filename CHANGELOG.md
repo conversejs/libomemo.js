@@ -2,7 +2,15 @@
 
 ## 0.0.2
 
-- Include build and dist files in package
+- Added `prepublishOnly` script to ensure full build runs before publishing.
+- Restructured scripts: `bundle` handles dts generation and rollup bundling,
+  `build` adds native compilation.
+- WASM file is now emitted as a rollup asset during bundling instead of being
+  manually copied.
+- Replaced `new URL('curve25519_compiled.wasm', import.meta.url)` with a plain
+  string reference so downstream bundlers (webpack, etc.) don't try to resolve
+  the file at bundle time.
+- Fixed `__dirname` reference in Emscripten output for ESM compatibility.
 
 ## 0.0.1
 

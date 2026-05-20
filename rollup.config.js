@@ -3,6 +3,11 @@ import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
+import { readFileSync } from "fs";
+import { resolve as resolvePath, basename } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export function onwarn(warning, warn) {
     if (
@@ -11,6 +16,42 @@ export function onwarn(warning, warn) {
     )
         return;
     warn(warning);
+}
+
+/**
+ * Plugin that emits the Emscripten WASM file as a sibling asset
+ * and rewrites the module's wasm path to a relative import.meta.url
+ * reference that resolves correctly in the output.
+ */
+function emitWasmPlugin() {
+    const wasmPath = resolvePath(__dirname, "build", "curve25519_compiled.wasm");
+    const wasmName = basename(wasmPath);
+
+    return {
+        name: "emit-wasm",
+        transform(code, id) {
+            if (!id.includes("curve25519_compiled")) return null;
+
+            code = code.replace(
+                "scriptDirectory = __dirname + '/';",
+                `scriptDirectory = new URL('.', import.meta.url).pathname;`
+            );
+
+            code = code.replace(
+                /wasmBinaryFile = new URL\('curve25519_compiled\.wasm', import\.meta\.url\)\.toString\(\);/,
+                `wasmBinaryFile = '${wasmName}';`
+            );
+
+            return { code, map: null };
+        },
+        generateBundle() {
+            this.emitFile({
+                type: "asset",
+                fileName: wasmName,
+                source: readFileSync(wasmPath),
+            });
+        },
+    };
 }
 
 export default [
@@ -35,6 +76,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
+            emitWasmPlugin(),
         ],
         external: [],
         onwarn,
