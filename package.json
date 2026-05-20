@@ -19,21 +19,23 @@
         }
     },
     "scripts": {
-        "build": "npm run compile && npm run build:dts && rollup -c",
+        "build": "npm run compile && npm run bundle",
         "build:dts": "tsc -p tsconfig.dts.json",
-        "check": "npm run dist && npm run lint && npm run test",
+        "bundle": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/",
+        "check": "npm run bundle && npm run lint && npm run test",
         "clean": "rm -rf node_modules",
         "compile": "node scripts/compile.js",
         "dev": "rollup -c -w",
-        "dist": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/",
+        "dist": "npm run build",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
         "lint:fix": "eslint --fix \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js karma.conf.js",
-        "typecheck": "tsc --noEmit",
-        "test:headless": "npm run build:dts && rollup -c && cp build/curve25519_compiled.wasm dist/ && karma start karma.conf.js --single-run",
+        "prepublishOnly": "npm run build",
+        "test": "npm run test:node && npm run test:headless",
         "test:browser": "karma start karma.conf.js --browsers Chrome",
+        "test:headless": "npm run bundle && karma start karma.conf.js --single-run",
         "test:node": "node scripts/build-test-node.js && mocha build/test-node/*.js",
-        "test": "npm run test:node && npm run test:headless"
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "protobufjs": "^8.0.0"
