@@ -33,8 +33,8 @@ function emitWasmPlugin() {
             if (!id.includes("curve25519_compiled")) return null;
 
             code = code.replace(
-                "scriptDirectory = __dirname + '/';",
-                `scriptDirectory = new URL('.', import.meta.url).pathname;`
+                /scriptDirectory = __dirname \+ '\/';/,
+                `scriptDirectory = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src.substring(0, document.currentScript.src.lastIndexOf('/') + 1) : '';`
             );
 
             code = code.replace(
@@ -42,7 +42,7 @@ function emitWasmPlugin() {
                 `wasmBinaryFile = '${wasmName}';`
             );
 
-            return { code, map: null };
+            return { code, map: { mappings: "", sources: [], names: [], version: 3 } };
         },
         generateBundle() {
             this.emitFile({
@@ -93,6 +93,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
+            emitWasmPlugin(),
         ],
         onwarn,
     },

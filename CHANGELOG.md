@@ -1,6 +1,6 @@
 # CHANGES
 
-## 0.0.2
+## 0.0.3
 
 - Added `prepublishOnly` script to ensure full build runs before publishing.
 - Restructured scripts: `bundle` handles dts generation and rollup bundling,
@@ -11,6 +11,10 @@
   string reference so downstream bundlers (webpack, etc.) don't try to resolve
   the file at bundle time.
 - Fixed `__dirname` reference in Emscripten output for ESM compatibility.
+
+## 0.0.2
+
+- Include build and dist files in package
 
 ## 0.0.1
 
