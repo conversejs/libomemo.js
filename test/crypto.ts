@@ -180,13 +180,12 @@ describe("Crypto", function () {
     }
 
     describe("curve25519", function () {
-        this.timeout(5000);
         testCurve25519(() => internalCrypto);
     });
 
     describe("curve25519 in a worker", function () {
-        if (typeof Worker === "undefined") {
-            it.skip("is not available in Node.js", function () {});
+        if (typeof process !== "undefined" && process.versions && process.versions.node) {
+            it.skip("Worker tests require a browser environment", function () {});
             return;
         }
 
@@ -213,7 +212,7 @@ describe("Crypto", function () {
         let workerCrypto: CurveCrypto;
 
         before(function () {
-            const workerUrl = "/base/dist/libomemo-worker.js";
+            const workerUrl = "/dist/libomemo-worker.js";
             worker = new Worker(workerUrl);
             worker.onerror = (err: ErrorEvent) => {
                 console.error("Worker error:", err.message, err.filename);
@@ -244,7 +243,6 @@ describe("Crypto", function () {
             }
         });
 
-        this.timeout(5000);
         testCurve25519(() => workerCrypto!);
     });
 });

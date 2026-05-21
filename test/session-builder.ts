@@ -5,8 +5,6 @@ import { generateIdentity, generatePreKeyBundle, assertEqualArrayBuffers } from 
 import InMemoryStore from "../src/session/store";
 
 describe("SessionBuilder", function () {
-    this.timeout(5000);
-
     const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
     const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
 

@@ -352,8 +352,6 @@ describe("SessionCipher", function () {
 
     TestVectors.forEach(function (test) {
         describe(test.name, function () {
-            this.timeout(20000);
-
             const privKeyQueue: ArrayBuffer[] = [];
             const origCreateKeyPair = internalCrypto.createKeyPair;
 
@@ -389,7 +387,7 @@ describe("SessionCipher", function () {
             const store = new InMemoryStore();
             const address = OMEMOAddress.fromString("SNOWDEN.1");
             test.vectors.forEach(function (step) {
-                it(getDescription(step), function (done) {
+                it(getDescription(step), async function () {
                     let doStep: typeof doReceiveStep | typeof doSendStep;
                     if (step[0] === "receiveMessage") {
                         doStep = doReceiveStep;
@@ -399,14 +397,12 @@ describe("SessionCipher", function () {
                         throw new Error("Invalid test");
                     }
 
-                    void                     void doStep(
+                    await doStep(
                         store,
                         step[1] as unknown as SendMessageData & ReceiveMessageData,
                         privKeyQueue,
                         address
-                    )
-                        .then(assert)
-                        .then(done, done);
+                    );
                 });
             });
         });

@@ -13,7 +13,7 @@
     "declarationMap": false,
     "sourceMap": true,
     "outDir": "./dist",
-    "types": ["mocha", "node"],
+    "types": ["vitest/globals", "node"],
     "noEmit": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],

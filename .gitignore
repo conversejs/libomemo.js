@@ -6,3 +6,7 @@ build/curve25519_compiled.*
 build/dts
 build/test-node/
 build/test/
+.vitest-attachments/
+test/__screenshots__/
+.vitest-attachments/
+test/__screenshots__/
