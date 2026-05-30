@@ -39,7 +39,10 @@ describe("Curve25519", function () {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.strictEqual((error as Error).message, "Invalid private key: expected ArrayBuffer");
+            assert.strictEqual(
+                (error as Error).message,
+                "Invalid private key: expected ArrayBuffer"
+            );
         });
 
         it("throws for private key with wrong length", async function () {

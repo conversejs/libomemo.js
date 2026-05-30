@@ -64,10 +64,7 @@ function curveWasmInlinePlugin() {
                 const injection = `var wasmBinary = Uint8Array.from(atob("${wasmBase64}"), c => c.charCodeAt(0));`;
 
                 // Insert after the "var wasmBinary;" declaration line
-                js = js.replace(
-                    /^var wasmBinary;$/m,
-                    injection
-                );
+                js = js.replace(/^var wasmBinary;$/m, injection);
 
                 // Fix __dirname not being available in ESM: replace with import.meta.url based path
                 js = js.replace(

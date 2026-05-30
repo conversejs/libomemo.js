@@ -6,7 +6,15 @@ import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "../cryp
 import { SessionBuilder } from "./builder";
 import { OMEMOAddress } from "./address";
 import { ChainType } from "../types";
-import { EncryptResult, SessionState, OMEMOStore, Direction, Chain, WhisperMessageProto, PreKeyWhisperMessageProto } from "./types";
+import {
+    EncryptResult,
+    SessionState,
+    OMEMOStore,
+    Direction,
+    Chain,
+    WhisperMessageProto,
+    PreKeyWhisperMessageProto,
+} from "./types";
 
 /** Encrypts and decrypts messages for established OMEMO sessions. */
 export class SessionCipher {
@@ -397,7 +405,9 @@ export class SessionCipher {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
             const { PreKeyWhisperMessage } = await loadProtocolMessages();
-            const preKeyProto = PreKeyWhisperMessage.decode(new Uint8Array(arrayBuffer)) as unknown as PreKeyWhisperMessageProto;
+            const preKeyProto = PreKeyWhisperMessage.decode(
+                new Uint8Array(arrayBuffer)
+            ) as unknown as PreKeyWhisperMessageProto;
 
             let record = await this.#getRecord(address);
             if (!record) {

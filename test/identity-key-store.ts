@@ -47,13 +47,21 @@ export function testIdentityKeyStore(
         describe("isTrustedIdentity", function () {
             it("returns true if a key is trusted", async function () {
                 await store.saveIdentity(address.toString(), testKey.pubKey);
-                const trusted = await store.isTrustedIdentity(number, testKey.pubKey, Direction.SENDING);
+                const trusted = await store.isTrustedIdentity(
+                    number,
+                    testKey.pubKey,
+                    Direction.SENDING
+                );
                 assert.isTrue(trusted);
             });
             it("returns false if a key is untrusted", async function () {
                 const newIdentity = getRandomBytes(33);
                 await store.saveIdentity(address.toString(), testKey.pubKey);
-                const trusted = await store.isTrustedIdentity(number, newIdentity, Direction.SENDING);
+                const trusted = await store.isTrustedIdentity(
+                    number,
+                    newIdentity,
+                    Direction.SENDING
+                );
                 assert.isFalse(trusted);
             });
         });
