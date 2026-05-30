@@ -3,6 +3,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import { string } from "rollup-plugin-string";
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
+import esbuild from "rollup-plugin-esbuild";
 import { readFileSync } from "fs";
 import { resolve as resolvePath, basename } from "path";
 import { fileURLToPath } from "url";
@@ -82,6 +83,33 @@ export default [
         onwarn,
     },
     {
+        input: "src/index.ts",
+        output: [
+            {
+                file: "dist/libomemo.esm.min.js",
+                format: "es",
+                sourcemap: true,
+            },
+            {
+                file: "dist/libomemo.umd.min.js",
+                format: "umd",
+                name: "libomemo",
+                exports: "named",
+                sourcemap: true,
+            },
+        ],
+        plugins: [
+            string({ include: "**/*.proto" }),
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
+            resolve({ browser: true }),
+            commonjs(),
+            emitWasmPlugin(),
+            esbuild({ minify: true }),
+        ],
+        external: [],
+        onwarn,
+    },
+    {
         input: "src/curve25519_worker.ts",
         output: {
             file: "dist/libomemo-worker.js",
@@ -94,6 +122,23 @@ export default [
             resolve({ browser: true }),
             commonjs(),
             emitWasmPlugin(),
+        ],
+        onwarn,
+    },
+    {
+        input: "src/curve25519_worker.ts",
+        output: {
+            file: "dist/libomemo-worker.min.js",
+            format: "iife",
+            sourcemap: true,
+            banner: "// Shim for Emscripten: provide document in worker context\nif (typeof document === 'undefined') { self.document = { baseURI: self.location.href }; }",
+        },
+        plugins: [
+            typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
+            resolve({ browser: true }),
+            commonjs(),
+            emitWasmPlugin(),
+            esbuild({ minify: true }),
         ],
         onwarn,
     },
