@@ -28,10 +28,12 @@ export class OMEMOAddress {
     }
 
     static fromString(encodedAddress: string): OMEMOAddress {
-        if (typeof encodedAddress !== "string" || !encodedAddress.match(/^[^.]+\.\d+$/)) {
+        if (typeof encodedAddress !== "string" || !encodedAddress.match(/^.+\.\d+$/)) {
             throw new Error("Invalid OMEMOAddress string");
         }
-        const parts = encodedAddress.split(".");
-        return new OMEMOAddress(parts[0], parseInt(parts[1]));
+        const lastDot = encodedAddress.lastIndexOf(".");
+        const name = encodedAddress.substring(0, lastDot);
+        const deviceId = parseInt(encodedAddress.substring(lastDot + 1));
+        return new OMEMOAddress(name, deviceId);
     }
 }
