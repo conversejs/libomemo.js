@@ -14,11 +14,14 @@ export default [
             },
             globals: {
                 ...globals.browser,
+                ...globals.node,
                 chai: "readonly",
                 describe: "readonly",
                 it: "readonly",
                 before: "readonly",
                 after: "readonly",
+                beforeAll: "readonly",
+                afterAll: "readonly",
             },
         },
         plugins: {
@@ -51,11 +54,14 @@ export default [
             sourceType: "module",
             globals: {
                 ...globals.browser,
+                ...globals.node,
                 chai: "readonly",
                 describe: "readonly",
                 it: "readonly",
                 before: "readonly",
                 after: "readonly",
+                beforeAll: "readonly",
+                afterAll: "readonly",
             },
         },
         rules: {
@@ -72,8 +78,9 @@ export default [
         },
     },
     {
-        files: ["rollup.config.js", "eslint.config.mjs", "karma.conf.js", "scripts/**/*.js"],
+        files: ["rollup.config.js", "eslint.config.js", "karma.conf.js", "vitest.config.ts", "vitest.browser.config.ts", "scripts/**/*.js"],
         languageOptions: {
+            parser: tsParser,
             globals: {
                 ...globals.node,
             },
