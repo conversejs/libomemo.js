@@ -39,7 +39,7 @@ export function testIdentityKeyStore(
         describe("saveIdentity", function () {
             it("stores identity keys", async function () {
                 await store.saveIdentity(address.toString(), testKey.pubKey);
-                const key = await store.loadIdentityKey(number);
+                const key = await store.loadIdentityKey(address.toString());
                 assertEqualArrayBuffers(key!, testKey.pubKey);
             });
         });
@@ -48,7 +48,7 @@ export function testIdentityKeyStore(
             it("returns true if a key is trusted", async function () {
                 await store.saveIdentity(address.toString(), testKey.pubKey);
                 const trusted = await store.isTrustedIdentity(
-                    number,
+                    address.toString(),
                     testKey.pubKey,
                     Direction.SENDING
                 );
@@ -58,7 +58,7 @@ export function testIdentityKeyStore(
                 const newIdentity = getRandomBytes(33);
                 await store.saveIdentity(address.toString(), testKey.pubKey);
                 const trusted = await store.isTrustedIdentity(
-                    number,
+                    address.toString(),
                     newIdentity,
                     Direction.SENDING
                 );

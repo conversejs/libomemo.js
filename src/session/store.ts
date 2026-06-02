@@ -1,4 +1,4 @@
-import { util, OMEMOAddress } from "../index";
+import { util } from "../index";
 import { type KeyPair } from "../types";
 import { Direction, OMEMOStore } from "../session/types";
 
@@ -42,34 +42,32 @@ export default class InMemoryStore implements OMEMOStore {
         delete this.store[key];
     }
 
-    isTrustedIdentity(name: string, identityKey: ArrayBuffer, _direction: Direction) {
-        if (name === null || name === undefined) {
+    isTrustedIdentity(address: string, identityKey: ArrayBuffer, _direction: Direction) {
+        if (address === null || address === undefined) {
             throw new Error("tried to check identity key for undefined/null key");
         }
         if (!(identityKey instanceof ArrayBuffer)) {
             throw new Error("Expected identityKey to be an ArrayBuffer");
         }
-        const trusted = this.get<ArrayBuffer>("identityKey" + name);
+        const trusted = this.get<ArrayBuffer>("identityKey" + address);
         if (trusted === undefined) {
             return Promise.resolve(true);
         }
         return util.toString(identityKey) === util.toString(trusted);
     }
 
-    loadIdentityKey(name: string) {
-        if (name === null || name === undefined)
+    loadIdentityKey(address: string) {
+        if (address === null || address === undefined)
             throw new Error("Tried to get identity key for undefined/null key");
-        return this.get<ArrayBuffer>("identityKey" + name);
+        return this.get<ArrayBuffer>("identityKey" + address);
     }
 
-    saveIdentity(identifier: string, identityKey: ArrayBuffer) {
-        if (identifier === null || identifier === undefined)
+    saveIdentity(address: string, identityKey: ArrayBuffer) {
+        if (address === null || address === undefined)
             throw new Error("Tried to put identity key for undefined/null key");
 
-        const address = OMEMOAddress.fromString(identifier);
-
-        const existing = this.get<ArrayBuffer>("identityKey" + address.getName());
-        this.put("identityKey" + address.getName(), identityKey);
+        const existing = this.get<ArrayBuffer>("identityKey" + address);
+        this.put("identityKey" + address, identityKey);
 
         if (existing && util.toString(identityKey) !== util.toString(existing)) {
             return true;
@@ -110,22 +108,22 @@ export default class InMemoryStore implements OMEMOStore {
         return this.remove("25519KeysignedKey" + keyId);
     }
 
-    loadSession(identifier: string) {
-        return this.get<string>("session" + identifier);
+    loadSession(address: string) {
+        return this.get<string>("session" + address);
     }
 
-    storeSession(identifier: string, record: string) {
-        return this.put("session" + identifier, record);
+    storeSession(address: string, record: string) {
+        return this.put("session" + address, record);
     }
 
-    removeSession(identifier: string) {
-        return this.remove("session" + identifier);
+    removeSession(address: string) {
+        return this.remove("session" + address);
     }
 
-    removeAllSessions(identifier: string) {
-        for (const id in this.store) {
-            if (id.startsWith("session" + identifier)) {
-                delete this.store[id];
+    removeAllSessions(jid: string) {
+        for (const key in this.store) {
+            if (key.startsWith("session" + jid)) {
+                delete this.store[key];
             }
         }
     }

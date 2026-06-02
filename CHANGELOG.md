@@ -1,5 +1,24 @@
 # CHANGES
 
+## 1.0.0
+
+### Breaking: `OMEMOStore` identity methods now receive full address string
+
+- `isTrustedIdentity`, `loadIdentityKey`, and `saveIdentity` now all receive the
+  full OMEMOAddress string (`"name.deviceId"`) instead of just the name.
+  Previously, `isTrustedIdentity` and `loadIdentityKey` received only the name
+  (via `getName()`), while `saveIdentity` received the full address (via
+  `toString()`). This was inherited from libsignal-protocol-javascript where it
+  made sense (one identity key per account), but is incorrect for OMEMO where
+  each device has its own identity key pair.
+- The `InMemoryStore` reference implementation now stores identity keys per-device
+  (keyed by full address) instead of per-name.
+- The `OMEMOStore` interface parameter name changed from `name` to `address` for
+  clarity.
+- Downstream consumers implementing a custom `OMEMOStore` must update their
+  `isTrustedIdentity`, `loadIdentityKey`, and `saveIdentity` implementations to
+  expect the full address string.
+
 ## 0.0.3
 
 - Added `prepublishOnly` script to ensure full build runs before publishing.

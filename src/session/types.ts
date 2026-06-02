@@ -120,6 +120,13 @@ export interface IdentityKeyError extends Error {
 
 export type KeyId = number | string;
 
+/**
+ * Persistent storage backend for OMEMO session state.
+ *
+ * Parameters named `address` accept a serialized {@link OMEMOAddress} in the
+ * form `"${name}.${deviceId}"` — use `OMEMOAddress.toString()` to produce one.
+ * Parameters named `jid` accept the bare JID only (no device ID suffix).
+ */
 export interface OMEMOStore {
     store: Record<string, unknown>;
 
@@ -128,12 +135,12 @@ export interface OMEMOStore {
     remove(key: string): void;
 
     isTrustedIdentity(
-        name: string,
+        address: string,
         identityKey: ArrayBuffer,
         direction: Direction
     ): Promise<boolean> | boolean;
-    loadIdentityKey(name: string): Promise<ArrayBuffer | undefined> | ArrayBuffer | undefined;
-    saveIdentity(name: string, identityKey: ArrayBuffer): Promise<boolean> | boolean;
+    loadIdentityKey(address: string): Promise<ArrayBuffer | undefined> | ArrayBuffer | undefined;
+    saveIdentity(address: string, identityKey: ArrayBuffer): Promise<boolean> | boolean;
 
     loadPreKey(keyId: KeyId): Promise<KeyPairWrapper | undefined>;
     storePreKey(keyId: KeyId, keyPair: KeyPair): Promise<void> | void;
@@ -146,8 +153,8 @@ export interface OMEMOStore {
     removeSignedPreKey(keyId: KeyId): Promise<void> | void;
 
     loadSession(address: string): Promise<string | undefined> | string | undefined;
-    removeAllSessions(identifier: string): Promise<void> | void;
-    removeSession(identifier: string): Promise<void> | void;
+    removeAllSessions(jid: string): Promise<void> | void;
+    removeSession(address: string): Promise<void> | void;
     storeSession(address: string, record: string): Promise<void> | void;
 
     getIdentityKeyPair(): Promise<KeyPair | undefined> | KeyPair | undefined;

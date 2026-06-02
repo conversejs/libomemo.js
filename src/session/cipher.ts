@@ -301,7 +301,7 @@ export class SessionCipher {
             result.set(new Uint8Array(mac, 0, 8), encodedMsg.byteLength + 1);
 
             const trusted = await this.#store.isTrustedIdentity(
-                this.#remoteAddress.getName(),
+                this.#remoteAddress.toString(),
                 session.indexInfo.remoteIdentityKey,
                 Direction.SENDING
             );
@@ -372,7 +372,7 @@ export class SessionCipher {
             }
 
             const trusted = await this.#store.isTrustedIdentity(
-                this.#remoteAddress.getName(),
+                this.#remoteAddress.toString(),
                 session.indexInfo.remoteIdentityKey,
                 Direction.RECEIVING
             );

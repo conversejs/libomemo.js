@@ -32,7 +32,7 @@ export class SessionBuilder {
     processPreKey(device: PreKeyBundle): Promise<void> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const trusted = await this.#store.isTrustedIdentity(
-                this.#remoteAddress.getName(),
+                this.#remoteAddress.toString(),
                 device.identityKey,
                 Direction.SENDING
             );
@@ -101,7 +101,7 @@ export class SessionBuilder {
         const identityKeyAB = message.identityKey.slice().buffer;
 
         const trusted = await this.#store.isTrustedIdentity(
-            this.#remoteAddress.getName(),
+            this.#remoteAddress.toString(),
             identityKeyAB,
             Direction.RECEIVING
         );
