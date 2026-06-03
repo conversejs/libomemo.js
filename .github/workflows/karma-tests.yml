@@ -12,8 +12,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-     DISPLAY: :99.0
 
     strategy:
       matrix:
@@ -27,7 +25,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - name: Run Karma tests
-      uses: GabrielBB/xvfb-action@v1
-      with:
-          run: make test
+    - name: Install dependencies
+      run: npm ci
+    - name: Run Node.js tests
+      run: make ci

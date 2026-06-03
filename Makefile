@@ -13,6 +13,10 @@ lint: node_modules
 test: lint
 	npm test -- $(ARGS)
 
+.PHONY: ci
+ci: lint
+	npm run test:node
+
 .PHONY: check
 check: lint dist test
 

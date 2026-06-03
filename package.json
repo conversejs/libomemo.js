@@ -30,7 +30,7 @@
         "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js vitest.config.ts",
         "lint:fix": "eslint --fix \"src/**/*.ts\" \"test/**/*.ts\" rollup.config.js vitest.config.ts",
         "prepublishOnly": "npm run build",
-        "test": "vitest run && vitest run --config vitest.browser.config.ts",
+        "test": "npm run test:node && npm run test:browser",
         "test:node": "vitest run",
         "test:browser": "vitest run --config vitest.browser.config.ts",
         "test:watch": "vitest",
