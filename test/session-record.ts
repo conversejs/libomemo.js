@@ -20,10 +20,10 @@ function makeSession(overrides: Partial<SessionState> = {}): SessionState {
 
 describe("SessionRecord", function () {
     describe("constructor", function () {
-        it("creates a record with empty sessions and v1 version", function () {
+        it("creates a record with empty sessions and v2 version", function () {
             const record = new SessionRecord();
             assert.deepEqual(record.sessions, {});
-            assert.strictEqual(record.version, "v1");
+            assert.strictEqual(record.version, "v2");
         });
     });
 
@@ -34,7 +34,7 @@ describe("SessionRecord", function () {
             assert.isString(json);
             const data = JSON.parse(json);
             assert.deepEqual(data.sessions, {});
-            assert.strictEqual(data.version, "v1");
+            assert.strictEqual(data.version, "v2");
         });
 
         it("serializes a record with a session", function () {
@@ -52,7 +52,7 @@ describe("SessionRecord", function () {
             const data = JSON.parse(json);
             assert.strictEqual(data.sessions["mykey"].registrationId, 42);
             assert.strictEqual(data.sessions["mykey"].indexInfo.closed, -1);
-            assert.strictEqual(data.version, "v1");
+            assert.strictEqual(data.version, "v2");
         });
     });
 
@@ -61,7 +61,7 @@ describe("SessionRecord", function () {
             const original = new SessionRecord();
             const restored = SessionRecord.deserialize(original.serialize());
             assert.deepEqual(restored.sessions, {});
-            assert.strictEqual(restored.version, "v1");
+            assert.strictEqual(restored.version, "v2");
         });
 
         it("roundtrips a record with sessions", function () {
@@ -90,6 +90,37 @@ describe("SessionRecord", function () {
             assert.strictEqual(restored.sessions["key2"].registrationId, 2);
             assert.strictEqual(restored.sessions["key1"].indexInfo.closed, 1234);
             assert.strictEqual(restored.sessions["key2"].indexInfo.closed, -1);
+        });
+
+        it("roundtrips both the Curve and Ed forms of the remote identity key", function () {
+            const original = new SessionRecord();
+            original.sessions["k"] = makeSession({
+                indexInfo: {
+                    closed: -1,
+                    baseKey: strToBytes("k"),
+                    baseKeyType: 2,
+                    remoteIdentityKey: strToBytes("curve-form"),
+                    remoteIdentityKeyEd: strToBytes("ed-form"),
+                },
+            });
+            const restored = SessionRecord.deserialize(original.serialize());
+            const indexInfo = restored.sessions["k"].indexInfo;
+            assert.strictEqual(
+                new TextDecoder().decode(indexInfo.remoteIdentityKey),
+                "curve-form"
+            );
+            assert.isDefined(indexInfo.remoteIdentityKeyEd);
+            assert.strictEqual(
+                new TextDecoder().decode(indexInfo.remoteIdentityKeyEd),
+                "ed-form"
+            );
+        });
+
+        it("leaves remoteIdentityKeyEd undefined when absent (0.3.0 sessions)", function () {
+            const original = new SessionRecord();
+            original.sessions["k"] = makeSession();
+            const restored = SessionRecord.deserialize(original.serialize());
+            assert.isUndefined(restored.sessions["k"].indexInfo.remoteIdentityKeyEd);
         });
 
         it("throws for sessions that is null", function () {
@@ -123,6 +154,27 @@ describe("SessionRecord", function () {
                 Error,
                 /deserializing/
             );
+        });
+
+        it("migrates a legacy (pre-protocolVersion) session to 0.3.0", function () {
+            // A record written before omemo:2 support: schema "v1", no protocolVersion.
+            const original = new SessionRecord();
+            original.sessions["legacy"] = makeSession({
+                registrationId: 7,
+                indexInfo: {
+                    closed: -1,
+                    baseKey: strToBytes("legacy"),
+                    baseKeyType: 2,
+                    remoteIdentityKey: strToBytes("x"),
+                },
+            });
+            const data = JSON.parse(original.serialize());
+            data.version = "v1";
+            delete data.sessions["legacy"].protocolVersion;
+
+            const restored = SessionRecord.deserialize(JSON.stringify(data));
+            assert.strictEqual(restored.version, "v2");
+            assert.strictEqual(restored.sessions["legacy"].protocolVersion, "eu.siacs.conversations.axolotl");
         });
     });
 

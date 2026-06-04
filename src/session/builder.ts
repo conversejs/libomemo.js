@@ -4,12 +4,13 @@ import { queueJobForNumber } from "./lock";
 import { internalCrypto, HKDF } from "../crypto";
 import { OMEMOAddress } from "./address";
 import { BaseKeyType, ChainType, KeyPair } from "../types";
+import { getProtocolProfile, ProtocolProfile, ParsedKeyExchange } from "./protocol-profile";
 import {
     PreKeyBundle,
     SessionState,
     OMEMOStore,
+    OMEMOVersion,
     Direction,
-    PreKeyWhisperMessageProto,
     IdentityKeyError,
 } from "./types";
 
@@ -19,21 +20,30 @@ import {
 export class SessionBuilder {
     #remoteAddress: OMEMOAddress;
     #store: OMEMOStore;
+    #profile: ProtocolProfile;
 
-    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string) {
+    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string, version: OMEMOVersion) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
                 ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
         this.#store = store;
+        this.#profile = getProtocolProfile(version);
     }
 
     /** Process a PreKey bundle to establish a new session. */
     processPreKey(device: PreKeyBundle): Promise<void> {
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
+            // Normalise the remote identity key: for omemo:2 the wire form is
+            // Ed25519 and is converted to its Curve25519 equivalent for DH.
+            const remoteId = await this.#profile.normalizeRemoteIdentityKey(device.identityKey);
+            // Trust is keyed on the form the consumer published in the bundle
+            // (Ed25519 for omemo:2, Curve25519 for 0.3.0).
+            const trustKey = remoteId.ed ?? remoteId.curve;
+
             const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.toString(),
-                device.identityKey,
+                trustKey,
                 Direction.SENDING
             );
 
@@ -42,8 +52,8 @@ export class SessionBuilder {
             }
 
             await internalCrypto.Ed25519Verify(
-                device.identityKey,
-                device.signedPreKey.publicKey,
+                remoteId.curve,
+                this.#profile.signedPreKeySignatureData(device.signedPreKey.publicKey),
                 device.signedPreKey.signature
             );
 
@@ -53,10 +63,11 @@ export class SessionBuilder {
                 true,
                 baseKey,
                 undefined,
-                device.identityKey,
+                remoteId.curve,
                 devicePreKey,
                 device.signedPreKey.publicKey,
-                device.registrationId
+                this.#registrationId(device.registrationId),
+                remoteId.ed
             );
 
             session.pendingPreKey = {
@@ -80,10 +91,7 @@ export class SessionBuilder {
             record.updateSessionState(session);
             await Promise.all([
                 this.#store.storeSession(address, record.serialize()),
-                this.#store.saveIdentity(
-                    this.#remoteAddress.toString(),
-                    session.indexInfo.remoteIdentityKey
-                ),
+                this.#store.saveIdentity(this.#remoteAddress.toString(), trustKey),
             ]);
             return;
         });
@@ -91,24 +99,25 @@ export class SessionBuilder {
 
     async processV3(
         record: SessionRecord,
-        message: PreKeyWhisperMessageProto
+        message: ParsedKeyExchange
     ): Promise<number | undefined> {
         if (record.getSessionByBaseKey(message.baseKey)) {
             console.log("Duplicate PreKeyMessage for session");
             return;
         }
 
-        const identityKeyAB = message.identityKey.slice().buffer;
+        // Trust is keyed on the form received on the wire (Ed25519 for omemo:2).
+        const trustKey = message.identityKeyEd ?? message.identityKey;
 
         const trusted = await this.#store.isTrustedIdentity(
             this.#remoteAddress.toString(),
-            identityKeyAB,
+            trustKey,
             Direction.RECEIVING
         );
 
         if (!trusted) {
             const e = new Error("Unknown identity key") as IdentityKeyError;
-            e.identityKey = identityKeyAB;
+            e.identityKey = trustKey;
             throw e;
         }
 
@@ -137,21 +146,26 @@ export class SessionBuilder {
             console.log("Invalid prekey id", message.preKeyId);
         }
 
-        const baseKeyAB = message.baseKey.slice().buffer;
         const newSession = await this.#initSession(
             false,
             preKeyPair ? preKeyPair.keyPair : undefined,
             signedPreKeyPair ? signedPreKeyPair.keyPair : undefined,
-            identityKeyAB,
-            baseKeyAB,
+            message.identityKey,
+            message.baseKey,
             undefined,
-            message.registrationId
+            this.#registrationId(message.registrationId),
+            message.identityKeyEd
         );
 
         record.updateSessionState(newSession);
 
-        await this.#store.saveIdentity(this.#remoteAddress.toString(), identityKeyAB);
+        await this.#store.saveIdentity(this.#remoteAddress.toString(), trustKey);
         return message.preKeyId;
+    }
+
+    /** omemo:2 has no registrationId on the wire; the device id serves that role. */
+    #registrationId(wireRegistrationId: number | undefined): number {
+        return wireRegistrationId ?? this.#remoteAddress.getDeviceId();
     }
 
     async #initSession(
@@ -161,7 +175,8 @@ export class SessionBuilder {
         theirIdentityPubKey: ArrayBuffer,
         theirEphemeralPubKey: ArrayBuffer | undefined,
         theirSignedPubKey: ArrayBuffer | undefined,
-        registrationId: number
+        registrationId: number,
+        theirIdentityPubKeyEd: ArrayBuffer | undefined
     ): Promise<SessionState> {
         const ourIdentityKey = await this.#store.getIdentityKeyPair();
         if (!ourIdentityKey) throw new Error("No identity keypair to init session with");
@@ -215,11 +230,17 @@ export class SessionBuilder {
         const masterKey = await HKDF(
             sharedSecret.buffer as ArrayBuffer,
             new ArrayBuffer(32),
-            "WhisperText"
+            this.#profile.x3dhInfo
         );
 
         const session: SessionState = {
             registrationId: registrationId,
+            protocolVersion: this.#profile.version,
+            ad: await this.#profile.buildAssociatedData(
+                ourIdentityKey,
+                theirIdentityPubKeyEd,
+                isInitiator
+            ),
             currentRatchet: {
                 rootKey: masterKey[0],
                 lastRemoteEphemeralKey: theirSignedPubKey!,
@@ -227,7 +248,10 @@ export class SessionBuilder {
                 ephemeralKeyPair: ourSignedKey!,
             },
             indexInfo: {
+                // Internal Curve form (MAC/DH); the Ed form, when present, is the
+                // published omemo:2 identity key used for trust.
                 remoteIdentityKey: theirIdentityPubKey,
+                remoteIdentityKeyEd: theirIdentityPubKeyEd,
                 closed: -1,
             },
             oldRatchetList: [],
@@ -255,7 +279,7 @@ export class SessionBuilder {
             ratchet.ephemeralKeyPair.privKey
         );
 
-        const masterKey = await HKDF(sharedSecret, ratchet.rootKey, "WhisperRatchet");
+        const masterKey = await HKDF(sharedSecret, ratchet.rootKey, this.#profile.rootChainInfo);
 
         session[util.toString(ratchet.ephemeralKeyPair.pubKey)] = {
             messageKeys: {},

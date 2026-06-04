@@ -66,6 +66,18 @@ interface Curve25519EmscriptenModule {
     /** Ed25519 base point scalar multiplication (internal use). */
     _crypto_sign_ed25519_ref10_ge_scalarmult_base(out_ptr: number, priv_ptr: number): void;
 
+    /** Convert a Curve25519 public key to its Ed25519 public key, sign bit 0 (for OMEMO 2).
+     *  @param ed_pub_ptr Pointer to 32-byte output Ed25519 public key buffer
+     *  @param curve_pub_ptr Pointer to 32-byte Curve25519 public key
+     */
+    _curve25519_pubkey_to_ed25519_pubkey(ed_pub_ptr: number, curve_pub_ptr: number): void;
+
+    /** Convert an Ed25519 public key to its Curve25519 public key (for OMEMO 2 DH).
+     *  @param curve_pub_ptr Pointer to 32-byte output Curve25519 public key buffer
+     *  @param ed_pub_ptr Pointer to 32-byte Ed25519 public key
+     */
+    _ed25519_pubkey_to_curve25519_pubkey(curve_pub_ptr: number, ed_pub_ptr: number): void;
+
     /** WASM heap — a typed array view of the module's linear memory. */
     HEAPU8: Uint8Array;
     HEAP32: Int32Array;

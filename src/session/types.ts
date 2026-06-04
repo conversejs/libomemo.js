@@ -1,5 +1,15 @@
 import { BaseKeyType, ChainType, KeyPair, PublicPreKey } from "../types";
 
+/**
+ * The OMEMO protocol versions this library supports, identified by their XML
+ * namespace.
+ *
+ * - `"eu.siacs.conversations.axolotl"` — XEP-0384 v0.3.0 (the libsignal "v3"
+ *   wire format).
+ * - `"urn:xmpp:omemo:2"` — the latest XEP-0384.
+ */
+export type OMEMOVersion = "eu.siacs.conversations.axolotl" | "urn:xmpp:omemo:2";
+
 export type JSONValue =
     | string
     | number
@@ -22,7 +32,13 @@ export type Chain = {
 export interface EncryptResult {
     type: number;
     body: string;
-    registrationId: number;
+    registrationId?: number;
+    /**
+     * omemo:2 only: whether `body` is an `OMEMOKeyExchange` (`true`) or a plain
+     * `OMEMOAuthenticatedMessage` (`false`). Consumers place this in the `kex`
+     * attribute of the `<key>` element.
+     */
+    kex?: boolean;
 }
 
 export interface RatchetState {
@@ -50,12 +66,19 @@ export interface PreKeyBundle {
 
 export type SessionState = {
     registrationId: number;
+    /** The OMEMO protocol version this session speaks. Absent ⇒ legacy 0.3.0. */
+    protocolVersion?: OMEMOVersion;
+    /** omemo:2 session-fixed associated data (`IK_A ‖ IK_B`, Ed25519). */
+    ad?: ArrayBuffer;
     currentRatchet: RatchetState;
     indexInfo: {
         baseKey?: ArrayBuffer;
         baseKeyType?: BaseKeyType;
         closed: number;
+        /** Remote identity key, always the internal 33-byte 0x05-Curve form. */
         remoteIdentityKey: ArrayBuffer;
+        /** omemo:2 only: the published 32-byte Ed25519 form, used for trust. */
+        remoteIdentityKeyEd?: ArrayBuffer;
     };
     oldRatchetList: OldRatchetEntry[];
     pendingPreKey?: {
@@ -68,6 +91,8 @@ export type SessionState = {
 
 export interface SerializedSessionState {
     registrationId: number;
+    protocolVersion?: OMEMOVersion;
+    ad?: string;
     currentRatchet: {
         rootKey: string;
         lastRemoteEphemeralKey: string;
@@ -79,6 +104,7 @@ export interface SerializedSessionState {
         baseKeyType?: BaseKeyType;
         closed: number;
         remoteIdentityKey: string;
+        remoteIdentityKeyEd?: string;
     };
     oldRatchetList: { added: number; ephemeralKey: string }[];
     pendingPreKey?: { signedKeyId: number; baseKey: string; preKeyId?: number };
@@ -112,6 +138,26 @@ export interface PreKeyWhisperMessageProto {
     baseKey: Uint8Array;
     identityKey: Uint8Array;
     message: Uint8Array;
+}
+
+export interface OMEMOMessageProto {
+    n: number;
+    pn: number;
+    dh_pub: Uint8Array;
+    ciphertext: Uint8Array;
+}
+
+export interface OMEMOAuthenticatedMessageProto {
+    mac: Uint8Array;
+    message: Uint8Array;
+}
+
+export interface OMEMOKeyExchangeProto {
+    pk_id: number;
+    spk_id: number;
+    ik: Uint8Array;
+    ek: Uint8Array;
+    message: OMEMOAuthenticatedMessageProto;
 }
 
 export interface IdentityKeyError extends Error {

@@ -145,6 +145,42 @@ export class Curve25519 {
         return res === 0;
     }
 
+    #curvePubKeyToEd25519PubKey(
+        module: Curve25519EmscriptenModule,
+        pubKey: ArrayBuffer
+    ): ArrayBuffer {
+        const edPubKey_ptr = module._malloc(32);
+        const curvePubKey_ptr = this.#allocate(module, new Uint8Array(pubKey));
+
+        module._curve25519_pubkey_to_ed25519_pubkey(edPubKey_ptr, curvePubKey_ptr);
+
+        const res = new Uint8Array(32);
+        this.#readBytes(module, edPubKey_ptr, 32, res);
+
+        module._free(edPubKey_ptr);
+        module._free(curvePubKey_ptr);
+
+        return res.buffer;
+    }
+
+    #ed25519PubKeyToCurvePubKey(
+        module: Curve25519EmscriptenModule,
+        edPubKey: ArrayBuffer
+    ): ArrayBuffer {
+        const curvePubKey_ptr = module._malloc(32);
+        const edPubKey_ptr = this.#allocate(module, new Uint8Array(edPubKey));
+
+        module._ed25519_pubkey_to_curve25519_pubkey(curvePubKey_ptr, edPubKey_ptr);
+
+        const res = new Uint8Array(32);
+        this.#readBytes(module, curvePubKey_ptr, 32, res);
+
+        module._free(curvePubKey_ptr);
+        module._free(edPubKey_ptr);
+
+        return res.buffer;
+    }
+
     #processKeys(raw_keys: KeyPair): KeyPair {
         const origPub = new Uint8Array(raw_keys.pubKey);
         const pub = new Uint8Array(33);
@@ -200,6 +236,31 @@ export class Curve25519 {
         if (message === undefined) throw new Error("Invalid message");
 
         return this.#sign(await this.#module, privKey, message);
+    }
+
+    /**
+     * Convert a Curve25519 public key to its 32-byte Ed25519 public key (with the
+     * Edwards sign bit forced to zero, matching XEdDSA / libomemo-c). Used by
+     * OMEMO 2 (urn:xmpp:omemo:2), which transfers the IdentityKey and builds the
+     * authentication associated data in Ed25519 form. Accepts the 33-byte
+     * 0x05-prefixed form or the raw 32-byte form.
+     */
+    async curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        const raw = this.#validatePubKeyFormat(pubKey)!;
+        if (raw.byteLength !== 32) throw new Error("Invalid public key");
+        return this.#curvePubKeyToEd25519PubKey(await this.#module, raw);
+    }
+
+    /**
+     * Convert a 32-byte Ed25519 public key into the corresponding 32-byte Curve25519
+     * (Montgomery u-coordinate) public key, for performing X25519/DH in OMEMO 2.
+     * The returned key is the raw 32-byte form, without the 0x05 type prefix.
+     */
+    async ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        if (!(edPubKey instanceof ArrayBuffer) || edPubKey.byteLength !== 32) {
+            throw new Error("Invalid Ed25519 public key: expected a 32-byte ArrayBuffer");
+        }
+        return this.#ed25519PubKeyToCurvePubKey(await this.#module, edPubKey);
     }
 
     async generateKeyPair(): Promise<KeyPair> {

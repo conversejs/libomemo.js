@@ -34,4 +34,6 @@ export interface InternalCryptoInterface {
     ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer>;
     Ed25519Sign(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer>;
     Ed25519Verify(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void>;
+    curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer>;
+    ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer>;
 }

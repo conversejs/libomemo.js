@@ -4,7 +4,7 @@ import { Migration, SessionState, SessionRecordData, SerializedSessionState } fr
 
 const ARCHIVED_STATES_MAX_LENGTH = 40;
 const OLD_RATCHETS_MAX_LENGTH = 10;
-const SESSION_RECORD_VERSION = "v1";
+const SESSION_RECORD_VERSION = "v2";
 
 const migrations: Migration[] = [
     {
@@ -27,6 +27,18 @@ const migrations: Migration[] = [
                             data.version
                         );
                     }
+                }
+            }
+        },
+    },
+    {
+        // Sessions stored before omemo:2 support predate the protocolVersion field
+        // and can only be 0.3.0, the only version the library used to write.
+        version: "v2",
+        migrate(data: SessionRecordData) {
+            for (const key in data.sessions) {
+                if (data.sessions[key].protocolVersion === undefined) {
+                    data.sessions[key].protocolVersion = "eu.siacs.conversations.axolotl";
                 }
             }
         },
@@ -54,11 +66,6 @@ export class SessionRecord {
 
     static deserialize(serialized: string): SessionRecord {
         const data = JSON.parse(serialized) as SessionRecordData;
-        if (data.version !== SESSION_RECORD_VERSION) {
-            migrate(data);
-        }
-
-        const record = new SessionRecord();
 
         if (
             data.sessions === undefined ||
@@ -68,6 +75,12 @@ export class SessionRecord {
         ) {
             throw new Error("Error deserializing SessionRecord");
         }
+
+        if (data.version !== SESSION_RECORD_VERSION) {
+            migrate(data);
+        }
+
+        const record = new SessionRecord();
 
         for (const key of Object.keys(data.sessions)) {
             const session = SessionRecord.deserializeSession(data.sessions[key]);
@@ -92,6 +105,8 @@ export class SessionRecord {
 
         const session: SessionState = {
             registrationId,
+            protocolVersion: serialized.protocolVersion ?? "eu.siacs.conversations.axolotl",
+            ad: typeof serialized.ad === "string" ? strToBytes(serialized.ad) : undefined,
             currentRatchet: {
                 rootKey:
                     typeof cr.rootKey === "string" ? strToBytes(cr.rootKey) : new ArrayBuffer(0),
@@ -122,6 +137,10 @@ export class SessionRecord {
                     typeof indexInfo.remoteIdentityKey === "string"
                         ? strToBytes(indexInfo.remoteIdentityKey)
                         : new ArrayBuffer(0),
+                remoteIdentityKeyEd:
+                    typeof indexInfo.remoteIdentityKeyEd === "string"
+                        ? strToBytes(indexInfo.remoteIdentityKeyEd)
+                        : undefined,
             },
             oldRatchetList: (serialized.oldRatchetList ?? []).map((entry) => ({
                 added: entry.added,
@@ -143,6 +162,8 @@ export class SessionRecord {
         for (const key of Object.keys(serialized)) {
             if (
                 key === "registrationId" ||
+                key === "protocolVersion" ||
+                key === "ad" ||
                 key === "currentRatchet" ||
                 key === "indexInfo" ||
                 key === "oldRatchetList" ||

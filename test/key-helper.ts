@@ -47,14 +47,26 @@ describe("KeyHelper", function () {
     });
 
     describe("generateSignedPreKey", function () {
-        it("generates a preKey", async function () {
+        it("generates a preKey (0.3.0: signature over the 33-byte form)", async function () {
             const identityKey = await KeyHelper.generateIdentityKeyPair();
-            const result = await KeyHelper.generateSignedPreKey(identityKey, 1337);
+            const result = await KeyHelper.generateSignedPreKey(identityKey, 1337, "eu.siacs.conversations.axolotl");
             validateKeyPair(result.keyPair);
             assert.strictEqual(result.keyId, 1337);
             await internalCrypto.Ed25519Verify(
                 identityKey.pubKey,
                 result.keyPair.pubKey,
+                result.signature
+            );
+        });
+
+        it("generates a preKey (omemo:2: signature over the raw 32-byte form)", async function () {
+            const identityKey = await KeyHelper.generateIdentityKeyPair();
+            const result = await KeyHelper.generateSignedPreKey(identityKey, 1337, "urn:xmpp:omemo:2");
+            validateKeyPair(result.keyPair);
+            // omemo:2 signs the 32-byte Curve25519 form (no 0x05 prefix).
+            await internalCrypto.Ed25519Verify(
+                identityKey.pubKey,
+                result.keyPair.pubKey.slice(1),
                 result.signature
             );
         });
