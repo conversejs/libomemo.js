@@ -1,5 +1,38 @@
 # CHANGES
 
+## 2.0.0
+
+### OMEMO 2 (`urn:xmpp:omemo:2`) support
+
+- Added support for the latest OMEMO version (`urn:xmpp:omemo:2`) alongside the
+  existing `eu.siacs.conversations.axolotl` (XEP-0384 v0.3.0). Versions are
+  identified by their XML namespace. The two are selected per device via a protocol "profile" that
+  encapsulates the differences (HKDF info strings, MAC length and associated data,
+  the `OMEMOMessage`/`OMEMOAuthenticatedMessage`/`OMEMOKeyExchange` wire format,
+  and Ed25519↔Curve25519 identity-key handling). The Double Ratchet and X3DH
+  mechanics are shared across both versions.
+- New `curvePubKeyToEd25519PubKey` / `ed25519PubKeyToCurvePubKey` crypto helpers
+  (backed by two new WASM exports) for the `omemo:2` Ed25519 identity-key form.
+  The Ed25519 identity key is derived from the public key with the Edwards sign
+  bit forced to zero, matching `libomemo-c` so the `ik` and authentication
+  associated data are byte-compatible with interoperating clients (e.g. Dino).
+- New `getProtocolProfile` export and `OMEMOVersion` / `ProtocolProfile` types.
+
+### Breaking: `version` is now a required constructor argument
+
+- `new SessionBuilder(store, address, version)` and
+  `new SessionCipher(store, address, version)` now require an explicit OMEMO
+  version, given as its XML namespace (`"eu.siacs.conversations.axolotl"` or
+  `"urn:xmpp:omemo:2"`). There is no default — wrong-version usage fails at the
+  call site rather than silently producing undecryptable messages. A legacy-only
+  consumer simply passes `"eu.siacs.conversations.axolotl"`.
+- `EncryptResult` gained an optional `kex?: boolean` (omemo:2) and `registrationId`
+  is now optional.
+- Session storage schema bumped to `v2`: each stored session now records its
+  `protocolVersion`. Existing serialized sessions are migrated automatically and
+  treated as `eu.siacs.conversations.axolotl`, so persisted sessions remain valid
+  across the upgrade.
+
 ## 1.0.0
 
 ### Breaking: `OMEMOStore` identity methods now receive full address string

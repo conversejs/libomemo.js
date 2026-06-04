@@ -1,6 +1,7 @@
 import { internalCrypto, getRandomBytes } from "./crypto";
 import { isNonNegativeInteger } from "./helpers";
-import { KeyId } from "./session/types";
+import { getProtocolProfile } from "./session/protocol-profile";
+import { KeyId, OMEMOVersion } from "./session/types";
 import { KeyPair, PreKey, SignedPreKey } from "./types";
 
 /** Helpers for generating cryptographic keys for OMEMO. */
@@ -16,7 +17,8 @@ export const KeyHelper = {
 
     async generateSignedPreKey(
         identityKeyPair: KeyPair,
-        signedKeyId: number
+        signedKeyId: number,
+        version: OMEMOVersion
     ): Promise<SignedPreKey> {
         if (
             !(identityKeyPair.privKey instanceof ArrayBuffer) ||
@@ -31,7 +33,10 @@ export const KeyHelper = {
         }
 
         const keyPair = await internalCrypto.createKeyPair();
-        const sig = await internalCrypto.Ed25519Sign(identityKeyPair.privKey, keyPair.pubKey);
+        // The identity key signs the SPK in the encoding required by the version:
+        // 0.3.0 over the 33-byte form, omemo:2 over the raw 32-byte Curve25519 form.
+        const signatureData = getProtocolProfile(version).signedPreKeySignatureData(keyPair.pubKey);
+        const sig = await internalCrypto.Ed25519Sign(identityKeyPair.privKey, signatureData);
         return {
             keyId: signedKeyId,
             keyPair,

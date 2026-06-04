@@ -19,6 +19,8 @@ const EXPORTED_FUNCTIONS = [
     "free",
     "xed25519_sign",
     "xed25519_verify",
+    "curve25519_pubkey_to_ed25519_pubkey",
+    "ed25519_pubkey_to_curve25519_pubkey",
 ].map((name) => `'_${name}'`);
 
 const FLAGS = [

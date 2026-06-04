@@ -18,15 +18,15 @@ describe("SessionBuilder", function () {
         before(async function () {
             await Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)]);
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
         });
 
         const originalMessage = util.toArrayBuffer(
             "L'homme est condamné à être libre"
         ) as ArrayBuffer;
-        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
 
         it("creates a session", async function () {
             const record = aliceStore.loadSession(BOB_ADDRESS.toString());
@@ -61,7 +61,7 @@ describe("SessionBuilder", function () {
                 bobPreKeyId + 1,
                 bobSignedKeyId + 1
             );
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
             const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
@@ -72,7 +72,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", async function () {
             const newIdentity = await KeyHelper.generateIdentityKeyPair();
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
 
             let error;
             try {
@@ -105,15 +105,15 @@ describe("SessionBuilder", function () {
             await Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)]);
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
             delete preKeyBundle.preKey;
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
         });
 
         const originalMessage = util.toArrayBuffer(
             "L'homme est condamné à être libre"
         ) as ArrayBuffer;
-        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+        const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
 
         it("creates a session", async function () {
             const record = aliceStore.loadSession(BOB_ADDRESS.toString());
@@ -150,7 +150,7 @@ describe("SessionBuilder", function () {
                 bobSignedKeyId + 1
             );
             delete preKeyBundle.preKey;
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
             const record = aliceStore.loadSession(BOB_ADDRESS.toString());
             assert.isDefined(record);
@@ -161,7 +161,7 @@ describe("SessionBuilder", function () {
 
         it("rejects untrusted identity keys", async function () {
             const newIdentity = await KeyHelper.generateIdentityKeyPair();
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             let error;
             try {
                 await builder.processPreKey({

@@ -1,32 +1,33 @@
 import { util } from "../helpers";
-import { loadProtocolMessages } from "../protobufs";
 import { SessionRecord } from "./record";
 import { queueJobForNumber } from "./lock";
-import { internalCrypto, sign, verifyMAC, encrypt, decrypt, HKDF } from "../crypto";
+import { internalCrypto, sign, encrypt, decrypt, HKDF } from "../crypto";
 import { SessionBuilder } from "./builder";
 import { OMEMOAddress } from "./address";
 import { ChainType } from "../types";
+import { getProtocolProfile, ProtocolProfile, MacContext, toExactBuffer } from "./protocol-profile";
 import {
     EncryptResult,
     SessionState,
     OMEMOStore,
+    OMEMOVersion,
     Direction,
     Chain,
-    WhisperMessageProto,
-    PreKeyWhisperMessageProto,
 } from "./types";
 
 /** Encrypts and decrypts messages for established OMEMO sessions. */
 export class SessionCipher {
     #remoteAddress: OMEMOAddress;
     #store: OMEMOStore;
+    #profile: ProtocolProfile;
 
-    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string) {
+    constructor(store: OMEMOStore, remoteAddress: OMEMOAddress | string, version: OMEMOVersion) {
         this.#remoteAddress =
             typeof remoteAddress === "string"
                 ? OMEMOAddress.fromString(remoteAddress)
                 : remoteAddress;
         this.#store = store;
+        this.#profile = getProtocolProfile(version);
     }
 
     async #getRecord(encodedNumber: string): Promise<SessionRecord | undefined> {
@@ -49,15 +50,16 @@ export class SessionCipher {
             throw new Error("Got invalid request to extend chain after it was already closed");
         }
 
+        // KDF_CK: HMAC(chainKey, 0x01) -> message key, HMAC(chainKey, 0x02) -> next chain key.
         let key = chain.chainKey.key;
         const byteArray = new Uint8Array(1);
         byteArray[0] = 1;
 
-        const mac = await sign(key, byteArray.buffer);
+        const messageKey = await sign(key, byteArray.buffer);
         byteArray[0] = 2;
 
         key = await sign(key, byteArray.buffer);
-        chain.messageKeys[chain.chainKey.counter + 1] = mac;
+        chain.messageKeys[chain.chainKey.counter + 1] = messageKey;
         chain.chainKey.key = key;
         chain.chainKey.counter += 1;
 
@@ -121,7 +123,7 @@ export class SessionCipher {
             remoteKey,
             ratchet.ephemeralKeyPair.privKey
         );
-        const masterKey = await HKDF(sharedSecret, ratchet.rootKey, "WhisperRatchet");
+        const masterKey = await HKDF(sharedSecret, ratchet.rootKey, this.#profile.rootChainInfo);
         const ephemeralPublicKey = sending ? ratchet.ephemeralKeyPair.pubKey : remoteKey;
         const ephemeralKeyStr = util.toString(ephemeralPublicKey) as keyof SessionState;
         session[ephemeralKeyStr] = {
@@ -132,6 +134,34 @@ export class SessionCipher {
         ratchet.rootKey = masterKey[0];
     }
 
+    #macContext(session: SessionState, ourIdentityKey: ArrayBuffer, direction: Direction): MacContext {
+        return {
+            ourIdentityKey,
+            remoteIdentityKey: session.indexInfo.remoteIdentityKey,
+            direction: direction === Direction.SENDING ? "sending" : "receiving",
+            ad: session.ad,
+        };
+    }
+
+    /**
+     * The remote identity key in the form trust/fingerprints are keyed on: the
+     * published Ed25519 form for versions that use it (omemo:2), otherwise the
+     * internal Curve form. For Ed versions the Ed form is required — falling back
+     * to the Curve form would silently key trust on the wrong bytes.
+     */
+    #remoteTrustKey(session: SessionState): ArrayBuffer {
+        if (this.#profile.usesEdIdentityKey) {
+            const ed = session.indexInfo.remoteIdentityKeyEd;
+            if (!ed) {
+                throw new Error(
+                    `Session is missing the Ed25519 identity key required by ${this.#profile.version}`
+                );
+            }
+            return ed;
+        }
+        return session.indexInfo.remoteIdentityKey;
+    }
+
     async #doDecryptWhisperMessage(
         messageBytes: ArrayBuffer,
         session: SessionState | undefined
@@ -139,17 +169,9 @@ export class SessionCipher {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
         }
-        const version = new Uint8Array(messageBytes)[0];
-        if ((version & 0xf) > 3 || version >> 4 < 3) {
-            throw new Error("Incompatible version number on WhisperMessage");
-        }
 
-        const messageProto = new Uint8Array(messageBytes.slice(1, messageBytes.byteLength - 8));
-        const mac = messageBytes.slice(messageBytes.byteLength - 8, messageBytes.byteLength);
-
-        const { WhisperMessage } = await loadProtocolMessages();
-        const message = WhisperMessage.decode(messageProto) as unknown as WhisperMessageProto;
-        const remoteEphemeralKey = message.ephemeralKey.slice().buffer;
+        const parsed = await this.#profile.parseMessage(messageBytes);
+        const remoteEphemeralKey = parsed.ephemeralKey;
 
         if (session === undefined) {
             return Promise.reject(
@@ -162,15 +184,15 @@ export class SessionCipher {
             console.log("decrypting message for closed session");
         }
 
-        await this.#maybeStepRatchet(session, remoteEphemeralKey, message.previousCounter);
-        const chain = session[util.toString(message.ephemeralKey) as keyof SessionState] as Chain;
+        await this.#maybeStepRatchet(session, remoteEphemeralKey, parsed.previousCounter);
+        const chain = session[util.toString(parsed.ephemeralKey) as keyof SessionState] as Chain;
         if (chain.chainType === ChainType.SENDING) {
             throw new Error("Tried to decrypt on a sending chain");
         }
 
-        await this.#fillMessageKeys(chain, message.counter);
+        await this.#fillMessageKeys(chain, parsed.counter);
 
-        const messageKey = chain.messageKeys[message.counter];
+        const messageKey = chain.messageKeys[parsed.counter];
         if (messageKey === undefined) {
             const e = new Error(
                 "Message key not found. The counter was repeated or the key was not filled."
@@ -178,25 +200,21 @@ export class SessionCipher {
             e.name = "MessageCounterError";
             throw e;
         }
-        delete chain.messageKeys[message.counter];
+        delete chain.messageKeys[parsed.counter];
 
-        const keys = await HKDF(messageKey, new ArrayBuffer(32), "WhisperMessageKeys");
+        const keys = await HKDF(messageKey, new ArrayBuffer(32), this.#profile.messageKeyInfo);
 
         const ourIdentityKey = await this.#store.getIdentityKeyPair();
         if (!ourIdentityKey) throw new Error("No identity keypair to verify MAC");
 
-        const macInput = new Uint8Array(messageProto.byteLength + 33 * 2 + 1);
-        macInput.set(new Uint8Array(session.indexInfo.remoteIdentityKey));
-        macInput.set(new Uint8Array(ourIdentityKey.pubKey), 33);
-        macInput[33 * 2] = (3 << 4) | 3;
-        macInput.set(new Uint8Array(messageProto), 33 * 2 + 1);
-        await verifyMAC(macInput.buffer, keys[1], mac, 8);
-
-        const plaintext = await decrypt(
-            keys[0],
-            message.ciphertext.slice().buffer,
-            keys[2].slice(0, 16)
+        await this.#profile.verifyMac(
+            keys[1],
+            parsed.encodedInner,
+            this.#macContext(session, ourIdentityKey.pubKey, Direction.RECEIVING),
+            parsed.mac
         );
+
+        const plaintext = await decrypt(keys[0], parsed.ciphertext, keys[2].slice(0, 16));
         delete session.pendingPreKey;
         return plaintext;
     }
@@ -232,7 +250,7 @@ export class SessionCipher {
             if (typeof buffer === "string") {
                 buf = new TextEncoder().encode(buffer).buffer;
             } else if (buffer instanceof Uint8Array) {
-                buf = buffer.buffer as ArrayBuffer;
+                buf = toExactBuffer(buffer);
             } else {
                 throw new Error("Expected buffer to be an ArrayBuffer, string, or Uint8Array");
             }
@@ -242,11 +260,6 @@ export class SessionCipher {
 
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
-            const { WhisperMessage } = await loadProtocolMessages();
-            const msg = WhisperMessage.create() as unknown as Partial<WhisperMessageProto>;
-
-            let session: SessionState | undefined;
-            let chain: Chain;
 
             const [ourIdentityKey, myRegistrationId, record] = await Promise.all([
                 this.#store.getIdentityKeyPair(),
@@ -255,19 +268,15 @@ export class SessionCipher {
             ]);
 
             if (!ourIdentityKey) throw new Error("Can't encrypt: no identity key");
-
             if (!record) throw new Error(`Can't encrypt: no record for ${address}`);
 
-            session = record.getOpenSession();
+            const session = record.getOpenSession();
             if (!session) {
                 throw new Error(`No session to encrypt message for ${address}`);
             }
 
-            msg.ephemeralKey = new Uint8Array(session.currentRatchet.ephemeralKeyPair.pubKey);
-
-            const ephemeralKeyStr = util.toString(msg.ephemeralKey) as keyof SessionState;
-
-            chain = session[ephemeralKeyStr] as typeof chain;
+            const ephemeralKey = session.currentRatchet.ephemeralKeyPair.pubKey;
+            const chain = session[util.toString(ephemeralKey) as keyof SessionState] as Chain;
             if (chain.chainType === ChainType.RECEIVING) {
                 throw new Error("Tried to encrypt on a receiving chain");
             }
@@ -277,84 +286,69 @@ export class SessionCipher {
             const keys = await HKDF(
                 chain.messageKeys[chain.chainKey.counter],
                 new ArrayBuffer(32),
-                "WhisperMessageKeys"
+                this.#profile.messageKeyInfo
             );
-
             delete chain.messageKeys[chain.chainKey.counter];
-            msg.counter = chain.chainKey.counter;
-            msg.previousCounter = session.currentRatchet.previousCounter;
+
+            const counter = chain.chainKey.counter;
+            const previousCounter = session.currentRatchet.previousCounter;
 
             const ciphertext = await encrypt(keys[0], buf, keys[2].slice(0, 16));
-            msg.ciphertext = new Uint8Array(ciphertext);
 
-            const encodedMsg = WhisperMessage.encode(msg).finish();
-            const macInput = new Uint8Array(encodedMsg.byteLength + 33 * 2 + 1);
-            macInput.set(new Uint8Array(ourIdentityKey.pubKey));
-            macInput.set(new Uint8Array(session.indexInfo.remoteIdentityKey), 33);
-            macInput[33 * 2] = (3 << 4) | 3;
-            macInput.set(encodedMsg, 33 * 2 + 1);
+            const encodedInner = await this.#profile.encodeInner({
+                ephemeralKey,
+                counter,
+                previousCounter,
+                ciphertext,
+            });
+            const mac = await this.#profile.computeMac(
+                keys[1],
+                encodedInner,
+                this.#macContext(session, ourIdentityKey.pubKey, Direction.SENDING)
+            );
+            const result = await this.#profile.frameMessage(encodedInner, mac);
 
-            const mac = await sign(keys[1], macInput.buffer);
-            const result = new Uint8Array(encodedMsg.byteLength + 9);
-            result[0] = (3 << 4) | 3;
-            result.set(encodedMsg, 1);
-            result.set(new Uint8Array(mac, 0, 8), encodedMsg.byteLength + 1);
-
+            const trustKey = this.#remoteTrustKey(session);
             const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.toString(),
-                session.indexInfo.remoteIdentityKey,
+                trustKey,
                 Direction.SENDING
             );
             if (!trusted) {
                 throw new Error("Identity key changed");
             }
-            await this.#store.saveIdentity(
-                this.#remoteAddress.toString(),
-                session.indexInfo.remoteIdentityKey
-            );
+            await this.#store.saveIdentity(this.#remoteAddress.toString(), trustKey);
 
             record.updateSessionState(session);
             await this.#store.storeSession(address, record.serialize());
 
             if (session.pendingPreKey !== undefined) {
-                const { PreKeyWhisperMessage } = await loadProtocolMessages();
-                const preKeyMsg = PreKeyWhisperMessage.create({
-                    baseKey: new Uint8Array(session.pendingPreKey.baseKey),
-                    identityKey: new Uint8Array(ourIdentityKey.pubKey),
-                    message: result,
-                    preKeyId: session.pendingPreKey.preKeyId
-                        ? session.pendingPreKey.preKeyId
-                        : undefined,
-                    registrationId: myRegistrationId,
-                    signedPreKeyId: session.pendingPreKey.signedKeyId,
-                });
-
-                const encodedPreKeyMsg = PreKeyWhisperMessage.encode(preKeyMsg).finish();
-
-                const preKeyResult = new Uint8Array(encodedPreKeyMsg.length + 1);
-                preKeyResult[0] = (3 << 4) | 3;
-                preKeyResult.set(encodedPreKeyMsg, 1);
-                return {
-                    type: 3,
-                    body: util.toString(preKeyResult),
-                    registrationId: session.registrationId,
-                };
-            } else {
-                return {
-                    type: 1,
-                    body: util.toString(result),
-                    registrationId: session.registrationId,
-                };
+                if (this.#profile.requiresRegistrationId && myRegistrationId === undefined) {
+                    throw new Error("Can't encrypt key-exchange message: no local registrationId");
+                }
+                const kexBody = await this.#profile.encodeKeyExchange(
+                    {
+                        registrationId: myRegistrationId,
+                        preKeyId: session.pendingPreKey.preKeyId,
+                        signedPreKeyId: session.pendingPreKey.signedKeyId,
+                        baseKey: session.pendingPreKey.baseKey,
+                        ourIdentityKey,
+                    },
+                    result
+                );
+                return this.#profile.wrapResult(kexBody, true, session.registrationId);
             }
+            return this.#profile.wrapResult(result, false, session.registrationId);
         });
     }
 
-    /** Decrypt a WhisperMessage using an existing session. */
+    /** Decrypt a regular (non-key-exchange) message using an existing session. */
     async decryptWhisperMessage(
         buffer: string | ArrayBuffer | Uint8Array,
         encoding: string
     ): Promise<ArrayBuffer> {
-        buffer = util.normalizeBuffer(buffer, encoding).buffer as ArrayBuffer;
+        const normalized = util.normalizeBuffer(buffer, encoding);
+        const exact = toExactBuffer(normalized);
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
 
@@ -362,7 +356,7 @@ export class SessionCipher {
             if (!record) throw new Error(`No record for device ${address}`);
 
             const { session, plaintext } = await this.#decryptWithSessionList(
-                buffer,
+                exact,
                 record.getSessions()
             );
 
@@ -371,17 +365,15 @@ export class SessionCipher {
                 record.promoteState(session);
             }
 
+            const trustKey = this.#remoteTrustKey(session);
             const trusted = await this.#store.isTrustedIdentity(
                 this.#remoteAddress.toString(),
-                session.indexInfo.remoteIdentityKey,
+                trustKey,
                 Direction.RECEIVING
             );
             if (!trusted) throw new Error("Identity key changed");
 
-            await this.#store.saveIdentity(
-                this.#remoteAddress.toString(),
-                session.indexInfo.remoteIdentityKey
-            );
+            await this.#store.saveIdentity(this.#remoteAddress.toString(), trustKey);
             record.updateSessionState(session);
 
             await this.#store.storeSession(address, record.serialize());
@@ -390,41 +382,35 @@ export class SessionCipher {
         });
     }
 
+    /** Decrypt a key-exchange message, establishing a new session if needed. */
     decryptPreKeyWhisperMessage(
         buffer: string | ArrayBuffer | Uint8Array,
         encoding: string
     ): Promise<ArrayBuffer> {
-        const bytes = util.normalizeBuffer(buffer, encoding);
-        const version = bytes[0];
-        if ((version & 0xf) > 3 || version >> 4 < 3) {
-            throw new Error("Incompatible version number on PreKeyWhisperMessage");
-        }
-
-        const arrayBuffer = bytes.buffer.slice(1) as ArrayBuffer;
+        const normalized = util.normalizeBuffer(buffer, encoding);
+        const exact = toExactBuffer(normalized);
 
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
             const address = this.#remoteAddress.toString();
-            const { PreKeyWhisperMessage } = await loadProtocolMessages();
-            const preKeyProto = PreKeyWhisperMessage.decode(
-                new Uint8Array(arrayBuffer)
-            ) as unknown as PreKeyWhisperMessageProto;
+            const parsed = await this.#profile.parseKeyExchange(exact);
 
             let record = await this.#getRecord(address);
             if (!record) {
-                if (preKeyProto.registrationId === undefined) {
+                if (this.#profile.requiresRegistrationId && parsed.registrationId === undefined) {
                     throw new Error("No registrationId");
                 }
                 record = new SessionRecord();
             }
-            const builder = new SessionBuilder(this.#store, this.#remoteAddress);
-
-            const preKeyId = await builder.processV3(record, preKeyProto);
-
-            const session = record.getSessionByBaseKey(preKeyProto.baseKey);
-            const plaintext = await this.#doDecryptWhisperMessage(
-                preKeyProto.message.slice().buffer,
-                session
+            const builder = new SessionBuilder(
+                this.#store,
+                this.#remoteAddress,
+                this.#profile.version
             );
+
+            const preKeyId = await builder.processV3(record, parsed);
+
+            const session = record.getSessionByBaseKey(parsed.baseKey);
+            const plaintext = await this.#doDecryptWhisperMessage(parsed.message, session);
             record.updateSessionState(session!);
             await this.#store.storeSession(address, record.serialize());
 

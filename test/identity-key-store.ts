@@ -11,8 +11,7 @@ export function testIdentityKeyStore(
     registrationId: number,
     identityKey: KeyPair
 ): void {
-    const number = "+5558675309";
-    const address = new OMEMOAddress("+5558675309", 1);
+    const address = new OMEMOAddress("romeo@montague.lit", 1);
     let testKey: KeyPair;
 
     describe("IdentityKeyStore", function () {

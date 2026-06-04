@@ -137,6 +137,16 @@ export const internalCrypto: InternalCryptoInterface = {
         const curve = new Curve25519();
         return await curve.verifySignature(pubKey, msg, sig);
     },
+
+    async curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        const curve = new Curve25519();
+        return await curve.curvePubKeyToEd25519PubKey(pubKey);
+    },
+
+    async ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        const curve = new Curve25519();
+        return await curve.ed25519PubKeyToCurvePubKey(edPubKey);
+    },
 };
 
 export const createKeyPair = (privKey?: ArrayBuffer): Promise<KeyPair> =>
@@ -150,3 +160,7 @@ export const Ed25519Verify = (
     msg: ArrayBuffer,
     sig: ArrayBuffer
 ): Promise<void> => internalCrypto.Ed25519Verify(pubKey, msg, sig);
+export const curvePubKeyToEd25519PubKey = (pubKey: ArrayBuffer): Promise<ArrayBuffer> =>
+    internalCrypto.curvePubKeyToEd25519PubKey(pubKey);
+export const ed25519PubKeyToCurvePubKey = (edPubKey: ArrayBuffer): Promise<ArrayBuffer> =>
+    internalCrypto.ed25519PubKeyToCurvePubKey(edPubKey);

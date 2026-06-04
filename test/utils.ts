@@ -43,7 +43,7 @@ export async function generatePreKeyBundle(
 
     const [preKey, signedPreKey] = await Promise.all([
         KeyHelper.generatePreKey(preKeyId),
-        KeyHelper.generateSignedPreKey(identity, signedPreKeyId),
+        KeyHelper.generateSignedPreKey(identity, signedPreKeyId, "eu.siacs.conversations.axolotl"),
     ]);
 
     await store.storePreKey(preKeyId, preKey.keyPair);

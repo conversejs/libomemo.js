@@ -1621,6 +1621,16 @@ var _curve25519_verify = Module["_curve25519_verify"] = function() {
 };
 
 /** @type {function(...*):?} */
+var _curve25519_pubkey_to_ed25519_pubkey = Module["_curve25519_pubkey_to_ed25519_pubkey"] = function() {
+  return (_curve25519_pubkey_to_ed25519_pubkey = Module["_curve25519_pubkey_to_ed25519_pubkey"] = Module["asm"]["curve25519_pubkey_to_ed25519_pubkey"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
+var _ed25519_pubkey_to_curve25519_pubkey = Module["_ed25519_pubkey_to_curve25519_pubkey"] = function() {
+  return (_ed25519_pubkey_to_curve25519_pubkey = Module["_ed25519_pubkey_to_curve25519_pubkey"] = Module["asm"]["ed25519_pubkey_to_curve25519_pubkey"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
 var _sph_sha512_init = Module["_sph_sha512_init"] = function() {
   return (_sph_sha512_init = Module["_sph_sha512_init"] = Module["asm"]["sph_sha512_init"]).apply(null, arguments);
 };

@@ -88,6 +88,7 @@ export default defineConfig({
             "test/support/**",
             "test/utils.ts",
             "test/testvectors.ts",
+            "test/omemo2-vector.ts",
             "test/identity-key-store.ts",
             "test/prekey-store.ts",
             "test/session-store.ts",

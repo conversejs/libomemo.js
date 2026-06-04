@@ -21,6 +21,8 @@ export {
     ECDHE,
     Ed25519Sign,
     Ed25519Verify,
+    curvePubKeyToEd25519PubKey,
+    ed25519PubKeyToCurvePubKey,
 } from "./crypto";
 
 export { BaseKeyType, ChainType } from "./types";
@@ -28,10 +30,13 @@ export type { KeyPair, PreKey, SignedPreKey, PublicPreKey } from "./types";
 
 export { SessionRecord } from "./session/record";
 export { default as InMemoryStore } from "./session/store";
+export { getProtocolProfile } from "./session/protocol-profile";
+export type { ProtocolProfile } from "./session/protocol-profile";
 export type {
     Direction,
     PreKeyBundle,
     OMEMOStore,
+    OMEMOVersion,
     KeyId,
     EncryptResult,
     IdentityKeyError,

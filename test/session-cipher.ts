@@ -38,7 +38,7 @@ describe("SessionCipher", function () {
         const store = new InMemoryStore();
         const registrationId = 1337;
         const address = new OMEMOAddress("foo", 1);
-        const sessionCipher = new SessionCipher(store, address.toString());
+        const sessionCipher = new SessionCipher(store, address.toString(), "eu.siacs.conversations.axolotl");
 
         describe("when an open record exists", function () {
             before(async () => {
@@ -75,7 +75,7 @@ describe("SessionCipher", function () {
 
         describe("when a record does not exist", function () {
             it("returns undefined", async function () {
-                const sessionCipher = new SessionCipher(store, "bar.1");
+                const sessionCipher = new SessionCipher(store, "bar.1", "eu.siacs.conversations.axolotl");
                 const value = await sessionCipher.getRemoteRegistrationId();
                 assert.isUndefined(value);
             });
@@ -85,7 +85,7 @@ describe("SessionCipher", function () {
     describe("hasOpenSession", function () {
         const store = new InMemoryStore();
         const address = new OMEMOAddress("foo", 1);
-        const sessionCipher = new SessionCipher(store, address.toString());
+        const sessionCipher = new SessionCipher(store, address.toString(), "eu.siacs.conversations.axolotl");
 
         describe("open session exists", function () {
             before(async function () {
@@ -218,7 +218,7 @@ describe("SessionCipher", function () {
         await setupReceiveStep(store, data, privKeyQueue);
 
         let plaintext: ArrayBuffer | Uint8Array<ArrayBufferLike> | undefined;
-        const sessionCipher = new SessionCipher(store, address);
+        const sessionCipher = new SessionCipher(store, address, "eu.siacs.conversations.axolotl");
         const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
         const Type = pushMessages.IncomingPushMessageSignal.Type;
 
@@ -285,7 +285,7 @@ describe("SessionCipher", function () {
                 registrationId: data.getKeys.devices[0].registrationId,
             };
 
-            const builder = new SessionBuilder(store, address);
+            const builder = new SessionBuilder(store, address, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(deviceObject);
         }
         const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
@@ -297,7 +297,7 @@ describe("SessionCipher", function () {
 
         const buffer = PushMessageContent.encode(message).finish();
         const paddedBuffer = pad(buffer);
-        const sessionCipher = new SessionCipher(store, address);
+        const sessionCipher = new SessionCipher(store, address, "eu.siacs.conversations.axolotl");
 
         const res = await sessionCipher.encrypt(paddedBuffer).then(async (msg) => {
             const expectedCiphertext = data.expectedCiphertext as Uint8Array<ArrayBufferLike>;
@@ -424,10 +424,10 @@ describe("SessionCipher", function () {
         before(async function () {
             await Promise.all([aliceStore, bobStore].map(generateIdentity));
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
-            aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
-            bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+            aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+            bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
@@ -483,14 +483,14 @@ describe("SessionCipher", function () {
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
 
         before(async function () {
             await Promise.all([aliceStore, bobStore].map(generateIdentity));
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(preKeyBundle);
-            const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+            const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             await bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
@@ -510,7 +510,7 @@ describe("SessionCipher", function () {
             });
 
             it("alice cannot encrypt with the old session", async function () {
-                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
                 try {
                     await aliceSessionCipher.encrypt(originalMessage);
                 } catch (e) {
@@ -519,7 +519,7 @@ describe("SessionCipher", function () {
             });
 
             it("alice cannot decrypt from the old session", async function () {
-                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
                 try {
                     await aliceSessionCipher.decryptWhisperMessage(messageFromBob.body, "binary");
                 } catch (e) {

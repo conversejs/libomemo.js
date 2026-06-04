@@ -1,0 +1,23 @@
+package omemo;
+
+// Protobuf schema for OMEMO 2 (urn:xmpp:omemo:2), copied from XEP-0384.
+
+message OMEMOMessage {
+    required uint32 n          = 1;
+    required uint32 pn         = 2;
+    required bytes  dh_pub     = 3;
+    optional bytes  ciphertext = 4;
+}
+
+message OMEMOAuthenticatedMessage {
+    required bytes mac     = 1;
+    required bytes message = 2; // Byte-encoding of an OMEMOMessage
+}
+
+message OMEMOKeyExchange {
+    required uint32 pk_id  = 1;
+    required uint32 spk_id = 2;
+    required bytes  ik     = 3;
+    required bytes  ek     = 4;
+    required OMEMOAuthenticatedMessage message = 5;
+}

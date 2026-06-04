@@ -4,9 +4,28 @@
 [![npm version](https://img.shields.io/npm/v/libomemo.js.svg)](https://www.npmjs.com/package/libomemo.js)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
 
-**libomemo.js** is a TypeScript implementation of the [OMEMO Multi-End Message and Object Encryption](https://xmpp.org/extensions/attic/xep-0384-0.3.0.html) protocol for [XMPP](https://xmpp.org). It provides ratcheting forward secrecy for synchronous and asynchronous messaging environments, enabling secure multi-device encrypted communication.
+**libomemo.js** is a TypeScript implementation of the [OMEMO Multi-End Message and Object Encryption](https://xmpp.org/extensions/xep-0384.html) protocol for [XMPP](https://xmpp.org).
+It provides ratcheting forward secrecy for synchronous and asynchronous messaging environments, enabling secure multi-device encrypted communication.
 
-A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript) by Open Whisper Systems, adapted for the XMPP OMEMO specification.
+This library supports both version 0.3.0, which is what most XMPP clients support today,
+and the latest version 0.9.1 (also known as OMEMO2 or NEWMEMO).
+
+The two versions are identified by their XML namespaces:
+
+- the legacy version is **`eu.siacs.conversations.axolotl`**
+- and the current one is **`urn:xmpp:omemo:2`**.
+
+The version is chosen per device when constructing a `SessionBuilder`/`SessionCipher` — see [Selecting the OMEMO version](#selecting-the-omemo-version).
+
+This library is crypto-only: it implements the X3DH key agreement and Double Ratchet, and produces/consumes the per-device ratchet wire format.
+Building XMPP stanzas, PEP bundles/device lists, and the XEP-0420 SCE payload encryption are the responsibility of the consumer (e.g. [Converse](https://github.com/conversejs/converse.js)).
+
+This library started as a fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript) by Open Whisper Systems
+and has been modernized, ported to TypeScript and adapted for the XMPP OMEMO specification. NodeJS support has also been added.
+
+The OMEMO 2 (`urn:xmpp:omemo:2`) support reuses Curve25519&harr;Ed25519 field operations from
+[libomemo-c](https://github.com/dino/libomemo-c) (the C library used by [Dino](https://dino.im));
+see [Acknowledgements](#acknowledgements).
 
 ## Table of Contents
 
@@ -27,6 +46,7 @@ A fork of [libsignal-protocol-javascript](https://github.com/signalapp/libsignal
 - [Building from Source](#building-from-source)
 - [Testing](#testing)
 - [Contributing](#contributing)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ## Features
@@ -92,7 +112,7 @@ const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
 const preKey = await KeyHelper.generatePreKey(keyId);
 store.storePreKey(preKey.keyId, preKey.keyPair);
 
-const signedPreKey = await KeyHelper.generateSignedPreKey(identityKeyPair, keyId);
+const signedPreKey = await KeyHelper.generateSignedPreKey(identityKeyPair, keyId, version);
 store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
 
 // Register preKeys and signedPreKey with the XMPP server
@@ -105,7 +125,9 @@ Implement a storage interface for managing keys and session state (see `src/sess
 ```js
 const store = new MyOMEMOProtocolStore();
 const address = new OMEMOAddress(recipientId, deviceId);
-const sessionBuilder = new SessionBuilder(store, address);
+// The OMEMO version is required (no default); it is the protocol's XML namespace:
+// "eu.siacs.conversations.axolotl" (XEP-0384 v0.3.0) or "urn:xmpp:omemo:2".
+const sessionBuilder = new SessionBuilder(store, address, "urn:xmpp:omemo:2");
 
 // Process a PreKey bundle from the server
 try {
@@ -131,17 +153,19 @@ try {
 ### Encrypting Messages
 
 ```js
-const sessionCipher = new SessionCipher(store, address);
+const sessionCipher = new SessionCipher(store, address, "urn:xmpp:omemo:2");
 const ciphertext = await sessionCipher.encrypt("Hello world");
-// ciphertext -> { type: <Number>, body: <string> }
+// ciphertext -> { type: <Number>, body: <string>, kex?: <boolean> }
+// For omemo:2, `kex` indicates whether `body` is an OMEMOKeyExchange (true)
+// or a plain OMEMOAuthenticatedMessage (false).
 ```
 
 ### Decrypting Messages
 
 ```js
-const sessionCipher = new SessionCipher(store, address);
+const sessionCipher = new SessionCipher(store, address, "urn:xmpp:omemo:2");
 
-// Decrypt a PreKey message (establishes session if needed)
+// Decrypt a PreKey/key-exchange message (establishes session if needed)
 try {
     const plaintext = await sessionCipher.decryptPreKeyWhisperMessage(ciphertext);
 } catch (error) {
@@ -152,18 +176,44 @@ try {
 const plaintext = await sessionCipher.decryptWhisperMessage(ciphertext);
 ```
 
+### Selecting the OMEMO version
+
+OMEMO `eu.siacs.conversations.axolotl` and `urn:xmpp:omemo:2` are distinct wire protocols with separate sessions,
+bundles, and PEP nodes. Which one to use is decided **per recipient device**,
+based on the version(s) that device advertises (i.e. which device-list PEP node
+it publishes to). Pass that version to every `SessionBuilder`/`SessionCipher`
+for that device. There is intentionally no default — passing the wrong version
+fails loudly rather than silently producing an undecryptable message.
+
+For `omemo:2`, the identity key is published in its **Ed25519** form. Derive it
+from your Curve25519 identity key when building your bundle:
+
+```js
+import { curvePubKeyToEd25519PubKey } from "libomemo.js";
+
+const ik = await curvePubKeyToEd25519PubKey(identityKeyPair.pubKey); // 32-byte Ed25519
+```
+
+This matches the encoding used by `libomemo-c` (and thus interoperating clients
+such as Dino): the Ed25519 identity key is derived from the public key with the
+Edwards sign bit forced to zero.
+
+A peer's `omemo:2` bundle/key-exchange carries that same Ed25519 identity key;
+pass it through unchanged as `identityKey` and the library converts it to
+Curve25519 internally for the key agreement.
+
 ## API Reference
 
 ### KeyHelper
 
 Key generation utilities for OMEMO protocol setup.
 
-| Method                                         | Description                       |
-| ---------------------------------------------- | --------------------------------- |
-| `generateRegistrationId()`                     | Generate a unique registration ID |
-| `generateIdentityKeyPair()`                    | Generate an identity key pair     |
-| `generatePreKey(keyId)`                        | Generate an unsigned PreKey       |
-| `generateSignedPreKey(identityKeyPair, keyId)` | Generate a signed PreKey          |
+| Method                                                  | Description                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| `generateRegistrationId()`                              | Generate a unique registration ID                           |
+| `generateIdentityKeyPair()`                             | Generate an identity key pair                               |
+| `generatePreKey(keyId)`                                 | Generate an unsigned PreKey                                 |
+| `generateSignedPreKey(identityKeyPair, keyId, version)` | Generate a signed PreKey (`version` is the OMEMO namespace) |
 
 ### SessionBuilder
 
@@ -253,9 +303,20 @@ Contributions are welcome! Please follow these guidelines:
 
 Please ensure all new functionality includes tests and follows existing code conventions.
 
+## Acknowledgements
+
+- [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript)
+  by Open Whisper Systems — the original codebase this library was forked from.
+- [libomemo-c](https://github.com/dino/libomemo-c) — the OMEMO 2 support reuses its
+  Curve25519&harr;Ed25519 field operations (`fe_montx_to_edy` / `fe_edy_to_montx` and the
+  supporting `fe_*`/`ge_*` files under `native/ed25519/additions/`), and the conversion
+  wrappers in `native/ed25519/additions/omemo_convert.c` follow its approach so the on-wire
+  identity-key encoding interoperates with libomemo-c-based clients such as Dino.
+
 ## License
 
 Copyright 2015-2018 Open Whisper Systems
+
 Copyright 2022-2026 JC Brand
 
 Licensed under the GPLv3: [http://www.gnu.org/licenses/gpl-3.0.html](http://www.gnu.org/licenses/gpl-3.0.html)
