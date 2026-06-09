@@ -16,7 +16,7 @@
   The Ed25519 identity key is derived from the public key with the Edwards sign
   bit forced to zero, matching `libomemo-c` so the `ik` and authentication
   associated data are byte-compatible with interoperating clients (e.g. Dino).
-- New `getProtocolProfile` export and `OMEMOVersion` / `ProtocolProfile` types.
+- New `OMEMOVersion` type identifying the protocol version by its XML namespace.
 
 ### Breaking: `version` is now a required constructor argument
 
@@ -32,6 +32,19 @@
   `protocolVersion`. Existing serialized sessions are migrated automatically and
   treated as `eu.siacs.conversations.axolotl`, so persisted sessions remain valid
   across the upgrade.
+
+### Breaking: narrowed public API
+
+- The package entry point now exports only the consumer-facing surface. The
+  following low-level helpers are no longer exported (they remain internal
+  implementation details): `encrypt`, `decrypt`, `sign`, `hash`, `HKDF`,
+  `HKDFInternal`, `verifyMAC`, `ECDHE`, `getRandomBytes`, `createKeyPair`,
+  `Ed25519Sign`, `Ed25519Verify`, `internalCrypto`, the `Curve25519` class, and
+  `getProtocolProfile` / the `ProtocolProfile` type.
+- Still exported: `SessionBuilder`, `SessionCipher`, `KeyHelper`, `OMEMOAddress`,
+  `FingerprintGenerator`, `SessionRecord`, `InMemoryStore`, `startWorker` /
+  `stopWorker`, `util`, the `curvePubKeyToEd25519PubKey` /
+  `ed25519PubKeyToCurvePubKey` conversion helpers, and the public types/enums.
 
 ## 1.0.0
 

@@ -1,5 +1,6 @@
 import { assert } from "chai";
-import { getRandomBytes, internalCrypto, Curve25519 } from "../src/index";
+import { getRandomBytes, internalCrypto } from "../src/crypto";
+import { Curve25519 } from "../src/curve";
 import { getProtocolProfile } from "../src/session/protocol-profile";
 import { assertEqualArrayBuffers, hexToArrayBuffer, hexToUint8Array } from "./utils";
 

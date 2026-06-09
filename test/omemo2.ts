@@ -1,12 +1,6 @@
 import { assert } from "chai";
-import {
-    SessionBuilder,
-    SessionCipher,
-    OMEMOAddress,
-    KeyHelper,
-    util,
-    internalCrypto,
-} from "../src/index";
+import { SessionBuilder, SessionCipher, OMEMOAddress, KeyHelper, util } from "../src/index";
+import { internalCrypto } from "../src/crypto";
 import { SessionRecord } from "../src/session/record";
 import { generateIdentity, assertEqualArrayBuffers, hexToArrayBuffer } from "./utils";
 import { LIBOMEMO_C_VECTOR, libomemoCBobBundle } from "./omemo2-vector";
