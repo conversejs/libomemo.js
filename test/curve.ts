@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import { Curve25519 } from "../src/index.js";
+import { Curve25519 } from "../src/curve.js";
 import { assertEqualArrayBuffers } from "./utils.js";
 
 const curve = new Curve25519();
