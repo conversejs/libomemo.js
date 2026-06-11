@@ -305,6 +305,8 @@ Please ensure all new functionality includes tests and follows existing code con
 
 ## Acknowledgements
 
+Thank you to the [NLNet Foundation](https://nlnet.nl/) for sponsoring work on this library.
+
 - [libsignal-protocol-javascript](https://github.com/signalapp/libsignal-protocol-javascript)
   by Open Whisper Systems — the original codebase this library was forked from.
 - [libomemo-c](https://github.com/dino/libomemo-c) — the OMEMO 2 support reuses its
