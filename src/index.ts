@@ -24,5 +24,6 @@ export type {
     OMEMOVersion,
     KeyId,
     EncryptResult,
+    DecryptResult,
     IdentityKeyError,
 } from "./session/types";

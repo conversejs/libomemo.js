@@ -225,11 +225,11 @@ describe("SessionCipher", function () {
         if (data.type == Type.CIPHERTEXT) {
             plaintext = await sessionCipher
                 .decryptWhisperMessage(data.message, "binary")
-                .then(unpad);
+                .then((r) => unpad(r.plaintext));
         } else if (data.type == Type.PREKEY_BUNDLE) {
             plaintext = await sessionCipher
                 .decryptPreKeyWhisperMessage(data.message, "binary")
-                .then(unpad);
+                .then((r) => unpad(r.plaintext));
         } else {
             throw new Error("Unknown data type in test vector");
         }
@@ -443,7 +443,7 @@ describe("SessionCipher", function () {
         describe("decryptWhisperMessage", function () {
             it("accepts encoding='binary'", async function () {
                 const ciphertext = await bobSessionCipher.encrypt(originalMessage);
-                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                const { plaintext } = await aliceSessionCipher.decryptWhisperMessage(
                     ciphertext.body,
                     "binary"
                 );
@@ -452,7 +452,7 @@ describe("SessionCipher", function () {
 
             it("accepts encoding='base64'", async function () {
                 const ciphertext = await bobSessionCipher.encrypt(originalMessage);
-                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                const { plaintext } = await aliceSessionCipher.decryptWhisperMessage(
                     btoa(ciphertext.body),
                     "base64"
                 );
@@ -461,7 +461,7 @@ describe("SessionCipher", function () {
 
             it("accepts encoding='hex'", async function () {
                 const ciphertext = await bobSessionCipher.encrypt(originalMessage);
-                const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+                const { plaintext } = await aliceSessionCipher.decryptWhisperMessage(
                     hexEncode(ciphertext.body),
                     "hex"
                 );

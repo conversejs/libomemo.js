@@ -41,6 +41,28 @@ export interface EncryptResult {
     kex?: boolean;
 }
 
+/**
+ * The result of decrypting a (pre-key or regular) ratchet message.
+ *
+ * `ratchet` exposes the Double Ratchet state of the decrypted message, which
+ * consumers need to implement protocol rules such as the OMEMO heartbeat
+ * (XEP-0384: "the first message for a given ratchet key with a counter of 53
+ * or higher" must trigger a heartbeat).
+ */
+export interface DecryptResult {
+    /** The decrypted plaintext. */
+    plaintext: ArrayBuffer;
+    ratchet: {
+        /** The message counter (index within the sender's current chain). */
+        counter: number;
+        /**
+         * The sender's ratchet (DH) public key for this message, in the
+         * internal 33-byte `0x05`-prefixed curve form.
+         */
+        key: ArrayBuffer;
+    };
+}
+
 export interface RatchetState {
     rootKey: ArrayBuffer;
     lastRemoteEphemeralKey: ArrayBuffer;

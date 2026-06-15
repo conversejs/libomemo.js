@@ -162,18 +162,23 @@ const ciphertext = await sessionCipher.encrypt("Hello world");
 
 ### Decrypting Messages
 
+Both decrypt methods resolve to a `DecryptResult`:
+
 ```js
 const sessionCipher = new SessionCipher(store, address, "urn:xmpp:omemo:2");
 
 // Decrypt a PreKey/key-exchange message (establishes session if needed)
 try {
-    const plaintext = await sessionCipher.decryptPreKeyWhisperMessage(ciphertext);
+    const { plaintext } = await sessionCipher.decryptPreKeyWhisperMessage(ciphertext);
 } catch (error) {
     // Handle identity key conflict
 }
 
 // Decrypt a regular message using existing session
-const plaintext = await sessionCipher.decryptWhisperMessage(ciphertext);
+const { plaintext, ratchet } = await sessionCipher.decryptWhisperMessage(ciphertext);
+// `ratchet.counter` (message index in the sender's chain) and `ratchet.key`
+// (the sender's 33-byte 0x05-prefixed ratchet public key) let you implement
+// protocol rules such as the OMEMO heartbeat.
 ```
 
 ### Selecting the OMEMO version

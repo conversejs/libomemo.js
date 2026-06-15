@@ -103,7 +103,7 @@ describe("OMEMO end-to-end (both versions)", function () {
                 if (version === "urn:xmpp:omemo:2") {
                     assert.isTrue(ct.kex);
                 }
-                const pt = await bobCipher.decryptPreKeyWhisperMessage(ct.body, "binary");
+                const { plaintext: pt } = await bobCipher.decryptPreKeyWhisperMessage(ct.body, "binary");
                 assertEqualArrayBuffers(pt, msg);
             });
 
@@ -111,13 +111,13 @@ describe("OMEMO end-to-end (both versions)", function () {
                 const reply = util.toArrayBuffer("reply tuple") as ArrayBuffer;
                 const ct2 = await bobCipher.encrypt(reply);
                 assert.strictEqual(ct2.type, 1);
-                const pt2 = await aliceCipher.decryptWhisperMessage(ct2.body, "binary");
+                const { plaintext: pt2 } = await aliceCipher.decryptWhisperMessage(ct2.body, "binary");
                 assertEqualArrayBuffers(pt2, reply);
 
                 const third = util.toArrayBuffer("third tuple") as ArrayBuffer;
                 const ct3 = await aliceCipher.encrypt(third);
                 assert.strictEqual(ct3.type, 1);
-                const pt3 = await bobCipher.decryptWhisperMessage(ct3.body, "binary");
+                const { plaintext: pt3 } = await bobCipher.decryptWhisperMessage(ct3.body, "binary");
                 assertEqualArrayBuffers(pt3, third);
             });
 
@@ -127,10 +127,46 @@ describe("OMEMO end-to-end (both versions)", function () {
                 const c1 = await aliceCipher.encrypt(m1);
                 const c2 = await aliceCipher.encrypt(m2);
                 // Deliver the second message first.
-                const p2 = await bobCipher.decryptWhisperMessage(c2.body, "binary");
-                const p1 = await bobCipher.decryptWhisperMessage(c1.body, "binary");
+                const { plaintext: p2 } = await bobCipher.decryptWhisperMessage(c2.body, "binary");
+                const { plaintext: p1 } = await bobCipher.decryptWhisperMessage(c1.body, "binary");
                 assertEqualArrayBuffers(p2, m2);
                 assertEqualArrayBuffers(p1, m1);
+            });
+
+            it("exposes the ratchet counter and key on decryption", async function () {
+                // Use a fresh session so the counters are deterministic.
+                const aStore = new InMemoryStore();
+                const bStore = new InMemoryStore();
+                await Promise.all([generateIdentity(aStore), generateIdentity(bStore)]);
+                const bundle = await makeBundle(bStore, version, 4242, 2);
+                await new SessionBuilder(aStore, BOB, version).processPreKey(bundle);
+                const aCipher = new SessionCipher(aStore, BOB, version);
+                const bCipher = new SessionCipher(bStore, ALICE, version);
+
+                // Alice's first message is a key-exchange; its inner counter is 0.
+                const m0 = util.toArrayBuffer("kex") as ArrayBuffer;
+                const c0 = await aCipher.encrypt(m0);
+                const r0 = await bCipher.decryptPreKeyWhisperMessage(c0.body, "binary");
+                assertEqualArrayBuffers(r0.plaintext, m0);
+                assert.strictEqual(r0.ratchet.counter, 0);
+                // The ratchet key is the internal 33-byte 0x05-prefixed curve form.
+                assert.strictEqual(r0.ratchet.key.byteLength, 33);
+                assert.strictEqual(new Uint8Array(r0.ratchet.key)[0], 5);
+
+                // Bob replies, so Alice performs a DH ratchet step; her subsequent
+                // messages are regular (whisper) messages on a fresh sending chain.
+                const cr = await bCipher.encrypt(util.toArrayBuffer("reply") as ArrayBuffer);
+                await aCipher.decryptWhisperMessage(cr.body, "binary");
+
+                // Two consecutive whisper messages: the counter advances 0 -> 1
+                // while the ratchet key stays the same (no further DH step).
+                const c1 = await aCipher.encrypt(util.toArrayBuffer("whisper-0") as ArrayBuffer);
+                const c2 = await aCipher.encrypt(util.toArrayBuffer("whisper-1") as ArrayBuffer);
+                const r1 = await bCipher.decryptWhisperMessage(c1.body, "binary");
+                const r2 = await bCipher.decryptWhisperMessage(c2.body, "binary");
+                assert.strictEqual(r1.ratchet.counter, 0);
+                assert.strictEqual(r2.ratchet.counter, 1);
+                assertEqualArrayBuffers(r2.ratchet.key, r1.ratchet.key);
             });
         });
     }
@@ -215,7 +251,7 @@ describe("OMEMO 2 cross-implementation vector (libomemo-c)", function () {
     });
 
     it("decrypts libomemo-c's key-exchange message", async function () {
-        const pt = await bobCipher.decryptPreKeyWhisperMessage(
+        const { plaintext: pt } = await bobCipher.decryptPreKeyWhisperMessage(
             hexToArrayBuffer(LIBOMEMO_C_VECTOR.ciphertext1),
             "binary"
         );
@@ -223,7 +259,7 @@ describe("OMEMO 2 cross-implementation vector (libomemo-c)", function () {
     });
 
     it("decrypts a second message on the same chain (counter advances)", async function () {
-        const pt = await bobCipher.decryptPreKeyWhisperMessage(
+        const { plaintext: pt } = await bobCipher.decryptPreKeyWhisperMessage(
             hexToArrayBuffer(LIBOMEMO_C_VECTOR.ciphertext2),
             "binary"
         );
