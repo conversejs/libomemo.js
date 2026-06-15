@@ -46,6 +46,19 @@
   `stopWorker`, `util`, the `curvePubKeyToEd25519PubKey` /
   `ed25519PubKeyToCurvePubKey` conversion helpers, and the public types/enums.
 
+### Breaking: decrypt methods now return a `DecryptResult`
+
+- `SessionCipher.decryptWhisperMessage` and `decryptPreKeyWhisperMessage` now
+  resolve to a `DecryptResult` (`{ plaintext, ratchet: { counter, key } }`)
+  instead of a bare plaintext `ArrayBuffer`. Existing callers must destructure
+  `plaintext` from the result.
+- `ratchet.counter` is the message index within the sender's current chain and
+  `ratchet.key` is the sender's ratchet (DH) public key in the internal 33-byte
+  `0x05`-prefixed curve form. Both are normalized identically across the legacy
+  (0.3.0) and `omemo:2` profiles, and let consumers implement protocol rules
+  such as the OMEMO heartbeat (XEP-0384).
+- New exported `DecryptResult` type.
+
 ## 1.0.0
 
 ### Breaking: `OMEMOStore` identity methods now receive full address string

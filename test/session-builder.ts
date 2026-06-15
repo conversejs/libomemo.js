@@ -39,7 +39,7 @@ describe("SessionBuilder", function () {
         it("the session can encrypt", async function () {
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
-            const plaintext = await bobSessionCipher.decryptPreKeyWhisperMessage(
+            const { plaintext } = await bobSessionCipher.decryptPreKeyWhisperMessage(
                 ciphertext.body,
                 "binary"
             );
@@ -48,7 +48,7 @@ describe("SessionBuilder", function () {
 
         it("the session can decrypt", async function () {
             const ciphertext = await bobSessionCipher.encrypt(originalMessage);
-            const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+            const { plaintext } = await aliceSessionCipher.decryptWhisperMessage(
                 ciphertext.body,
                 "binary"
             );
@@ -127,7 +127,7 @@ describe("SessionBuilder", function () {
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             assert.strictEqual(ciphertext.type, 3); // PREKEY_BUNDLE
 
-            const plaintext = await bobSessionCipher.decryptPreKeyWhisperMessage(
+            const { plaintext } = await bobSessionCipher.decryptPreKeyWhisperMessage(
                 ciphertext.body,
                 "binary"
             );
@@ -136,7 +136,7 @@ describe("SessionBuilder", function () {
 
         it("the session can decrypt", async function () {
             const ciphertext = await bobSessionCipher.encrypt(originalMessage);
-            const plaintext = await aliceSessionCipher.decryptWhisperMessage(
+            const { plaintext } = await aliceSessionCipher.decryptWhisperMessage(
                 ciphertext.body,
                 "binary"
             );

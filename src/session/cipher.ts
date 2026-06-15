@@ -8,6 +8,7 @@ import { ChainType } from "../types";
 import { getProtocolProfile, ProtocolProfile, MacContext, toExactBuffer } from "./protocol-profile";
 import {
     EncryptResult,
+    DecryptResult,
     SessionState,
     OMEMOStore,
     OMEMOVersion,
@@ -165,7 +166,7 @@ export class SessionCipher {
     async #doDecryptWhisperMessage(
         messageBytes: ArrayBuffer,
         session: SessionState | undefined
-    ): Promise<ArrayBuffer> {
+    ): Promise<DecryptResult> {
         if (!(messageBytes instanceof ArrayBuffer)) {
             throw new Error("Expected messageBytes to be an ArrayBuffer");
         }
@@ -216,14 +217,17 @@ export class SessionCipher {
 
         const plaintext = await decrypt(keys[0], parsed.ciphertext, keys[2].slice(0, 16));
         delete session.pendingPreKey;
-        return plaintext;
+        return {
+            plaintext,
+            ratchet: { counter: parsed.counter, key: parsed.ephemeralKey },
+        };
     }
 
     async #decryptWithSessionList(
         buffer: ArrayBuffer,
         sessionList: SessionState[],
         errors: unknown[] = []
-    ): Promise<{ plaintext: ArrayBuffer; session: SessionState }> {
+    ): Promise<{ result: DecryptResult; session: SessionState }> {
         if (sessionList.length === 0) {
             return Promise.reject(errors[0]);
         }
@@ -231,7 +235,7 @@ export class SessionCipher {
         const session = sessionList.pop()!;
         try {
             return {
-                plaintext: await this.#doDecryptWhisperMessage(buffer, session),
+                result: await this.#doDecryptWhisperMessage(buffer, session),
                 session,
             };
         } catch (e: unknown) {
@@ -346,7 +350,7 @@ export class SessionCipher {
     async decryptWhisperMessage(
         buffer: string | ArrayBuffer | Uint8Array,
         encoding: string
-    ): Promise<ArrayBuffer> {
+    ): Promise<DecryptResult> {
         const normalized = util.normalizeBuffer(buffer, encoding);
         const exact = toExactBuffer(normalized);
         return queueJobForNumber(this.#remoteAddress.toString(), async () => {
@@ -355,7 +359,7 @@ export class SessionCipher {
             const record = await this.#getRecord(address);
             if (!record) throw new Error(`No record for device ${address}`);
 
-            const { session, plaintext } = await this.#decryptWithSessionList(
+            const { session, result } = await this.#decryptWithSessionList(
                 exact,
                 record.getSessions()
             );
@@ -378,7 +382,7 @@ export class SessionCipher {
 
             await this.#store.storeSession(address, record.serialize());
 
-            return plaintext;
+            return result;
         });
     }
 
@@ -386,7 +390,7 @@ export class SessionCipher {
     decryptPreKeyWhisperMessage(
         buffer: string | ArrayBuffer | Uint8Array,
         encoding: string
-    ): Promise<ArrayBuffer> {
+    ): Promise<DecryptResult> {
         const normalized = util.normalizeBuffer(buffer, encoding);
         const exact = toExactBuffer(normalized);
 
@@ -410,14 +414,14 @@ export class SessionCipher {
             const preKeyId = await builder.processV3(record, parsed);
 
             const session = record.getSessionByBaseKey(parsed.baseKey);
-            const plaintext = await this.#doDecryptWhisperMessage(parsed.message, session);
+            const result = await this.#doDecryptWhisperMessage(parsed.message, session);
             record.updateSessionState(session!);
             await this.#store.storeSession(address, record.serialize());
 
             if (preKeyId !== undefined && preKeyId !== null) {
                 await this.#store.removePreKey(preKeyId);
             }
-            return plaintext;
+            return result;
         });
     }
 
