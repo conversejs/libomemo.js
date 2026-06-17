@@ -18,6 +18,12 @@
   associated data are byte-compatible with interoperating clients (e.g. Dino).
 - New `OMEMOVersion` type identifying the protocol version by its XML namespace.
 
+### Security: enforce the XEP-0384 MAX_SKIP storage limit
+
+- Cap skipped Double-Ratchet message keys at 1000 per receiving chain,
+  discarding the oldest first (FIFO). This bounds the storage-flooding DoS
+  described in the XEP's "MAX_SKIP" section.
+
 ### Breaking: `version` is now a required constructor argument
 
 - `new SessionBuilder(store, address, version)` and

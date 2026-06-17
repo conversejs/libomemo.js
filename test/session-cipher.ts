@@ -5,8 +5,8 @@ import { internalCrypto } from "../src/crypto";
 import { loadProtocolMessages, loadPushMessages } from "../src/protobufs";
 import { generateIdentity, generatePreKeyBundle } from "./utils";
 import { SendMessageData, ReceiveMessageData, TestVectors, TestVectorEntry } from "./testvectors";
-import { BaseKeyType, KeyPair } from "../src/types";
-import { OMEMOStore } from "../src/session/types";
+import { BaseKeyType, ChainType, KeyPair } from "../src/types";
+import { Chain, OMEMOStore, SessionState } from "../src/session/types";
 import InMemoryStore from "../src/session/store";
 
 enum PushMessageFlags {
@@ -527,5 +527,88 @@ describe("SessionCipher", function () {
                 }
             });
         });
+    });
+
+    describe("MAX_SKIP skipped-message-key storage cap", function () {
+        // XEP-0384 MAX_SKIP: the number of skipped message keys retained per
+        // receiving chain must be bounded (RECOMMENDED 1000), evicting the oldest
+        // on a FIFO basis. This must match MAX_SKIPPED_MESSAGE_KEYS in cipher.ts.
+        const MAX_SKIPPED = 1000;
+        // Must exceed the cap and stay under the 2000 single-jump derivation limit
+        // so one decrypt of the last message fills every intermediate key at once.
+        const N = 1100;
+
+        const ALICE_ADDRESS = new OMEMOAddress("+14151111111", 1);
+        const BOB_ADDRESS = new OMEMOAddress("+14152222222", 1);
+
+        function findReceivingChain(session: SessionState): Chain | undefined {
+            for (const key of Object.keys(session)) {
+                const value = session[key];
+                if (
+                    SessionRecord.isChainLike(value) &&
+                    (value as Chain).chainType === ChainType.RECEIVING
+                ) {
+                    return value as Chain;
+                }
+            }
+            return undefined;
+        }
+
+        it(
+            "bounds stored skipped keys per receiving chain and evicts the oldest first",
+            async function () {
+                const aliceStore = new InMemoryStore();
+                const bobStore = new InMemoryStore();
+                await Promise.all([aliceStore, bobStore].map(generateIdentity));
+
+                const preKeyBundle = await generatePreKeyBundle(bobStore, 1337, 1);
+                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+                await builder.processPreKey(preKeyBundle);
+
+                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+                const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
+
+                // Alice sends N messages without ever receiving a reply, so they all
+                // land on a single sending chain with consecutive counters 0..N-1.
+                // Bob therefore ends up with one receiving chain. Because Alice never
+                // gets a reply, every message is a PreKeyWhisperMessage carrying the
+                // same key exchange, so Bob decrypts them all via the prekey path.
+                const messages: string[] = [];
+                for (let i = 0; i < N; i++) {
+                    const ciphertext = await aliceSessionCipher.encrypt("msg-" + i);
+                    assert.strictEqual(ciphertext.type, 3);
+                    messages.push(ciphertext.body);
+                }
+
+                // Bob decrypts ONLY the last message. This single decrypt establishes
+                // the session and forces #fillMessageKeys to derive all N keys at
+                // once, exercising the FIFO eviction.
+                const last = await bobSessionCipher.decryptPreKeyWhisperMessage(messages[N - 1], "binary");
+                assert.strictEqual(util.toString(last.plaintext), "msg-" + (N - 1));
+
+                // Core fix: the per-chain skipped-key store is bounded.
+                const serialized = await bobStore.loadSession(ALICE_ADDRESS.toString());
+                const chain = findReceivingChain(SessionRecord.deserialize(serialized!).getOpenSession()!);
+                assert.isDefined(chain, "expected a receiving chain in Bob's session");
+                assert.isAtMost(Object.keys(chain.messageKeys).length, MAX_SKIPPED);
+
+                // A recent skipped message still decrypts — its key survived eviction.
+                const recent = await bobSessionCipher.decryptPreKeyWhisperMessage(messages[N - 50], "binary");
+                assert.strictEqual(util.toString(recent.plaintext), "msg-" + (N - 50));
+
+                // An old skipped message no longer decrypts — its key was evicted
+                // FIFO. This proves eviction actually happened, rather than the store
+                // simply being large.
+                let threw = false;
+                try {
+                    await bobSessionCipher.decryptPreKeyWhisperMessage(messages[5], "binary");
+                } catch (e) {
+                    threw = true;
+                    assert.strictEqual((e as Error).name, "MessageCounterError");
+                }
+                assert.isTrue(threw, "expected the evicted old message to fail to decrypt");
+            },
+            120000
+        );
     });
 });

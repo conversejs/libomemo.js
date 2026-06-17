@@ -16,6 +16,24 @@ import {
     Chain,
 } from "./types";
 
+/**
+ * XEP-0384 MAX_SKIP: the max number of skipped message keys retained per
+ * receiving chain. Once exceeded, the oldest (lowest-counter) keys are dropped
+ * on a FIFO basis. This bounds the storage-flooding DoS described in the XEP's
+ * "MAX_SKIP" / "deletion policy for skipped message keys" sections.
+ *
+ * The XEP wording is per-session; we cap per-chain (matching libsignal and the
+ * library's existing per-chain pruning in record.ts), which is simpler and
+ * serialization-compatible.
+ *
+ * This is independent of the per-message forward-jump cap (2000) in
+ * #fillMessageKeys: that bounds the work a single message can force (CPU),
+ * while this bounds the keys retained across messages (memory). The cap is
+ * enforced by FIFO eviction regardless of the jump limit, so the two need no
+ * particular relationship. The XEP RECOMMENDS ~1000 for both.
+ */
+const MAX_SKIPPED_MESSAGE_KEYS = 1000;
+
 /** Encrypts and decrypts messages for established OMEMO sessions. */
 export class SessionCipher {
     #remoteAddress: OMEMOAddress;
@@ -64,7 +82,22 @@ export class SessionCipher {
         chain.chainKey.key = key;
         chain.chainKey.counter += 1;
 
+        this.#trimSkippedMessageKeys(chain);
+
         return this.#fillMessageKeys(chain, counter);
+    }
+
+    /**
+     * Enforce MAX_SKIPPED_MESSAGE_KEYS by discarding skipped keys FIFO. Keys are
+     * only ever inserted by #fillMessageKeys, in strictly increasing counter
+     * order, so the oldest key that can need evicting is always exactly
+     * MAX_SKIPPED_MESSAGE_KEYS positions behind the one just inserted — no scan
+     * needed. delete on an absent or negative key (chain shorter than the cap)
+     * is a harmless no-op. This keeps the retained keys within a counter window
+     * of width MAX_SKIPPED_MESSAGE_KEYS behind the chain's high-water mark.
+     */
+    #trimSkippedMessageKeys(chain: Chain): void {
+        delete chain.messageKeys[chain.chainKey.counter - MAX_SKIPPED_MESSAGE_KEYS];
     }
 
     async #maybeStepRatchet(
@@ -135,7 +168,11 @@ export class SessionCipher {
         ratchet.rootKey = masterKey[0];
     }
 
-    #macContext(session: SessionState, ourIdentityKey: ArrayBuffer, direction: Direction): MacContext {
+    #macContext(
+        session: SessionState,
+        ourIdentityKey: ArrayBuffer,
+        direction: Direction
+    ): MacContext {
         return {
             ourIdentityKey,
             remoteIdentityKey: session.indexInfo.remoteIdentityKey,
