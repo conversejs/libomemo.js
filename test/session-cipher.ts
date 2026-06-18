@@ -13,32 +13,16 @@ enum PushMessageFlags {
     END_SESSION = 1,
 }
 
-interface PushMessageContentDecoded {
-    body?: string;
-    flags?: number;
-}
-
-interface PushMessageContentProto {
-    create(data?: { body?: string; flags?: number }): Record<string, unknown>;
-    encode(data: Record<string, unknown>): { finish(): Uint8Array };
-    decode(data: Uint8Array): PushMessageContentDecoded;
-}
-
-interface IncomingPushMessageSignalProto {
-    Type: { CIPHERTEXT: 1; PREKEY_BUNDLE: 3 };
-}
-
-interface PushMessagesTyped {
-    IncomingPushMessageSignal: IncomingPushMessageSignalProto;
-    PushMessageContent: PushMessageContentProto;
-}
-
 describe("SessionCipher", function () {
     describe("getRemoteRegistrationId", function () {
         const store = new InMemoryStore();
         const registrationId = 1337;
         const address = new OMEMOAddress("foo", 1);
-        const sessionCipher = new SessionCipher(store, address.toString(), "eu.siacs.conversations.axolotl");
+        const sessionCipher = new SessionCipher(
+            store,
+            address.toString(),
+            "eu.siacs.conversations.axolotl"
+        );
 
         describe("when an open record exists", function () {
             before(async () => {
@@ -75,7 +59,11 @@ describe("SessionCipher", function () {
 
         describe("when a record does not exist", function () {
             it("returns undefined", async function () {
-                const sessionCipher = new SessionCipher(store, "bar.1", "eu.siacs.conversations.axolotl");
+                const sessionCipher = new SessionCipher(
+                    store,
+                    "bar.1",
+                    "eu.siacs.conversations.axolotl"
+                );
                 const value = await sessionCipher.getRemoteRegistrationId();
                 assert.isUndefined(value);
             });
@@ -85,7 +73,11 @@ describe("SessionCipher", function () {
     describe("hasOpenSession", function () {
         const store = new InMemoryStore();
         const address = new OMEMOAddress("foo", 1);
-        const sessionCipher = new SessionCipher(store, address.toString(), "eu.siacs.conversations.axolotl");
+        const sessionCipher = new SessionCipher(
+            store,
+            address.toString(),
+            "eu.siacs.conversations.axolotl"
+        );
 
         describe("open session exists", function () {
             before(async function () {
@@ -219,8 +211,8 @@ describe("SessionCipher", function () {
 
         let plaintext: ArrayBuffer | Uint8Array<ArrayBufferLike> | undefined;
         const sessionCipher = new SessionCipher(store, address, "eu.siacs.conversations.axolotl");
-        const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
-        const Type = pushMessages.IncomingPushMessageSignal.Type;
+        const { IncomingPushMessageSignal, PushMessageContent } = loadPushMessages();
+        const Type = IncomingPushMessageSignal.Type;
 
         if (data.type == Type.CIPHERTEXT) {
             plaintext = await sessionCipher
@@ -236,7 +228,7 @@ describe("SessionCipher", function () {
 
         if (!plaintext) throw new Error("Could not decrypt");
 
-        const content = pushMessages.PushMessageContent.decode(new Uint8Array(plaintext));
+        const content = PushMessageContent.decode(new Uint8Array(plaintext));
         if (data.expectTerminateSession) {
             if (content.flags == PushMessageFlags.END_SESSION) {
                 return true;
@@ -288,8 +280,7 @@ describe("SessionCipher", function () {
             const builder = new SessionBuilder(store, address, "eu.siacs.conversations.axolotl");
             await builder.processPreKey(deviceObject);
         }
-        const pushMessages = (await loadPushMessages()) as unknown as PushMessagesTyped;
-        const PushMessageContent = pushMessages.PushMessageContent;
+        const { PushMessageContent } = loadPushMessages();
         const message = PushMessageContent.create({
             flags: data.endSession ? PushMessageFlags.END_SESSION : undefined,
             body: data.endSession ? undefined : data.smsText,
@@ -424,10 +415,22 @@ describe("SessionCipher", function () {
         before(async function () {
             await Promise.all([aliceStore, bobStore].map(generateIdentity));
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+            const builder = new SessionBuilder(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
             await builder.processPreKey(preKeyBundle);
-            aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
-            bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
+            aliceSessionCipher = new SessionCipher(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
+            bobSessionCipher = new SessionCipher(
+                bobStore,
+                ALICE_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             return bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
@@ -483,14 +486,26 @@ describe("SessionCipher", function () {
         const bobPreKeyId = 1337;
         const bobSignedKeyId = 1;
 
-        const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
+        const bobSessionCipher = new SessionCipher(
+            bobStore,
+            ALICE_ADDRESS,
+            "eu.siacs.conversations.axolotl"
+        );
 
         before(async function () {
             await Promise.all([aliceStore, bobStore].map(generateIdentity));
             const preKeyBundle = await generatePreKeyBundle(bobStore, bobPreKeyId, bobSignedKeyId);
-            const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+            const builder = new SessionBuilder(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
             await builder.processPreKey(preKeyBundle);
-            const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+            const aliceSessionCipher = new SessionCipher(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
             const ciphertext = await aliceSessionCipher.encrypt(originalMessage);
             await bobSessionCipher.decryptPreKeyWhisperMessage(ciphertext.body, "binary");
         });
@@ -510,7 +525,11 @@ describe("SessionCipher", function () {
             });
 
             it("alice cannot encrypt with the old session", async function () {
-                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+                const aliceSessionCipher = new SessionCipher(
+                    aliceStore,
+                    BOB_ADDRESS,
+                    "eu.siacs.conversations.axolotl"
+                );
                 try {
                     await aliceSessionCipher.encrypt(originalMessage);
                 } catch (e) {
@@ -519,7 +538,11 @@ describe("SessionCipher", function () {
             });
 
             it("alice cannot decrypt from the old session", async function () {
-                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
+                const aliceSessionCipher = new SessionCipher(
+                    aliceStore,
+                    BOB_ADDRESS,
+                    "eu.siacs.conversations.axolotl"
+                );
                 try {
                     await aliceSessionCipher.decryptWhisperMessage(messageFromBob.body, "binary");
                 } catch (e) {
@@ -554,61 +577,77 @@ describe("SessionCipher", function () {
             return undefined;
         }
 
-        it(
-            "bounds stored skipped keys per receiving chain and evicts the oldest first",
-            async function () {
-                const aliceStore = new InMemoryStore();
-                const bobStore = new InMemoryStore();
-                await Promise.all([aliceStore, bobStore].map(generateIdentity));
+        it("bounds stored skipped keys per receiving chain and evicts the oldest first", async function () {
+            const aliceStore = new InMemoryStore();
+            const bobStore = new InMemoryStore();
+            await Promise.all([aliceStore, bobStore].map(generateIdentity));
 
-                const preKeyBundle = await generatePreKeyBundle(bobStore, 1337, 1);
-                const builder = new SessionBuilder(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
-                await builder.processPreKey(preKeyBundle);
+            const preKeyBundle = await generatePreKeyBundle(bobStore, 1337, 1);
+            const builder = new SessionBuilder(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
+            await builder.processPreKey(preKeyBundle);
 
-                const aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS, "eu.siacs.conversations.axolotl");
-                const bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS, "eu.siacs.conversations.axolotl");
+            const aliceSessionCipher = new SessionCipher(
+                aliceStore,
+                BOB_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
+            const bobSessionCipher = new SessionCipher(
+                bobStore,
+                ALICE_ADDRESS,
+                "eu.siacs.conversations.axolotl"
+            );
 
-                // Alice sends N messages without ever receiving a reply, so they all
-                // land on a single sending chain with consecutive counters 0..N-1.
-                // Bob therefore ends up with one receiving chain. Because Alice never
-                // gets a reply, every message is a PreKeyWhisperMessage carrying the
-                // same key exchange, so Bob decrypts them all via the prekey path.
-                const messages: string[] = [];
-                for (let i = 0; i < N; i++) {
-                    const ciphertext = await aliceSessionCipher.encrypt("msg-" + i);
-                    assert.strictEqual(ciphertext.type, 3);
-                    messages.push(ciphertext.body);
-                }
+            // Alice sends N messages without ever receiving a reply, so they all
+            // land on a single sending chain with consecutive counters 0..N-1.
+            // Bob therefore ends up with one receiving chain. Because Alice never
+            // gets a reply, every message is a PreKeyWhisperMessage carrying the
+            // same key exchange, so Bob decrypts them all via the prekey path.
+            const messages: string[] = [];
+            for (let i = 0; i < N; i++) {
+                const ciphertext = await aliceSessionCipher.encrypt("msg-" + i);
+                assert.strictEqual(ciphertext.type, 3);
+                messages.push(ciphertext.body);
+            }
 
-                // Bob decrypts ONLY the last message. This single decrypt establishes
-                // the session and forces #fillMessageKeys to derive all N keys at
-                // once, exercising the FIFO eviction.
-                const last = await bobSessionCipher.decryptPreKeyWhisperMessage(messages[N - 1], "binary");
-                assert.strictEqual(util.toString(last.plaintext), "msg-" + (N - 1));
+            // Bob decrypts ONLY the last message. This single decrypt establishes
+            // the session and forces #fillMessageKeys to derive all N keys at
+            // once, exercising the FIFO eviction.
+            const last = await bobSessionCipher.decryptPreKeyWhisperMessage(
+                messages[N - 1],
+                "binary"
+            );
+            assert.strictEqual(util.toString(last.plaintext), "msg-" + (N - 1));
 
-                // Core fix: the per-chain skipped-key store is bounded.
-                const serialized = await bobStore.loadSession(ALICE_ADDRESS.toString());
-                const chain = findReceivingChain(SessionRecord.deserialize(serialized!).getOpenSession()!);
-                assert.isDefined(chain, "expected a receiving chain in Bob's session");
-                assert.isAtMost(Object.keys(chain.messageKeys).length, MAX_SKIPPED);
+            // Core fix: the per-chain skipped-key store is bounded.
+            const serialized = await bobStore.loadSession(ALICE_ADDRESS.toString());
+            const chain = findReceivingChain(
+                SessionRecord.deserialize(serialized!).getOpenSession()!
+            );
+            assert.isDefined(chain, "expected a receiving chain in Bob's session");
+            assert.isAtMost(Object.keys(chain.messageKeys).length, MAX_SKIPPED);
 
-                // A recent skipped message still decrypts — its key survived eviction.
-                const recent = await bobSessionCipher.decryptPreKeyWhisperMessage(messages[N - 50], "binary");
-                assert.strictEqual(util.toString(recent.plaintext), "msg-" + (N - 50));
+            // A recent skipped message still decrypts — its key survived eviction.
+            const recent = await bobSessionCipher.decryptPreKeyWhisperMessage(
+                messages[N - 50],
+                "binary"
+            );
+            assert.strictEqual(util.toString(recent.plaintext), "msg-" + (N - 50));
 
-                // An old skipped message no longer decrypts — its key was evicted
-                // FIFO. This proves eviction actually happened, rather than the store
-                // simply being large.
-                let threw = false;
-                try {
-                    await bobSessionCipher.decryptPreKeyWhisperMessage(messages[5], "binary");
-                } catch (e) {
-                    threw = true;
-                    assert.strictEqual((e as Error).name, "MessageCounterError");
-                }
-                assert.isTrue(threw, "expected the evicted old message to fail to decrypt");
-            },
-            120000
-        );
+            // An old skipped message no longer decrypts — its key was evicted
+            // FIFO. This proves eviction actually happened, rather than the store
+            // simply being large.
+            let threw = false;
+            try {
+                await bobSessionCipher.decryptPreKeyWhisperMessage(messages[5], "binary");
+            } catch (e) {
+                threw = true;
+                assert.strictEqual((e as Error).name, "MessageCounterError");
+            }
+            assert.isTrue(threw, "expected the evicted old message to fail to decrypt");
+        }, 120000);
     });
 });

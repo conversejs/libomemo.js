@@ -1,5 +1,13 @@
 # CHANGES
 
+## 2.0.1 (Unreleased)
+
+### Security / compatibility: eval-free protobuf (strict CSP support)
+
+- Precompile the `.proto` schemas into a static protobuf module
+  (`src/generated/protocol.js`, regenerated with `npm run proto`) instead of
+  parsing them at runtime (which required an `unsafe-eval` CSP policy).
+
 ## 2.0.0 (2026-06-18)
 
 ### OMEMO 2 (`urn:xmpp:omemo:2`) support

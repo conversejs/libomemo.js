@@ -4,6 +4,8 @@ import ts from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 
 export default [
+    // Generated protobuf codecs (npm run proto) — not hand-maintained, so not linted.
+    { ignores: ["src/generated/**"] },
     js.configs.recommended,
     {
         files: ["src/**/*.ts", "test/**/*.ts"],
