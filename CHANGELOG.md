@@ -1,6 +1,6 @@
 # CHANGES
 
-## 2.0.0
+## 2.0.0 (2026-06-18)
 
 ### OMEMO 2 (`urn:xmpp:omemo:2`) support
 
