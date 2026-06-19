@@ -54,9 +54,6 @@ export class Curve25519 {
         const basepoint_ptr = this.#allocate(module, basepoint);
 
         const err = module._curve25519_donna(publicKey_ptr, privateKey_ptr, basepoint_ptr);
-        if (err) {
-            console.log(err);
-        }
 
         const res = new Uint8Array(32);
         this.#readBytes(module, publicKey_ptr, 32, res);
@@ -64,6 +61,12 @@ export class Curve25519 {
         module._free(publicKey_ptr);
         module._free(privateKey_ptr);
         module._free(basepoint_ptr);
+
+        // Fail closed: a nonzero status means the output is undefined and must
+        // not be used as a key. Memory is freed above so throwing leaks nothing.
+        if (err) {
+            throw new Error("curve25519_donna (key generation) failed");
+        }
 
         return { pubKey: res.buffer, privKey: priv.buffer };
     }
@@ -78,9 +81,6 @@ export class Curve25519 {
         const basepoint_ptr = this.#allocate(module, new Uint8Array(pubKey));
 
         const err = module._curve25519_donna(sharedKey_ptr, privateKey_ptr, basepoint_ptr);
-        if (err) {
-            console.log(err);
-        }
 
         const res = new Uint8Array(32);
         this.#readBytes(module, sharedKey_ptr, 32, res);
@@ -88,6 +88,12 @@ export class Curve25519 {
         module._free(sharedKey_ptr);
         module._free(privateKey_ptr);
         module._free(basepoint_ptr);
+
+        // Fail closed: a nonzero status means the agreement is undefined and
+        // must not be used as a shared secret. Memory is freed above.
+        if (err) {
+            throw new Error("curve25519_donna (ECDH) failed");
+        }
 
         return res.buffer;
     }
@@ -107,9 +113,6 @@ export class Curve25519 {
             message_ptr,
             message.byteLength
         );
-        if (err) {
-            console.log(err);
-        }
 
         const res = new Uint8Array(64);
         this.#readBytes(module, signature_ptr, 64, res);
@@ -117,6 +120,12 @@ export class Curve25519 {
         module._free(signature_ptr);
         module._free(privateKey_ptr);
         module._free(message_ptr);
+
+        // Fail closed: a nonzero status means the signature is undefined and
+        // must not be emitted. Memory is freed above.
+        if (err) {
+            throw new Error("xed25519_sign failed");
+        }
 
         return res.buffer;
     }
