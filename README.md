@@ -41,6 +41,7 @@ see [Acknowledgements](#acknowledgements).
     - [Building a Session](#building-a-session)
     - [Encrypting Messages](#encrypting-messages)
     - [Decrypting Messages](#decrypting-messages)
+    - [Selecting the OMEMO version](#selecting-the-omemo-version)
 - [API Reference](#api-reference)
     - [KeyHelper](#keyhelper)
     - [SessionBuilder](#sessionbuilder)
@@ -51,6 +52,7 @@ see [Acknowledgements](#acknowledgements).
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
+- [LLM and GenAI usage](#llm-and-genai-usage)
 - [License](#license)
 
 ## Features
