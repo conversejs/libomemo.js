@@ -1,12 +1,22 @@
 # CHANGES
 
-## 2.0.1 (Unreleased)
+## 2.0.1 (2026-06-19)
 
 ### Security / compatibility: eval-free protobuf (strict CSP support)
 
 - Precompile the `.proto` schemas into a static protobuf module
   (`src/generated/protocol.js`, regenerated with `npm run proto`) instead of
   parsing them at runtime (which required an `unsafe-eval` CSP policy).
+
+### Security hardening
+
+- Harden `SessionRecord` deserialization against prototype-chain mutation.
+- Curve25519: fail closed on a nonzero WASM status, reject low-order/all-zero
+  ECDH outputs (RFC 7748), and stop mutating/aliasing the caller's private key.
+- **Behaviour change:** the DH/signature paths now require the 33-byte
+  `0x05`-prefixed public-key form; raw 32-byte keys are rejected.
+- Constant-time `util.isEqual`
+- Add `SECURITY.md`
 
 ## 2.0.0 (2026-06-18)
 
