@@ -176,6 +176,52 @@ describe("SessionRecord", function () {
             assert.strictEqual(restored.version, "v2");
             assert.strictEqual(restored.sessions["legacy"].protocolVersion, "eu.siacs.conversations.axolotl");
         });
+
+        // Regression: a tampered/untrusted persisted record must not be able to
+        // mutate prototype chains during deserialization (SEC-001, CWE-1321).
+        // `JSON.parse` surfaces a literal "__proto__" member as an own key, so
+        // assigning it back with `obj[key] = …` would reparent a fresh object.
+        function serializedSession(): string {
+            const tmp = new SessionRecord();
+            tmp.sessions["good"] = makeSession({
+                registrationId: 7,
+                currentRatchet: {} as RatchetState,
+                indexInfo: {
+                    closed: -1,
+                    baseKey: strToBytes("good"),
+                    baseKeyType: 2,
+                    remoteIdentityKey: strToBytes("x"),
+                },
+            });
+            return JSON.stringify(JSON.parse(tmp.serialize()).sessions["good"]);
+        }
+
+        it("ignores prototype-mutating session keys without reparenting record.sessions", function () {
+            const session = serializedSession();
+            const malicious = `{"version":"v2","sessions":{"__proto__":${session},"constructor":${session},"good":${session}}}`;
+
+            const restored = SessionRecord.deserialize(malicious);
+
+            // Prototype untouched and the dangerous keys never became sessions.
+            assert.strictEqual(Object.getPrototypeOf(restored.sessions), Object.prototype);
+            assert.deepEqual(Object.keys(restored.sessions), ["good"]);
+            assert.strictEqual(restored.sessions["good"].registrationId, 7);
+            // No global pollution leaked in.
+            assert.isUndefined(({} as Record<string, unknown>).polluted);
+        });
+
+        it("ignores a prototype-mutating chain key without reparenting the session", function () {
+            const sessionJson = serializedSession();
+            const evilChain = `"__proto__":{"messageKeys":{},"chainKey":{"counter":0},"chainType":1}`;
+            const tampered = sessionJson.slice(0, -1) + "," + evilChain + "}";
+            const malicious = `{"version":"v2","sessions":{"good":${tampered}}}`;
+
+            const restored = SessionRecord.deserialize(malicious);
+            const session = restored.sessions["good"];
+
+            assert.strictEqual(Object.getPrototypeOf(session), Object.prototype);
+            assert.strictEqual(session.registrationId, 7);
+        });
     });
 
     describe("hasOpenSession", function () {

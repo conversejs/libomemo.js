@@ -6,6 +6,17 @@ const ARCHIVED_STATES_MAX_LENGTH = 40;
 const OLD_RATCHETS_MAX_LENGTH = 10;
 const SESSION_RECORD_VERSION = "v2";
 
+/**
+ * Property names that, when assigned to a plain object, mutate its prototype
+ * chain instead of creating a data property. Session records are rebuilt from
+ * persisted JSON, where `JSON.parse` exposes a literal `"__proto__"` member as
+ * an own, enumerable key. Writing it back with `obj[key] = …` on a fresh object
+ * would reparent that object, so these keys are skipped during deserialization
+ * (CWE-1321). Ratchet/session keys are 33-byte binary strings and never collide
+ * with these names, so dropping them is safe.
+ */
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 const migrations: Migration[] = [
     {
         version: "v1",
@@ -83,6 +94,8 @@ export class SessionRecord {
         const record = new SessionRecord();
 
         for (const key of Object.keys(data.sessions)) {
+            if (UNSAFE_KEYS.has(key)) continue;
+
             const session = SessionRecord.deserializeSession(data.sessions[key]);
             if (session !== null) {
                 record.sessions[key] = session;
@@ -160,6 +173,8 @@ export class SessionRecord {
         };
 
         for (const key of Object.keys(serialized)) {
+            if (UNSAFE_KEYS.has(key)) continue;
+
             if (
                 key === "registrationId" ||
                 key === "protocolVersion" ||
