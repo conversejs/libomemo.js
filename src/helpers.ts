@@ -131,13 +131,17 @@ function isEqual(a: BinaryData, b: BinaryData): boolean {
     const aStr = toString(a);
     const bStr = toString(b);
     const maxLength = Math.max(aStr.length, bStr.length);
-    if (maxLength < 5) {
-        throw new Error("a/b compare too short");
+    if (maxLength < 5) throw new Error("a/b compare too short");
+
+    if (aStr.length !== bStr.length) return false;
+
+    // Constant-time compare: OR-accumulate per-character differences so the run
+    // time doesn't reveal where two values first diverge.
+    let result = 0;
+    for (let i = 0; i < aStr.length; i++) {
+        result |= aStr.charCodeAt(i) ^ bStr.charCodeAt(i);
     }
-    return (
-        aStr.substring(0, Math.min(maxLength, aStr.length)) ===
-        bStr.substring(0, Math.min(maxLength, bStr.length))
-    );
+    return result === 0;
 }
 
 export const util = { toString, toArrayBuffer, normalizeBuffer, isEqual };

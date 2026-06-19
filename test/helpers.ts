@@ -17,6 +17,10 @@ describe("util", function () {
             const b = "diferent value";
             assert.isFalse(util.isEqual(a, b));
         });
+        it("returns false for equal-length values differing in one position", function () {
+            assert.isFalse(util.isEqual("abcdefgh", "abcdefgX")); // last char
+            assert.isFalse(util.isEqual("Xbcdefgh", "abcdefgh")); // first char
+        });
         it("throws an error when a/b compare is too short", function () {
             const a = "1234";
             const b = "1234";
