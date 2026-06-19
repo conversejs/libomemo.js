@@ -131,16 +131,21 @@ describe("Curve25519", function () {
             });
         });
 
-        it("rejects the raw 32-byte all-zero public key", async function () {
-            const priv = (await curve.generateKeyPair()).privKey;
+        // SEC-004: the DH path requires the canonical 33-byte 0x05-prefixed
+        // form; a raw 32-byte (un-prefixed) key is rejected outright rather
+        // than silently coerced into a curve point.
+        it("rejects a raw 32-byte (un-prefixed) public key", async function () {
+            const kp = await curve.generateKeyPair();
+            const raw32 = kp.pubKey.slice(1); // drop the 0x05 type prefix
+            assert.strictEqual(raw32.byteLength, 32);
             let error;
             try {
-                await curve.calculateAgreement(new ArrayBuffer(32), priv);
+                await curve.calculateAgreement(raw32, kp.privKey);
             } catch (e) {
                 error = e;
             }
             expect(error).to.be.an.instanceof(Error);
-            assert.match((error as Error).message, /all-zero shared secret/);
+            assert.strictEqual((error as Error).message, "Invalid public key");
         });
 
         it("still accepts a normal peer public key", async function () {
@@ -148,6 +153,23 @@ describe("Curve25519", function () {
             const bob = await curve.generateKeyPair();
             const shared = await curve.calculateAgreement(bob.pubKey, alice.privKey);
             assert.strictEqual(shared.byteLength, 32);
+        });
+    });
+
+    describe("curvePubKeyToEd25519PubKey", function () {
+        it("accepts the 33-byte 0x05-prefixed form", async function () {
+            const kp = await curve.generateKeyPair();
+            const ed = await curve.curvePubKeyToEd25519PubKey(kp.pubKey);
+            assert.strictEqual(ed.byteLength, 32);
+        });
+
+        // SEC-004: this conversion helper explicitly opts in to the raw 32-byte
+        // form (its documented contract); both forms must yield the same key.
+        it("also accepts the raw 32-byte form and agrees with the prefixed form", async function () {
+            const kp = await curve.generateKeyPair();
+            const fromPrefixed = await curve.curvePubKeyToEd25519PubKey(kp.pubKey);
+            const fromRaw = await curve.curvePubKeyToEd25519PubKey(kp.pubKey.slice(1));
+            assertEqualArrayBuffers(fromRaw, fromPrefixed);
         });
     });
 

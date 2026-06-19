@@ -91,9 +91,7 @@ export class Curve25519 {
 
         // Fail closed: a nonzero status means the agreement is undefined and
         // must not be used as a shared secret. Memory is freed above.
-        if (err) {
-            throw new Error("curve25519_donna (ECDH) failed");
-        }
+        if (err) throw new Error("curve25519_donna (ECDH) failed");
 
         // Reject the all-zero shared secret that low-order / small-subgroup
         // public keys yield (RFC 7748 §6.1 contributory-behaviour check). The
@@ -225,29 +223,31 @@ export class Curve25519 {
         }
     }
 
-    #validatePubKeyFormat(pubKey: ArrayBuffer): ArrayBuffer | undefined {
+    /**
+     * Normalise a public key to the raw 32-byte form for the WASM layer.
+     *
+     * The canonical internal form is 33 bytes with a 0x05 type prefix. Raw
+     * 32-byte (un-prefixed) keys are accepted only when the caller explicitly
+     * opts in via `allowRawKey` — the DH and signature-verification paths do
+     * not, so a malformed or mis-encoded wire key fails closed rather than
+     * being silently coerced into a curve point.
+     */
+    #validatePubKeyFormat(pubKey: ArrayBuffer, allowRawKey = false): ArrayBuffer {
         if (!(pubKey instanceof ArrayBuffer)) {
             throw new Error("Invalid public key: expected ArrayBuffer");
         }
-        if (
-            (pubKey.byteLength !== 33 || new Uint8Array(pubKey)[0] !== 5) &&
-            pubKey.byteLength !== 32
-        ) {
-            throw new Error("Invalid public key");
-        }
-        if (pubKey.byteLength === 33) {
+        if (pubKey.byteLength === 33 && new Uint8Array(pubKey)[0] === 5) {
             return pubKey.slice(1);
         }
-        console.error(
-            "WARNING: Expected pubkey of length 33, please report the ST and client that generated the pubkey"
-        );
-        return pubKey;
+        if (allowRawKey && pubKey.byteLength === 32) {
+            return pubKey;
+        }
+        throw new Error("Invalid public key");
     }
 
     async ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer> {
-        pubKey = this.#validatePubKeyFormat(pubKey)!;
+        pubKey = this.#validatePubKeyFormat(pubKey);
         this.#validatePrivKey(privKey);
-        if (pubKey.byteLength !== 32) throw new Error("Invalid public key");
 
         return this.#sharedSecret(await this.#module, pubKey, privKey);
     }
@@ -267,8 +267,7 @@ export class Curve25519 {
      * 0x05-prefixed form or the raw 32-byte form.
      */
     async curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
-        const raw = this.#validatePubKeyFormat(pubKey)!;
-        if (raw.byteLength !== 32) throw new Error("Invalid public key");
+        const raw = this.#validatePubKeyFormat(pubKey, true);
         return this.#curvePubKeyToEd25519PubKey(await this.#module, raw);
     }
 
@@ -302,10 +301,7 @@ export class Curve25519 {
     }
 
     async verifySignature(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void> {
-        pubKey = this.#validatePubKeyFormat(pubKey)!;
-        if (pubKey.byteLength !== 32) {
-            throw new Error("Invalid public key");
-        }
+        pubKey = this.#validatePubKeyFormat(pubKey);
 
         if (msg === undefined) {
             throw new Error("Invalid message");
