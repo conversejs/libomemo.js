@@ -23,13 +23,10 @@ jobs:
       matrix:
         include:
           # TypeScript / JavaScript sources (src/, test/, build config).
+          # The native/ Curve25519 / Ed25519 C sources are vendored verbatim
+          # from upstream libomemo-c and intentionally not scanned here; our
+          # own crypto hardening lives in the TypeScript layer (src/curve.ts).
           - language: javascript-typescript
-            build-mode: none
-          # Vendored native Curve25519 / Ed25519 (XEdDSA) C sources under
-          # native/, compiled to WASM. Scanned build-less so CI needs no
-          # emscripten toolchain (which the old Autobuild step never provided,
-          # leaving the crypto core unscanned).
-          - language: c-cpp
             build-mode: none
 
     steps:
