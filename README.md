@@ -356,7 +356,6 @@ regardless of how it was drafted.
 
 ## License
 
-Copyright 2015-2018 Open Whisper Systems
-Copyright 2022-2026 JC Brand
-
-Licensed under the GPLv3: [http://www.gnu.org/licenses/gpl-3.0.html](http://www.gnu.org/licenses/gpl-3.0.html)
+- Copyright 2015-2018 Open Whisper Systems
+- Copyright 2022-2026 JC Brand
+- Licensed under the GPLv3: [http://www.gnu.org/licenses/gpl-3.0.html](http://www.gnu.org/licenses/gpl-3.0.html)
