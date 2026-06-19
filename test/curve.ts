@@ -31,6 +31,23 @@ describe("Curve25519", function () {
             assertEqualArrayBuffers(kp.privKey, kp2.privKey);
         });
 
+        // Clamping must not mutate or alias the caller's input buffer.
+        it("does not mutate or alias the input private key", async function () {
+            // All-0xFF is not clamped, so clamping is observable: byte 0 -> 0xF8,
+            // byte 31 -> 0x7F.
+            const input = new Uint8Array(32).fill(0xff).buffer;
+            const keyPair = await curve.createKeyPair(input);
+
+            // The caller's buffer is left exactly as supplied.
+            assert.isTrue(new Uint8Array(input).every((b) => b === 0xff));
+            // The returned key is an independent buffer, not the input.
+            assert.notStrictEqual(keyPair.privKey, input);
+            // ...and it carries the clamped scalar.
+            const clamped = new Uint8Array(keyPair.privKey);
+            assert.strictEqual(clamped[0], 0xf8);
+            assert.strictEqual(clamped[31], 0x7f);
+        });
+
         it("throws for invalid private key (not ArrayBuffer)", async function () {
             let error;
             try {
@@ -131,7 +148,7 @@ describe("Curve25519", function () {
             });
         });
 
-        // SEC-004: the DH path requires the canonical 33-byte 0x05-prefixed
+        // The DH path requires the canonical 33-byte 0x05-prefixed
         // form; a raw 32-byte (un-prefixed) key is rejected outright rather
         // than silently coerced into a curve point.
         it("rejects a raw 32-byte (un-prefixed) public key", async function () {
@@ -163,7 +180,7 @@ describe("Curve25519", function () {
             assert.strictEqual(ed.byteLength, 32);
         });
 
-        // SEC-004: this conversion helper explicitly opts in to the raw 32-byte
+        // This conversion helper explicitly opts in to the raw 32-byte
         // form (its documented contract); both forms must yield the same key.
         it("also accepts the raw 32-byte form and agrees with the prefixed form", async function () {
             const kp = await curve.generateKeyPair();

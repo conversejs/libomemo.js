@@ -44,7 +44,10 @@ export class Curve25519 {
     }
 
     #keyPair(module: Curve25519EmscriptenModule, privKey: ArrayBuffer): KeyPair {
-        const priv = new Uint8Array(privKey);
+        // Copy before clamping: `new Uint8Array(privKey)` would be a view over
+        // the caller's buffer, so clamping in place would mutate their input and
+        // alias it into the returned key. slice() gives us an independent buffer.
+        const priv = new Uint8Array(privKey.slice(0));
         priv[0] &= 248;
         priv[31] &= 127;
         priv[31] |= 64;
