@@ -95,6 +95,18 @@ export class Curve25519 {
             throw new Error("curve25519_donna (ECDH) failed");
         }
 
+        // Reject the all-zero shared secret that low-order / small-subgroup
+        // public keys yield (RFC 7748 §6.1 contributory-behaviour check). The
+        // OR-accumulate runs over all 32 bytes regardless, so the check itself
+        // leaks nothing about the secret.
+        let nonzero = 0;
+        for (let i = 0; i < res.length; i++) {
+            nonzero |= res[i];
+        }
+        if (nonzero === 0) {
+            throw new Error("Invalid public key: produced an all-zero shared secret");
+        }
+
         return res.buffer;
     }
 
