@@ -161,6 +161,15 @@ export interface ProtocolProfile {
      * libomemo-c.
      */
     signedPreKeySignatureData(publicKey: ArrayBuffer): ArrayBuffer;
+
+    /**
+     * Normalise a (signed-)pre-key public received on the wire (from a PreKey
+     * bundle) into the library's internal 33-byte 0x05-prefixed curve form. 0.3.0
+     * publishes that form already; omemo:2 transfers the raw 32-byte curve form
+     * and restores the prefix here. This mirrors the wire→internal normalisation
+     * the profile already applies to ratchet/base keys on the message paths.
+     */
+    normalizeRemotePreKey(wireKey: ArrayBuffer): ArrayBuffer;
 }
 
 /**
@@ -346,6 +355,12 @@ const OMEMO_0_3_0: ProtocolProfile = {
     signedPreKeySignatureData(publicKey: ArrayBuffer): ArrayBuffer {
         return publicKey;
     },
+
+    normalizeRemotePreKey(wireKey: ArrayBuffer): ArrayBuffer {
+        // 0.3.0 publishes the 33-byte 0x05-prefixed form; a raw 32-byte key is
+        // malformed and is left to fail closed on the DH path.
+        return wireKey;
+    },
 };
 
 /** Profile for OMEMO 2 (urn:xmpp:omemo:2). */
@@ -499,6 +514,12 @@ const OMEMO_2: ProtocolProfile = {
     signedPreKeySignatureData(publicKey: ArrayBuffer): ArrayBuffer {
         // omemo:2 signs the raw 32-byte Curve25519 (Montgomery) form.
         return stripKeyType(publicKey);
+    },
+
+    normalizeRemotePreKey(wireKey: ArrayBuffer): ArrayBuffer {
+        // omemo:2 transfers the raw 32-byte curve form; restore the 0x05 prefix
+        // to the library's internal form (no-op if already prefixed).
+        return addKeyType(wireKey);
     },
 };
 
