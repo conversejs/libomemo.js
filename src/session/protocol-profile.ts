@@ -109,13 +109,15 @@ export interface ProtocolProfile {
     messageKeyInfo: string;
 
     /** Serialise the inner ratchet message (WhisperMessage / OMEMOMessage). */
-    encodeInner(parts: RatchetMessageParts): Promise<Uint8Array>;
+    encodeInner(parts: RatchetMessageParts): Uint8Array;
+
     /** Compute the (already-truncated) MAC over the encoded inner message. */
     computeMac(
         authKey: ArrayBuffer,
         encodedInner: Uint8Array,
         ctx: MacContext
     ): Promise<ArrayBuffer>;
+
     /** Verify the MAC over the encoded inner message; throws on mismatch. */
     verifyMac(
         authKey: ArrayBuffer,
@@ -123,13 +125,16 @@ export interface ProtocolProfile {
         ctx: MacContext,
         mac: ArrayBuffer
     ): Promise<void>;
+
     /** Frame the final ratchet-message body (version byte + MAC, or OMEMOAuthenticatedMessage). */
-    frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Promise<Uint8Array>;
+    frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Uint8Array;
+
     /** Parse an incoming ratchet-message body. */
-    parseMessage(bytes: ArrayBuffer): Promise<ParsedRatchetMessage>;
+    parseMessage(bytes: ArrayBuffer): ParsedRatchetMessage;
 
     /** Wrap an already-framed ratchet message in a key-exchange message body. */
     encodeKeyExchange(parts: KeyExchangeParts, framedMessage: Uint8Array): Promise<Uint8Array>;
+
     /** Parse an incoming key-exchange message body. */
     parseKeyExchange(bytes: ArrayBuffer): Promise<ParsedKeyExchange>;
 
@@ -240,8 +245,8 @@ const OMEMO_0_3_0: ProtocolProfile = {
     rootChainInfo: "WhisperRatchet",
     messageKeyInfo: "WhisperMessageKeys",
 
-    async encodeInner(parts: RatchetMessageParts): Promise<Uint8Array> {
-        const { WhisperMessage } = await loadProtocolMessages();
+    encodeInner(parts: RatchetMessageParts): Uint8Array {
+        const { WhisperMessage } = loadProtocolMessages();
         const msg = WhisperMessage.create({
             ephemeralKey: new Uint8Array(parts.ephemeralKey),
             counter: parts.counter,
@@ -269,7 +274,7 @@ const OMEMO_0_3_0: ProtocolProfile = {
         await verifyMAC(buildV3MacInput(encodedInner, ctx), authKey, mac, 8);
     },
 
-    async frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Promise<Uint8Array> {
+    frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Uint8Array {
         const result = new Uint8Array(encodedInner.byteLength + 1 + mac.byteLength);
         result[0] = V3_VERSION_BYTE;
         result.set(encodedInner, 1);
@@ -277,7 +282,7 @@ const OMEMO_0_3_0: ProtocolProfile = {
         return result;
     },
 
-    async parseMessage(bytes: ArrayBuffer): Promise<ParsedRatchetMessage> {
+    parseMessage(bytes: ArrayBuffer): ParsedRatchetMessage {
         const version = new Uint8Array(bytes)[0];
         if ((version & 0xf) > 3 || version >> 4 < 3) {
             throw new Error("Incompatible version number on WhisperMessage");
@@ -285,7 +290,7 @@ const OMEMO_0_3_0: ProtocolProfile = {
         const encodedInner = new Uint8Array(bytes.slice(1, bytes.byteLength - 8));
         const mac = bytes.slice(bytes.byteLength - 8, bytes.byteLength);
 
-        const { WhisperMessage } = await loadProtocolMessages();
+        const { WhisperMessage } = loadProtocolMessages();
         const message = WhisperMessage.decode(encodedInner) as unknown as WhisperMessageProto;
         return {
             ephemeralKey: toExactBuffer(message.ephemeralKey),
@@ -301,7 +306,7 @@ const OMEMO_0_3_0: ProtocolProfile = {
         parts: KeyExchangeParts,
         framedMessage: Uint8Array
     ): Promise<Uint8Array> {
-        const { PreKeyWhisperMessage } = await loadProtocolMessages();
+        const { PreKeyWhisperMessage } = loadProtocolMessages();
         const preKeyMsg = PreKeyWhisperMessage.create({
             baseKey: new Uint8Array(parts.baseKey),
             identityKey: new Uint8Array(parts.ourIdentityKey.pubKey),
@@ -322,7 +327,7 @@ const OMEMO_0_3_0: ProtocolProfile = {
         if ((version & 0xf) > 3 || version >> 4 < 3) {
             throw new Error("Incompatible version number on PreKeyWhisperMessage");
         }
-        const { PreKeyWhisperMessage } = await loadProtocolMessages();
+        const { PreKeyWhisperMessage } = loadProtocolMessages();
         const proto = PreKeyWhisperMessage.decode(
             new Uint8Array(bytes.slice(1))
         ) as unknown as PreKeyWhisperMessageProto;
@@ -372,8 +377,8 @@ const OMEMO_2: ProtocolProfile = {
     rootChainInfo: "OMEMO Root Chain",
     messageKeyInfo: "OMEMO Message Key Material",
 
-    async encodeInner(parts: RatchetMessageParts): Promise<Uint8Array> {
-        const { OMEMOMessage } = await loadOMEMOMessages();
+    encodeInner(parts: RatchetMessageParts): Uint8Array {
+        const { OMEMOMessage } = loadOMEMOMessages();
         // dh_pub is the raw 32-byte curve key (RFC 7748), without the 0x05 prefix.
         const msg = OMEMOMessage.create({
             n: parts.counter,
@@ -410,8 +415,8 @@ const OMEMO_2: ProtocolProfile = {
         await verifyMAC(macInput, authKey, mac, 16);
     },
 
-    async frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Promise<Uint8Array> {
-        const { OMEMOAuthenticatedMessage } = await loadOMEMOMessages();
+    frameMessage(encodedInner: Uint8Array, mac: ArrayBuffer): Uint8Array {
+        const { OMEMOAuthenticatedMessage } = loadOMEMOMessages();
         const authMsg = OMEMOAuthenticatedMessage.create({
             mac: new Uint8Array(mac),
             message: encodedInner,
@@ -419,8 +424,8 @@ const OMEMO_2: ProtocolProfile = {
         return OMEMOAuthenticatedMessage.encode(authMsg).finish();
     },
 
-    async parseMessage(bytes: ArrayBuffer): Promise<ParsedRatchetMessage> {
-        const { OMEMOMessage, OMEMOAuthenticatedMessage } = await loadOMEMOMessages();
+    parseMessage(bytes: ArrayBuffer): ParsedRatchetMessage {
+        const { OMEMOMessage, OMEMOAuthenticatedMessage } = loadOMEMOMessages();
         const authMsg = OMEMOAuthenticatedMessage.decode(new Uint8Array(bytes)) as unknown as {
             mac: Uint8Array;
             message: Uint8Array;
@@ -441,7 +446,7 @@ const OMEMO_2: ProtocolProfile = {
         parts: KeyExchangeParts,
         framedMessage: Uint8Array
     ): Promise<Uint8Array> {
-        const { OMEMOAuthenticatedMessage, OMEMOKeyExchange } = await loadOMEMOMessages();
+        const { OMEMOAuthenticatedMessage, OMEMOKeyExchange } = loadOMEMOMessages();
         // ik is the 32-byte Ed25519 form of our identity key; ek is the raw 32-byte curve base key.
         const ik = await internalCrypto.curvePubKeyToEd25519PubKey(parts.ourIdentityKey.pubKey);
         // The profile interface frames messages as bytes (opaque for 0.3.0), so we
@@ -460,7 +465,7 @@ const OMEMO_2: ProtocolProfile = {
     },
 
     async parseKeyExchange(bytes: ArrayBuffer): Promise<ParsedKeyExchange> {
-        const { OMEMOAuthenticatedMessage, OMEMOKeyExchange } = await loadOMEMOMessages();
+        const { OMEMOAuthenticatedMessage, OMEMOKeyExchange } = loadOMEMOMessages();
         const proto = OMEMOKeyExchange.decode(
             new Uint8Array(bytes)
         ) as unknown as OMEMOKeyExchangeProto;
