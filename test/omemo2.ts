@@ -199,6 +199,59 @@ describe("OMEMO 2 trust-key enforcement", function () {
     });
 });
 
+describe("OMEMO 2 wire-form pre-key bundle", function () {
+    const ALICE = new OMEMOAddress("alice@example.org", 1);
+    const BOB = new OMEMOAddress("bob@example.org", 1);
+
+    /** Drop the 0x05 type prefix, yielding the raw 32-byte curve key. */
+    function stripPrefix(key: ArrayBuffer): ArrayBuffer {
+        const bytes = new Uint8Array(key);
+        assert.strictEqual(bytes.byteLength, 33);
+        assert.strictEqual(bytes[0], 5);
+        return key.slice(1);
+    }
+
+    // omemo:2 (XEP-0384) publishes the signed-pre-key and pre-keys in their raw
+    // 32-byte curve form, without the 0x05 type prefix. processPreKey must accept
+    // that wire form (regression: a stricter curve check rejected the unprefixed
+    // keys with "Invalid public key", breaking all new omemo:2 sessions).
+    it("builds a session from raw 32-byte (unprefixed) signed-pre-key and pre-key", async function () {
+        const aliceStore = new InMemoryStore();
+        const bobStore = new InMemoryStore();
+        await Promise.all([generateIdentity(aliceStore), generateIdentity(bobStore)]);
+
+        const bundle = await makeBundle(bobStore, "urn:xmpp:omemo:2", 1337, 1);
+        const wireBundle: PreKeyBundle = {
+            ...bundle,
+            preKey: {
+                keyId: bundle.preKey!.keyId,
+                publicKey: stripPrefix(bundle.preKey!.publicKey!),
+            },
+            signedPreKey: {
+                ...bundle.signedPreKey,
+                publicKey: stripPrefix(bundle.signedPreKey.publicKey),
+            },
+        };
+
+        await new SessionBuilder(aliceStore, BOB, "urn:xmpp:omemo:2").processPreKey(wireBundle);
+
+        // The session is established and a full key-exchange round-trip works.
+        const aliceCipher = new SessionCipher(aliceStore, BOB, "urn:xmpp:omemo:2");
+        const bobCipher = new SessionCipher(bobStore, ALICE, "urn:xmpp:omemo:2");
+        const msg = util.toArrayBuffer("wire-form kex") as ArrayBuffer;
+        const ct = await aliceCipher.encrypt(msg);
+        assert.strictEqual(ct.type, 3);
+        const { plaintext } = await bobCipher.decryptPreKeyWhisperMessage(ct.body, "binary");
+        assertEqualArrayBuffers(plaintext, msg);
+
+        // The stored remote ratchet seed is the normalised 33-byte 0x05 form.
+        const record = SessionRecord.deserialize(aliceStore.loadSession(BOB.toString())!);
+        const lastRemote = record.getOpenSession()!.currentRatchet.lastRemoteEphemeralKey;
+        assert.strictEqual(lastRemote.byteLength, 33);
+        assert.strictEqual(new Uint8Array(lastRemote)[0], 5);
+    });
+});
+
 describe("0.3.0 registrationId enforcement", function () {
     it("refuses to send a key-exchange message without a local registrationId", async function () {
         const BOB = new OMEMOAddress("bob@example.org", 1);

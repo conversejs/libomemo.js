@@ -37,6 +37,7 @@ export class SessionBuilder {
             // Normalise the remote identity key: for omemo:2 the wire form is
             // Ed25519 and is converted to its Curve25519 equivalent for DH.
             const remoteId = await this.#profile.normalizeRemoteIdentityKey(device.identityKey);
+
             // Trust is keyed on the form the consumer published in the bundle
             // (Ed25519 for omemo:2, Curve25519 for 0.3.0).
             const trustKey = remoteId.ed ?? remoteId.curve;
@@ -51,21 +52,30 @@ export class SessionBuilder {
                 throw new Error("Identity key changed");
             }
 
+            // Normalise the prekeys, which may be in the raw 32-byte curve
+            // form, to the internal 33-byte form, since the DH path
+            // no longer accepts unprefixed keys.
+            const signedPreKeyPub = this.#profile.normalizeRemotePreKey(
+                device.signedPreKey.publicKey
+            );
+            const devicePreKey = device.preKey?.publicKey
+                ? this.#profile.normalizeRemotePreKey(device.preKey.publicKey)
+                : undefined;
+
             await internalCrypto.Ed25519Verify(
                 remoteId.curve,
-                this.#profile.signedPreKeySignatureData(device.signedPreKey.publicKey),
+                this.#profile.signedPreKeySignatureData(signedPreKeyPub),
                 device.signedPreKey.signature
             );
 
             const baseKey = await internalCrypto.createKeyPair();
-            const devicePreKey = device.preKey ? device.preKey.publicKey : undefined;
             const session = await this.#initSession(
                 true,
                 baseKey,
                 undefined,
                 remoteId.curve,
                 devicePreKey,
-                device.signedPreKey.publicKey,
+                signedPreKeyPub,
                 this.#registrationId(device.registrationId),
                 remoteId.ed
             );

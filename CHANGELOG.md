@@ -1,5 +1,16 @@
 # CHANGES
 
+## 2.0.2 (Unreleased)
+
+### Fix: omemo:2 session establishment from a wire-form PreKey bundle
+
+- `SessionBuilder.processPreKey` now normalises the bundle's signed-pre-key and
+  pre-key public keys to the internal 33-byte `0x05`-prefixed curve form, via a new
+  `normalizeRemotePreKey` protocol-profile hook. omemo:2 transfers these keys in
+  their raw 32-byte curve form, which the 2.0.1 DH hardening rejected with
+  "Invalid public key", breaking the establishment of every new omemo:2
+  session.
+
 ## 2.0.1 (2026-06-19)
 
 ### Security / compatibility: eval-free protobuf (strict CSP support)
