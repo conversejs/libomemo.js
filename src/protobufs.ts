@@ -19,7 +19,7 @@ interface OMEMOMessages {
 }
 
 /** Load codecs for the Signal protocol messages. */
-export async function loadProtocolMessages(): Promise<ProtocolMessages> {
+export function loadProtocolMessages(): ProtocolMessages {
     return {
         WhisperMessage: textsecure.WhisperMessage,
         PreKeyWhisperMessage: textsecure.PreKeyWhisperMessage,
