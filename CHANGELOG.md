@@ -1,6 +1,6 @@
 # CHANGES
 
-## 2.0.2 (Unreleased)
+## 2.0.2 (2026-06-22)
 
 ### Fix: omemo:2 session establishment from a wire-form PreKey bundle
 
