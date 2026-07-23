@@ -1,10 +1,5 @@
-import Curve25519Module, {
-    Curve25519EmscriptenModule,
-    Curve25519ModuleOptions,
-} from "../build/curve25519_compiled";
+import Curve25519Module, { Curve25519EmscriptenModule } from "../build/curve25519_compiled";
 import { KeyPair } from "./types";
-
-declare const __WASM_BASE__: string | undefined;
 
 const basepoint = new Uint8Array(32);
 basepoint[0] = 9;
@@ -18,14 +13,7 @@ export class Curve25519 {
     }
 
     async #getModule(): Promise<Curve25519EmscriptenModule> {
-        const opts: Curve25519ModuleOptions = {};
-        if (typeof __WASM_BASE__ !== "undefined") {
-            opts.locateFile = (path: string): string => {
-                if (path.endsWith(".wasm")) return __WASM_BASE__ + path;
-                return path;
-            };
-        }
-        return await Curve25519Module(opts);
+        return await Curve25519Module();
     }
 
     #allocate(module: Curve25519EmscriptenModule, bytes: Uint8Array): number {
