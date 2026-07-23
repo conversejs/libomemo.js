@@ -1,6 +1,6 @@
 import { Curve25519 } from "./curve";
 import { util } from "./helpers";
-import { InternalCryptoInterface, KeyPair } from "./types";
+import { CurveBackend, InternalCryptoInterface, KeyPair } from "./types";
 
 const webCrypto = globalThis.crypto;
 
@@ -114,38 +114,87 @@ export async function verifyMAC(
     }
 }
 
+/**
+ * Runs the curve operations on the main thread via the compiled WebAssembly.
+ * A single `Curve25519` instance is created lazily and reused, so we compile and
+ * instantiate the wasm at most once for the lifetime of the backend (rather than
+ * once per operation).
+ */
+class LocalCurveBackend implements CurveBackend {
+    #curve: Curve25519 | undefined;
+
+    #get(): Curve25519 {
+        return (this.#curve ??= new Curve25519());
+    }
+
+    createKeyPair(privKey: ArrayBuffer): Promise<KeyPair> {
+        return this.#get().createKeyPair(privKey);
+    }
+
+    ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return this.#get().ECDHE(pubKey, privKey);
+    }
+
+    Ed25519Sign(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer> {
+        return this.#get().Ed25519Sign(privKey, message);
+    }
+
+    Ed25519Verify(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void> {
+        return this.#get().verifySignature(pubKey, msg, sig);
+    }
+
+    curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return this.#get().curvePubKeyToEd25519PubKey(pubKey);
+    }
+
+    ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return this.#get().ed25519PubKeyToCurvePubKey(edPubKey);
+    }
+}
+
+// The default backend runs on the main thread. `startWorker()` swaps in a
+// worker-backed one (see curve25519_worker_manager.ts); `stopWorker()` reverts.
+const localBackend: CurveBackend = new LocalCurveBackend();
+let activeBackend: CurveBackend = localBackend;
+
+/** Route curve operations through `backend` (used by `startWorker`). */
+export function setCurveBackend(backend: CurveBackend): void {
+    activeBackend = backend;
+}
+
+/** Revert curve operations to the main-thread backend (used by `stopWorker`). */
+export function resetCurveBackend(): void {
+    activeBackend = localBackend;
+}
+
+/**
+ * The main-thread backend. In the default build it runs the bundled wasm; in the
+ * `worker-client` build it is a stub whose methods throw. A worker backend uses it
+ * as its fallback target, so worker failures degrade to local wasm (default build)
+ * or to a clear error (worker-client build).
+ */
+export function getLocalCurveBackend(): CurveBackend {
+    return localBackend;
+}
+
 export const internalCrypto: InternalCryptoInterface = {
-    async createKeyPair(privKey?: ArrayBuffer): Promise<KeyPair> {
-        if (privKey === undefined) {
-            privKey = getRandomBytes(32);
-        }
-        const curve = new Curve25519();
-        return await curve.createKeyPair(privKey);
+    createKeyPair(privKey?: ArrayBuffer): Promise<KeyPair> {
+        return activeBackend.createKeyPair(privKey ?? getRandomBytes(32));
     },
-
-    async ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer> {
-        const curve = new Curve25519();
-        return await curve.ECDHE(pubKey, privKey);
+    ECDHE(pubKey: ArrayBuffer, privKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return activeBackend.ECDHE(pubKey, privKey);
     },
-
-    async Ed25519Sign(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer> {
-        const curve = new Curve25519();
-        return await curve.Ed25519Sign(privKey, message);
+    Ed25519Sign(privKey: ArrayBuffer, message: ArrayBuffer): Promise<ArrayBuffer> {
+        return activeBackend.Ed25519Sign(privKey, message);
     },
-
-    async Ed25519Verify(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void> {
-        const curve = new Curve25519();
-        return await curve.verifySignature(pubKey, msg, sig);
+    Ed25519Verify(pubKey: ArrayBuffer, msg: ArrayBuffer, sig: ArrayBuffer): Promise<void> {
+        return activeBackend.Ed25519Verify(pubKey, msg, sig);
     },
-
-    async curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
-        const curve = new Curve25519();
-        return await curve.curvePubKeyToEd25519PubKey(pubKey);
+    curvePubKeyToEd25519PubKey(pubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return activeBackend.curvePubKeyToEd25519PubKey(pubKey);
     },
-
-    async ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer> {
-        const curve = new Curve25519();
-        return await curve.ed25519PubKeyToCurvePubKey(edPubKey);
+    ed25519PubKeyToCurvePubKey(edPubKey: ArrayBuffer): Promise<ArrayBuffer> {
+        return activeBackend.ed25519PubKeyToCurvePubKey(edPubKey);
     },
 };
 
