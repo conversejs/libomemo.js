@@ -73,7 +73,7 @@ npm install libomemo.js
 Or include the UMD build directly in your webpage:
 
 ```html
-<script src="dist/libomemo.umd.js"></script>
+<script src="dist/libomemo.umd.cjs"></script>
 ```
 
 ## Requirements

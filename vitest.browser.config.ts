@@ -34,13 +34,11 @@ function stringPlugin() {
     };
 }
 
-function curveWasmInlinePlugin() {
-    const wasmPath = resolve(__dirname, "build", "curve25519_compiled.wasm");
+function curveNodeShimPlugin() {
     const wasmJsPath = resolve(__dirname, "build", "curve25519_compiled.js");
-    const wasmBase64 = readFileSync(wasmPath).toString("base64");
 
     return {
-        name: "curve-wasm-inline",
+        name: "curve-node-shim",
         resolveId(id: string) {
             if (id.includes("curve25519_compiled") && !id.endsWith(".wasm")) {
                 return wasmJsPath;
@@ -49,21 +47,11 @@ function curveWasmInlinePlugin() {
         },
         load(id: string) {
             if (id === wasmJsPath) {
-                let js = readFileSync(wasmJsPath, "utf8");
-
-                const injection = `var wasmBinary = Uint8Array.from(atob("${wasmBase64}"), c => c.charCodeAt(0));`;
-
-                js = js.replace(
-                    /^var wasmBinary;$/m,
-                    injection
-                );
-
-                js = js.replace(
+                const js = readFileSync(wasmJsPath, "utf8");
+                return js.replace(
                     "scriptDirectory = __dirname + '/';",
                     `scriptDirectory = new URL('.', import.meta.url).pathname + '/';`
                 );
-
-                return js;
             }
             return null;
         },
@@ -71,7 +59,7 @@ function curveWasmInlinePlugin() {
 }
 
 export default defineConfig({
-    plugins: [resolveTsFromJs(), stringPlugin(), curveWasmInlinePlugin()],
+    plugins: [resolveTsFromJs(), stringPlugin(), curveNodeShimPlugin()],
     test: {
         globals: true,
         include: ["test/**/*.ts"],

@@ -4,11 +4,6 @@ import { string } from "rollup-plugin-string";
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
 import esbuild from "rollup-plugin-esbuild";
-import { readFileSync } from "fs";
-import { resolve as resolvePath, basename } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export function onwarn(warning, warn) {
     if (
@@ -20,16 +15,18 @@ export function onwarn(warning, warn) {
 }
 
 /**
- * Plugin that emits the Emscripten WASM file as a sibling asset
- * and rewrites the module's wasm path to a relative import.meta.url
- * reference that resolves correctly in the output.
+ * The Emscripten module is compiled with `-s SINGLE_FILE=1` (scripts/compile.js),
+ * so the wasm is embedded as an in-JS data URI and needs no sibling asset or path
+ * rewriting. One init-time hazard remains: emcc's Node branch runs
+ * `scriptDirectory = __dirname + '/'` unconditionally, and `__dirname` does not
+ * exist in an ES module, so importing the bundle under Node ESM would throw
+ * `ReferenceError: __dirname is not defined` before any wasm work happens. This
+ * plugin neutralises that single line with an environment-agnostic expression.
+ * (scriptDirectory is unused for wasm loading once the binary is inlined.)
  */
-function emitWasmPlugin() {
-    const wasmPath = resolvePath(__dirname, "build", "curve25519_compiled.wasm");
-    const wasmName = basename(wasmPath);
-
+function patchScriptDirectoryPlugin() {
     return {
-        name: "emit-wasm",
+        name: "patch-script-directory",
         transform(code, id) {
             if (!id.includes("curve25519_compiled")) return null;
 
@@ -38,19 +35,7 @@ function emitWasmPlugin() {
                 `scriptDirectory = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src.substring(0, document.currentScript.src.lastIndexOf('/') + 1) : '';`
             );
 
-            code = code.replace(
-                /wasmBinaryFile = new URL\('curve25519_compiled\.wasm', import\.meta\.url\)\.toString\(\);/,
-                `wasmBinaryFile = '${wasmName}';`
-            );
-
             return { code, map: { mappings: "", sources: [], names: [], version: 3 } };
-        },
-        generateBundle() {
-            this.emitFile({
-                type: "asset",
-                fileName: wasmName,
-                source: readFileSync(wasmPath),
-            });
         },
     };
 }
@@ -65,7 +50,7 @@ export default [
                 sourcemap: true,
             },
             {
-                file: "dist/libomemo.umd.js",
+                file: "dist/libomemo.umd.cjs",
                 format: "umd",
                 name: "libomemo",
                 exports: "named",
@@ -77,7 +62,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
-            emitWasmPlugin(),
+            patchScriptDirectoryPlugin(),
         ],
         external: [],
         onwarn,
@@ -91,7 +76,7 @@ export default [
                 sourcemap: true,
             },
             {
-                file: "dist/libomemo.umd.min.js",
+                file: "dist/libomemo.umd.min.cjs",
                 format: "umd",
                 name: "libomemo",
                 exports: "named",
@@ -103,7 +88,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
-            emitWasmPlugin(),
+            patchScriptDirectoryPlugin(),
             esbuild({ minify: true }),
         ],
         external: [],
@@ -121,7 +106,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
-            emitWasmPlugin(),
+            patchScriptDirectoryPlugin(),
         ],
         onwarn,
     },
@@ -137,7 +122,7 @@ export default [
             typescript({ tsconfig: "./tsconfig.json", declaration: false, sourceMap: true }),
             resolve({ browser: true }),
             commonjs(),
-            emitWasmPlugin(),
+            patchScriptDirectoryPlugin(),
             esbuild({ minify: true }),
         ],
         onwarn,

@@ -40,16 +40,18 @@ function stringPlugin() {
 }
 
 /**
- * Plugin that bundles the Emscripten curve25519 module and inlines the WASM
- * binary so it doesn't need to be loaded from disk at runtime.
+ * The Emscripten curve25519 module is compiled with `-s SINGLE_FILE=1`, so the
+ * wasm is already embedded as a data URI in the .js and needs no separate file.
+ * The only thing the test runner still needs is to neutralise emcc's Node branch,
+ * which runs `scriptDirectory = __dirname + '/'` at import time; `__dirname` does
+ * not exist in the ES module the runner loads, so we rewrite it to an
+ * import.meta.url-based path.
  */
-function curveWasmInlinePlugin() {
-    const wasmPath = resolve(__dirname, "build", "curve25519_compiled.wasm");
+function curveNodeShimPlugin() {
     const wasmJsPath = resolve(__dirname, "build", "curve25519_compiled.js");
-    const wasmBase64 = readFileSync(wasmPath).toString("base64");
 
     return {
-        name: "curve-wasm-inline",
+        name: "curve-node-shim",
         resolveId(id: string) {
             if (id.includes("curve25519_compiled") && !id.endsWith(".wasm")) {
                 return wasmJsPath;
@@ -58,21 +60,11 @@ function curveWasmInlinePlugin() {
         },
         load(id: string) {
             if (id === wasmJsPath) {
-                let js = readFileSync(wasmJsPath, "utf8");
-
-                // Replace the Emscripten WASM loading with an inlined base64 version.
-                const injection = `var wasmBinary = Uint8Array.from(atob("${wasmBase64}"), c => c.charCodeAt(0));`;
-
-                // Insert after the "var wasmBinary;" declaration line
-                js = js.replace(/^var wasmBinary;$/m, injection);
-
-                // Fix __dirname not being available in ESM: replace with import.meta.url based path
-                js = js.replace(
+                const js = readFileSync(wasmJsPath, "utf8");
+                return js.replace(
                     "scriptDirectory = __dirname + '/';",
                     `scriptDirectory = new URL('.', import.meta.url).pathname + '/';`
                 );
-
-                return js;
             }
             return null;
         },
@@ -80,7 +72,7 @@ function curveWasmInlinePlugin() {
 }
 
 export default defineConfig({
-    plugins: [resolveTsFromJs(), stringPlugin(), curveWasmInlinePlugin()],
+    plugins: [resolveTsFromJs(), stringPlugin(), curveNodeShimPlugin()],
     test: {
         globals: true,
         include: ["test/**/*.ts"],

@@ -39,6 +39,14 @@ const FLAGS = [
     "MODULARIZE=1",
     "-s",
     "EXPORT_NAME=Curve25519Module",
+    // Embed the wasm as an in-JS base64 data URI instead of emitting a sibling
+    // .wasm file. The generated module then decodes it in-JS with no path
+    // resolution and no filesystem/fetch access, so it loads identically in
+    // browsers, web workers, and Node ESM without a `locateFile`/`__WASM_BASE__`
+    // hint. See rollup.config.js (patchScriptDirectoryPlugin) for the one
+    // remaining Node-ESM shim this still requires.
+    "-s",
+    "SINGLE_FILE=1",
 ];
 
 const command = ["emcc", ...SOURCE_FILES, ...FLAGS].join(" ");

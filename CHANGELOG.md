@@ -1,5 +1,19 @@
 # CHANGES
 
+## 2.1.0 (2026-07-23)
+
+### Fix: load the WebAssembly under Node.js (ESM) without a `__WASM_BASE__` hint
+
+- The Emscripten curve25519 module is now compiled with `-s SINGLE_FILE=1`, so the
+  wasm is embedded in the generated JavaScript as a base64 data URI and decoded
+  in-JS. It no longer resolves a sibling `curve25519_compiled.wasm` path, and no
+  longer reaches Emscripten's CommonJS `require('fs')`/`fetch(path)` loaders. As a
+  result the library loads identically in browsers, web workers, and Node.js ES
+  modules with no `locateFile`/`__WASM_BASE__` configuration.
+- The CommonJS entry point is renamed `dist/libomemo.umd.js` → `dist/libomemo.umd.cjs`.
+  Because `package.json` declares `"type": "module"`, Node parsed the old `.js`
+  entry as ESM and `require('libomemo.js')` failed.
+
 ## 2.0.2 (2026-06-22)
 
 ### Fix: omemo:2 session establishment from a wire-form PreKey bundle
