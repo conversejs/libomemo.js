@@ -9,11 +9,12 @@ interface WorkerMessage {
 const curve = new Curve25519();
 
 const ALLOWED_METHODS = new Set<keyof Curve25519>([
-    "generateKeyPair",
     "createKeyPair",
     "calculateAgreement",
     "calculateSignature",
     "verifySignature",
+    "curvePubKeyToEd25519PubKey",
+    "ed25519PubKeyToCurvePubKey",
 ]);
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
