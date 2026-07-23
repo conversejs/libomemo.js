@@ -1,5 +1,28 @@
 # CHANGES
 
+## 2.2.0 (Unreleased)
+
+### Off-main-thread crypto and a wasm-free `worker-client` build
+
+- `startWorker(url)` now actually offloads work. Previously it started a worker
+  that received no traffic and the curve operations still ran on the main thread.
+- The two OMEMO 2 conversions (`curvePubKeyToEd25519PubKey`,
+  `ed25519PubKeyToCurvePubKey`) are offloaded too, so a worker-only consumer never
+  needs the wasm on the main thread.
+- Worker failures degrade gracefully. A transport-level failure logs once and
+  falls back to the local backend.
+- A per-operation timeout (default 10s, `startWorker(url, { timeout })`, `0` to
+  disable) catches a worker that loads but then hangs and never replies.
+  It is treated as a transport failure and falls back like the others.
+- New build `libomemo.js/worker-client` (ESM): the same public API as the default
+  build but with **no bundled WebAssembly**. Its local backend is a stub that
+  throws until `startWorker(url)` is called, so the worker carries the only copy
+  of the wasm. Consumers that always run a worker can import this build and drop
+  the ~111KB base64 wasm from their main bundle. This is a browser optimisation,
+  Node keeps using the default build.
+- The main-thread backend now reuses a single `Curve25519`/wasm instance instead
+  of constructing a fresh one per operation.
+
 ## 2.1.0 (2026-07-23)
 
 ### Fix: load the WebAssembly under Node.js (ESM) without a `__WASM_BASE__` hint
