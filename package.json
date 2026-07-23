@@ -15,6 +15,10 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/libomemo.esm.js",
             "require": "./dist/libomemo.umd.cjs"
+        },
+        "./worker-client": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/libomemo.worker-client.esm.js"
         }
     },
     "scripts": {
