@@ -258,6 +258,44 @@ Low-level cryptographic functions for advanced use cases:
 
 `getRandomBytes`, `encrypt`, `decrypt`, `sign`, `hash`, `HKDF`, `verifyMAC`, `createKeyPair`, `ECDHE`, `Ed25519Sign`, `Ed25519Verify`
 
+## Running curve operations in a Web Worker
+
+The Curve25519 operations (key generation, ECDH, signing/verification, and the
+OMEMO 2 IdentityKey conversions) can be moved off the main thread. Call
+`startWorker(url)` with the bundled worker script; every subsequent OMEMO
+operation then runs in the worker. `stopWorker()` reverts to the main thread.
+
+```js
+import { startWorker, stopWorker, KeyHelper } from "libomemo.js";
+
+startWorker("/path/to/libomemo-worker.js"); // serve dist/libomemo-worker.js
+const identityKeyPair = await KeyHelper.generateIdentityKeyPair(); // runs in the worker
+```
+
+If the worker cannot be loaded (wrong URL, blocked by CSP, script error) or a
+call does not get a reply within the timeout (default 10s, set with
+`startWorker(url, { timeout })`, `0` disables it), the call logs an error and
+falls back to the main-thread WebAssembly, so crypto keeps working. Errors the
+worker reports for a specific operation (an invalid signature, for example) are
+propagated unchanged and do not trigger a fallback.
+
+### The `worker-client` build (no bundled WebAssembly)
+
+For apps that always run a worker, `libomemo.js/worker-client` is a second build
+with the same API but **no** embedded wasm, so the worker holds the only copy:
+
+```js
+import { startWorker, KeyHelper } from "libomemo.js/worker-client";
+
+startWorker("/path/to/libomemo-worker.js"); // required: this build has no local wasm
+const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
+```
+
+Any operation attempted before a worker is started (or while the worker is
+unavailable) rejects with a clear error, since there is no main-thread fallback.
+This build is ESM-only and intended for the browser; under Node, use the default
+build.
+
 ## Building from Source
 
 ### Prerequisites

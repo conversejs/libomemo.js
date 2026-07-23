@@ -1,9 +1,20 @@
 import { CurveBackend, KeyPair } from "./types";
 import { getLocalCurveBackend, resetCurveBackend, setCurveBackend } from "./crypto";
 
+/**
+ * How long to wait for a worker reply before treating the worker as hung. A hung
+ * worker (deadlocked, or killed by the browser without firing `onerror`) would
+ * otherwise leave the operation pending forever. Curve operations take single-digit
+ * milliseconds, so this is generous; the first call also covers worker startup and
+ * wasm compilation. Configurable per `startWorker`; pass `0` (or a non-finite value)
+ * to disable.
+ */
+const DEFAULT_WORKER_TIMEOUT_MS = 10_000;
+
 interface Job {
     resolve: (result: unknown) => void;
     reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout> | undefined;
 }
 
 interface WorkerResponse {
@@ -31,10 +42,12 @@ class Curve25519Worker {
     #jobs = new Map<number, Job>();
     #jobId = 0;
     #dead = false;
+    readonly #timeoutMs: number;
     readonly worker: Worker;
     onTransportError: (error: WorkerTransportError) => void = () => {};
 
-    constructor(url: string) {
+    constructor(url: string, timeoutMs: number) {
+        this.#timeoutMs = timeoutMs;
         this.worker = new Worker(url); // may throw synchronously (bad URL / CSP)
         this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => this.#onMessage(e.data);
         this.worker.onerror = (e: ErrorEvent) =>
@@ -44,11 +57,8 @@ class Curve25519Worker {
     }
 
     #onMessage(data: WorkerResponse): void {
-        const job = this.#jobs.get(data.id);
+        const job = this.#take(data.id);
         if (!job) return;
-
-        this.#jobs.delete(data.id);
-
         if (data.error !== undefined) {
             job.reject(new Error(data.error)); // operation error: caller must not fall back
         } else {
@@ -56,12 +66,30 @@ class Curve25519Worker {
         }
     }
 
+    // Remove a job from the pending set and cancel its timeout, returning it.
+    #take(id: number): Job | undefined {
+        const job = this.#jobs.get(id);
+        if (!job) return undefined;
+        this.#jobs.delete(id);
+        if (job.timer !== undefined) clearTimeout(job.timer);
+        return job;
+    }
+
+    // A job whose reply did not arrive in time: the worker is hung, so treat it as
+    // a transport failure (which fails every pending job and latches to fallback).
+    #onTimeout(id: number): void {
+        if (!this.#jobs.has(id)) return;
+        this.#fail(new WorkerTransportError("curve25519 worker timed out"));
+    }
+
     #fail(error: WorkerTransportError): void {
         if (this.#dead) return;
 
         this.#dead = true;
-        for (const job of this.#jobs.values()) job.reject(error);
-
+        for (const job of this.#jobs.values()) {
+            if (job.timer !== undefined) clearTimeout(job.timer);
+            job.reject(error);
+        }
         this.#jobs.clear();
         this.onTransportError(error);
     }
@@ -73,7 +101,11 @@ class Curve25519Worker {
 
         return new Promise((resolve, reject) => {
             const id = this.#jobId++;
-            this.#jobs.set(id, { resolve, reject });
+            const timer =
+                this.#timeoutMs > 0 && isFinite(this.#timeoutMs)
+                    ? setTimeout(() => this.#onTimeout(id), this.#timeoutMs)
+                    : undefined;
+            this.#jobs.set(id, { resolve, reject, timer });
             this.worker.postMessage({ id, methodName, args });
         });
     }
@@ -82,6 +114,7 @@ class Curve25519Worker {
         // Reject any in-flight jobs as a transport failure so the backend can
         // finish them on the fallback rather than leaving them pending forever.
         for (const job of this.#jobs.values()) {
+            if (job.timer !== undefined) clearTimeout(job.timer);
             job.reject(new WorkerTransportError("curve25519 worker was stopped"));
         }
         this.#jobs.clear();
@@ -103,10 +136,10 @@ class WorkerCurveBackend implements CurveBackend {
     readonly #fallback: CurveBackend;
     #loggedFailure = false;
 
-    constructor(url: string, fallback: CurveBackend) {
+    constructor(url: string, fallback: CurveBackend, timeoutMs: number) {
         this.#fallback = fallback;
         try {
-            const transport = new Curve25519Worker(url);
+            const transport = new Curve25519Worker(url, timeoutMs);
             transport.onTransportError = (err) => this.#onTransportError(err);
             this.#transport = transport;
         } catch (err) {
@@ -124,11 +157,13 @@ class WorkerCurveBackend implements CurveBackend {
                 error
             );
         }
-        this.#transport = null;
 
-        // Latch: route subsequent operations straight to the fallback instead of
-        // paying a doomed round-trip to a dead worker on every call.
-        setCurveBackend(this.#fallback);
+        // Terminate the failed worker before dropping the reference. A timed-out
+        // worker is still a live thread, and `onerror` fires for any uncaught error
+        // without killing the worker, so neither case is self-cleaning.
+        const transport = this.#transport;
+        this.#transport = null;
+        transport?.terminate();
     }
 
     async #run<T>(methodName: string, args: unknown[], local: () => Promise<T>): Promise<T> {
@@ -190,13 +225,19 @@ let activeWorkerBackend: WorkerCurveBackend | null = null;
 /**
  * Offload curve operations to the Web Worker at `url` (typically the bundled
  * `dist/libomemo-worker.js`). Subsequent OMEMO crypto runs off the main thread.
- * If the worker cannot be loaded, calls fall back to the local backend: the
- * bundled wasm in the default build, or a thrown error in the `worker-client`
- * build, which has no local wasm.
+ * If the worker cannot be loaded, or a call does not get a reply within
+ * `options.timeout` ms, calls fall back to the local backend: the bundled wasm in
+ * the default build, or a thrown error in the `worker-client` build, which has no
+ * local wasm.
+ *
+ * @param url      URL of the worker script (must be same-origin / CSP-permitted).
+ * @param options.timeout  Per-operation reply timeout in milliseconds
+ *                 (default 10000). Pass 0 to disable the timeout.
  */
-export function startWorker(url: string): void {
+export function startWorker(url: string, options: { timeout?: number } = {}): void {
     stopWorker();
-    const backend = new WorkerCurveBackend(url, getLocalCurveBackend());
+    const timeoutMs = options.timeout ?? DEFAULT_WORKER_TIMEOUT_MS;
+    const backend = new WorkerCurveBackend(url, getLocalCurveBackend(), timeoutMs);
     activeWorkerBackend = backend;
     setCurveBackend(backend);
 }

@@ -88,4 +88,21 @@ describe("Worker-backed curve dispatch", function () {
         expect(errorSpy.mock.calls.length).to.be.greaterThan(0);
         errorSpy.mockRestore();
     });
+
+    it("times out a hung worker and falls back to the local backend", async function () {
+        // A worker that loads cleanly but never replies (so onerror never fires):
+        // only the per-operation timeout can rescue the call.
+        const blob = new Blob(["self.onmessage = () => {};"], { type: "text/javascript" });
+        const hangUrl = URL.createObjectURL(blob);
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        try {
+            startWorker(hangUrl, { timeout: 200 });
+            const key = await internalCrypto.createKeyPair();
+            expect(key.pubKey.byteLength).to.equal(33);
+            expect(errorSpy.mock.calls.length).to.be.greaterThan(0);
+        } finally {
+            errorSpy.mockRestore();
+            URL.revokeObjectURL(hangUrl);
+        }
+    });
 });
