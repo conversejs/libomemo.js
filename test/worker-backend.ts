@@ -39,6 +39,8 @@ type Responder = (methodName: string, args: unknown[]) => Reply | undefined;
 class FakeWorker {
     static created: FakeWorker[] = [];
     static constructShouldThrow = false;
+    /** Responder handed to every worker built from here on, for lazily-built workers. */
+    static autoResponder: Responder | undefined;
 
     readonly url: string;
     readonly posted: WorkerRequest[] = [];
@@ -54,6 +56,7 @@ class FakeWorker {
             throw new Error("failed to construct worker (bad URL / CSP)");
         }
         this.url = url;
+        this.responder = FakeWorker.autoResponder;
         FakeWorker.created.push(this);
     }
 
@@ -101,6 +104,7 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         globalThis.Worker = FakeWorker as unknown as typeof Worker;
         FakeWorker.created = [];
         FakeWorker.constructShouldThrow = false;
+        FakeWorker.autoResponder = undefined;
         // Suppress and observe the single fallback log line.
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     });
@@ -198,11 +202,33 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         expect(worker.terminated).to.equal(true);
     });
 
-    it("times out a hung worker, falls back, and terminates it (leak fix)", async function () {
+    it("a single timeout fails only that op and keeps the worker", async function () {
+        // A lone timeout may just be a slow op or a main thread that was blocked
+        // long enough to distort the timer. Tearing the worker down for it would
+        // silently move all later crypto back onto the main thread, so it must not.
+        startWorker(WORKER_URL, { timeout: 25 });
+        const worker = FakeWorker.only(); // responder unset: this one op hangs
+
+        const key = await internalCrypto.createKeyPair();
+        expect(key.pubKey.byteLength).to.equal(33); // rescued by the timeout + fallback
+        expect(worker.terminated).to.equal(false);
+
+        // The worker is still in service, and a reply clears the timeout tally.
+        const sentinelPub = buf(33, 0xab);
+        worker.responder = () => ok({ pubKey: sentinelPub, privKey: buf(32, 0xcd) });
+        const second = await internalCrypto.createKeyPair();
+        expect(new Uint8Array(second.pubKey)).to.deep.equal(new Uint8Array(sentinelPub));
+    });
+
+    it("times out repeatedly, falls back, and terminates the hung worker (leak fix)", async function () {
         startWorker(WORKER_URL, { timeout: 25 });
         const worker = FakeWorker.only(); // responder unset: the worker never replies
 
-        const key = await internalCrypto.createKeyPair();
+        await internalCrypto.createKeyPair(); // first strike: op falls back, worker kept
+        expect(worker.terminated).to.equal(false);
+        expect(errorSpy.mock.calls.length).to.equal(0);
+
+        const key = await internalCrypto.createKeyPair(); // second strike: really hung
 
         expect(key.pubKey.byteLength).to.equal(33); // rescued by the timeout + fallback
         expect(errorSpy.mock.calls.length).to.equal(1);
@@ -214,14 +240,17 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         startWorker(WORKER_URL, { timeout: 25 });
         const worker = FakeWorker.only();
 
-        await internalCrypto.createKeyPair(); // trips the timeout, latches to local
+        await internalCrypto.createKeyPair(); // first timeout
+        await internalCrypto.createKeyPair(); // second: drops the worker
         expect(errorSpy.mock.calls.length).to.equal(1);
 
-        // Subsequent calls must not re-post to the dead worker nor log again.
+        // Within the restart backoff, calls must not re-post to the dead worker,
+        // build a replacement, nor log again.
         const postedBefore = worker.posted.length;
         const key = await internalCrypto.createKeyPair();
         expect(key.pubKey.byteLength).to.equal(33);
         expect(worker.posted.length).to.equal(postedBefore);
+        expect(FakeWorker.created).to.have.length(1);
         expect(errorSpy.mock.calls.length).to.equal(1);
     });
 
@@ -260,6 +289,38 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
             // An unintelligible worker is dropped, not trusted for later replies.
             expect(worker.terminated).to.equal(true);
             expect(errorSpy.mock.calls.length).to.equal(1);
+        }
+    });
+
+    it("rebuilds the worker after the backoff instead of falling back forever", async function () {
+        // A transport failure must not disable offloading for the life of the page.
+        // It is the difference between a transient outage and permanently degraded
+        // crypto, and in the worker-client build (whose fallback throws) between a
+        // blip and every later OMEMO operation failing.
+        let now = 1_000_000;
+        const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+        try {
+            FakeWorker.constructShouldThrow = true;
+            startWorker(WORKER_URL);
+            expect(errorSpy.mock.calls.length).to.equal(1);
+
+            FakeWorker.constructShouldThrow = false;
+            const sentinelPub = buf(33, 0xab);
+            FakeWorker.autoResponder = () => ok({ pubKey: sentinelPub, privKey: buf(32, 0xcd) });
+
+            // Inside the backoff window: no rebuild attempt, straight to local.
+            const local = await internalCrypto.createKeyPair();
+            expect(FakeWorker.created).to.have.length(0);
+            expect(new Uint8Array(local.pubKey)).to.not.deep.equal(new Uint8Array(sentinelPub));
+
+            // Past it: the next operation rebuilds the worker and runs there again.
+            now += 5_000;
+            const offloaded = await internalCrypto.createKeyPair();
+            expect(FakeWorker.created).to.have.length(1);
+            expect(new Uint8Array(offloaded.pubKey)).to.deep.equal(new Uint8Array(sentinelPub));
+            expect(errorSpy.mock.calls.length).to.equal(1); // still just the one log
+        } finally {
+            nowSpy.mockRestore();
         }
     });
 
