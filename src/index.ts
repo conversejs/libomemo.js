@@ -13,7 +13,14 @@ export { startWorker, stopWorker } from "./curve25519_worker_manager";
 export { curvePubKeyToEd25519PubKey, ed25519PubKeyToCurvePubKey } from "./crypto";
 
 export { BaseKeyType, ChainType } from "./types";
-export type { KeyPair, PreKey, SignedPreKey, PublicPreKey } from "./types";
+export type {
+    KeyPair,
+    PreKey,
+    SignedPreKey,
+    PublicPreKey,
+    StartWorkerOptions,
+    WorkerStatus,
+} from "./types";
 
 export { SessionRecord } from "./session/record";
 export { default as InMemoryStore } from "./session/store";
