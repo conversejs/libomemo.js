@@ -1,6 +1,6 @@
 # CHANGES
 
-## 2.2.0 (Unreleased)
+## 3.0.0 (2026-08-06)
 
 ### Off-main-thread crypto and a wasm-free `worker-client` build
 
@@ -9,14 +9,13 @@
 - The two OMEMO 2 conversions (`curvePubKeyToEd25519PubKey`,
   `ed25519PubKeyToCurvePubKey`) are offloaded too, so a worker-only consumer never
   needs the wasm on the main thread.
-- Worker failures degrade gracefully. A transport-level failure logs once and
-  falls back to the local backend.
+- Worker failures degrade gracefully. A transport-level failure falls back to the
+  local backend, and the fallback is logged.
 - A per-operation timeout (default 10s, `startWorker(url, { timeout })`, `0` to
-  disable) catches a worker that loads but then hangs and never replies.
-  It is treated as a transport failure and falls back like the others.
-- The worker reply protocol now asserts success explicitly (`ok: true`) instead of
-  inferring it from the absence of an error.
-- Worker failures no longer disable offloading for the lifetime of the page.
+  disable) catches a worker that loads but then hangs and never replies. A single
+  timeout fails only that operation but repeated timeouts drop the worker.
+- Worker failures no longer disable offloading for the lifetime of the page. A
+  dropped worker is rebuilt automatically on a later operation, with a backoff.
 - New `startWorker(url, { onStatusChange })` reports when operations start or stop
   running in the worker.
 - New build `libomemo.js/worker-client` (ESM): the same public API as the default
@@ -28,8 +27,6 @@
 - The main-thread backend now reuses a single `Curve25519`/wasm instance instead
   of constructing a fresh one per operation.
 
-## 2.1.0 (2026-07-23)
-
 ### Fix: load the WebAssembly under Node.js (ESM) without a `__WASM_BASE__` hint
 
 - The Emscripten curve25519 module is now compiled with `-s SINGLE_FILE=1`, so the
@@ -38,9 +35,22 @@
   longer reaches Emscripten's CommonJS `require('fs')`/`fetch(path)` loaders. As a
   result the library loads identically in browsers, web workers, and Node.js ES
   modules with no `locateFile`/`__WASM_BASE__` configuration.
-- The CommonJS entry point is renamed `dist/libomemo.umd.js` → `dist/libomemo.umd.cjs`.
-  Because `package.json` declares `"type": "module"`, Node parsed the old `.js`
-  entry as ESM and `require('libomemo.js')` failed.
+
+### Breaking: the CommonJS entry point is renamed
+
+- `dist/libomemo.umd.js` is now `dist/libomemo.umd.cjs`. Because `package.json`
+  declares `"type": "module"`, Node parsed the old `.js` entry as ESM and
+  `require('libomemo.js')` failed. Consumers importing the package by name are
+  unaffected, since `main` and `exports` point at the new file, but a `<script>`
+  tag or CDN URL naming the old path must be updated.
+
+### Breaking: the worker script must be redeployed with the library
+
+- The worker reply protocol asserts success explicitly (`ok: true`) instead of
+  inferring it from the absence of an error. A `dist/libomemo-worker.js` left over
+  from an earlier release is not understood by this version and will be treated as
+  a failed worker. Serve the worker from the same release as the library, and
+  make sure your deploy invalidates any cached copy of it.
 
 ## 2.0.2 (2026-06-22)
 
