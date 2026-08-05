@@ -279,6 +279,10 @@ falls back to the main-thread WebAssembly, so crypto keeps working. Errors the
 worker reports for a specific operation (an invalid signature, for example) are
 propagated unchanged and do not trigger a fallback.
 
+**Important**: The worker script runs inside the trust boundary and it receives
+raw private keys. Serve it as a trusted, same-origin script under your own CSP,
+and do not build its URL from remote or user-supplied input.
+
 ### The `worker-client` build (no bundled WebAssembly)
 
 For apps that always run a worker, `libomemo.js/worker-client` is a second build
@@ -293,6 +297,7 @@ const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
 
 Any operation attempted before a worker is started (or while the worker is
 unavailable) rejects with a clear error, since there is no main-thread fallback.
+
 This build is ESM-only and intended for the browser; under Node, use the default
 build.
 
