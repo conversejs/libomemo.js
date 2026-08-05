@@ -22,8 +22,14 @@ interface WorkerRequest {
 }
 
 interface Reply {
+    ok?: boolean;
     result?: unknown;
     error?: string;
+}
+
+/** A well-formed success reply, i.e. one carrying the explicit `ok: true`. */
+function ok(result?: unknown): Reply {
+    return { ok: true, result };
 }
 
 /** A responder decides how the fake worker answers a request. Returning
@@ -83,7 +89,7 @@ function buf(len: number, fill = 0): ArrayBuffer {
 
 /** A well-formed keypair reply, so createKeyPair dispatch resolves cleanly. */
 function keyPairReply(): Reply {
-    return { result: { pubKey: buf(33, 5), privKey: buf(32, 1) } };
+    return ok({ pubKey: buf(33, 5), privKey: buf(32, 1) });
 }
 
 describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
@@ -111,7 +117,7 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         // A sentinel pubKey the local wasm could never produce; if we get it back,
         // the operation genuinely ran in the worker rather than falling back.
         const sentinelPub = buf(33, 0xab);
-        worker.responder = () => ({ result: { pubKey: sentinelPub, privKey: buf(32, 0xcd) } });
+        worker.responder = () => ok({ pubKey: sentinelPub, privKey: buf(32, 0xcd) });
 
         const key = await internalCrypto.createKeyPair();
 
@@ -124,15 +130,16 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
     it("maps each CurveBackend operation to its worker protocol method name", async function () {
         startWorker(WORKER_URL);
         const worker = FakeWorker.only();
-        worker.responder = () => ({ result: buf(32) });
+        worker.responder = () => ok(buf(32));
 
         await internalCrypto.createKeyPair(buf(32));
         await internalCrypto.ECDHE(buf(33, 5), buf(32));
         await internalCrypto.Ed25519Sign(buf(32), buf(4));
-        // A defined result (not an error reply) makes verify resolve, not reject.
-        worker.responder = () => ({ result: undefined });
+        // verifySignature succeeds by resolving with no value, so only `ok: true`
+        // distinguishes this from a malformed reply.
+        worker.responder = () => ok(undefined);
         await internalCrypto.Ed25519Verify(buf(33, 5), buf(4), buf(64));
-        worker.responder = () => ({ result: buf(32) });
+        worker.responder = () => ok(buf(32));
         await internalCrypto.curvePubKeyToEd25519PubKey(buf(33, 5));
         await internalCrypto.ed25519PubKeyToCurvePubKey(buf(32));
 
@@ -149,7 +156,7 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
 
     it("propagates an operation error from the worker without falling back", async function () {
         startWorker(WORKER_URL);
-        FakeWorker.only().responder = () => ({ error: "Invalid signature" });
+        FakeWorker.only().responder = () => ({ ok: false, error: "Invalid signature" });
 
         let caught: Error | undefined;
         try {
@@ -216,6 +223,44 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         expect(key.pubKey.byteLength).to.equal(33);
         expect(worker.posted.length).to.equal(postedBefore);
         expect(errorSpy.mock.calls.length).to.equal(1);
+    });
+
+    it("fails closed on a reply that does not assert success", async function () {
+        // The pre-fix protocol inferred success from the absence of an error, so a
+        // reply carrying neither (a stale worker build, a truncated or foreign
+        // message) resolved the job. For verifySignature, which reports success by
+        // resolving with no value, that is an accepted signature. Every shape below
+        // must therefore be treated as a transport failure, never as a result.
+        const malformed: Reply[] = [
+            { result: undefined }, // no `ok`: indistinguishable from a valid verify
+            { result: "whatever" },
+            { ok: false, error: "" }, // an Error built with no message
+            { ok: false }, // a thrown non-Error, whose `.message` was undefined
+        ];
+
+        for (const reply of malformed) {
+            stopWorker();
+            FakeWorker.created = [];
+            errorSpy.mockClear();
+            startWorker(WORKER_URL);
+            const worker = FakeWorker.only();
+            worker.responder = () => reply;
+
+            let caught: Error | undefined;
+            try {
+                // Falls back to the real local wasm, which rejects these junk inputs.
+                await internalCrypto.Ed25519Verify(buf(33, 5), buf(4), buf(64));
+            } catch (e) {
+                caught = e as Error;
+            }
+
+            expect(caught, `reply ${JSON.stringify(reply)} must not verify`).to.be.instanceOf(
+                Error
+            );
+            // An unintelligible worker is dropped, not trusted for later replies.
+            expect(worker.terminated).to.equal(true);
+            expect(errorSpy.mock.calls.length).to.equal(1);
+        }
     });
 
     it("stopWorker terminates a healthy worker and reverts to the local backend", async function () {

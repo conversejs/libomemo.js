@@ -19,6 +19,7 @@ interface Job {
 
 interface WorkerResponse {
     id: number;
+    ok?: boolean; // Explicit flag. Success must be asserted by the worker, not inferred.
     result?: unknown;
     error?: string;
 }
@@ -35,8 +36,9 @@ class WorkerTransportError extends Error {}
 /**
  * Low-level message transport to the curve25519 Web Worker. Each `post()` is one
  * request/reply keyed by id. A normal error reply rejects just that job (an
- * operation error). A worker-level failure rejects every pending job with a
- * WorkerTransportError and notifies the owner through `onTransportError`.
+ * operation error). A worker-level failure (a crash, or a malformed reply)
+ * rejects every pending job with a WorkerTransportError and notifies the owner
+ * through `onTransportError`.
  */
 class Curve25519Worker {
     #jobs = new Map<number, Job>();
@@ -57,19 +59,32 @@ class Curve25519Worker {
     }
 
     #onMessage(data: WorkerResponse): void {
-        const job = this.#take(data.id);
+        const job = this.#take(data?.id);
         if (!job) return;
-        if (data.error !== undefined) {
-            job.reject(new Error(data.error)); // operation error: caller must not fall back
-        } else {
+
+        if (data.ok === true) {
             job.resolve(data.result);
+            return;
         }
+        if (typeof data.error === "string" && data.error !== "") {
+            job.reject(new Error(data.error)); // operation error: caller must not fall back
+            return;
+        }
+
+        // Neither a well-formed success nor a well-formed failure.
+        // Fail closed as a transport error.
+        const malformed = new WorkerTransportError("curve25519 worker sent a malformed reply");
+        job.reject(malformed);
+        this.#fail(malformed);
     }
 
     // Remove a job from the pending set and cancel its timeout, returning it.
-    #take(id: number): Job | undefined {
+    #take(id: number | undefined): Job | undefined {
+        if (id === undefined) return undefined;
+
         const job = this.#jobs.get(id);
         if (!job) return undefined;
+
         this.#jobs.delete(id);
         if (job.timer !== undefined) clearTimeout(job.timer);
         return job;
