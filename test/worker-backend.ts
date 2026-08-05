@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { beforeEach, afterEach, vi } from "vitest";
 import { internalCrypto } from "../src/crypto.js";
 import { startWorker, stopWorker } from "../src/curve25519_worker_manager.js";
+import type { WorkerStatus } from "../src/types.js";
 
 /**
  * Node-runnable unit tests for the worker dispatch state machine
@@ -98,6 +99,7 @@ function keyPairReply(): Reply {
 describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
     let savedWorker: typeof Worker;
     let errorSpy: ReturnType<typeof vi.spyOn>;
+    let infoSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(function () {
         savedWorker = globalThis.Worker;
@@ -105,13 +107,15 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         FakeWorker.created = [];
         FakeWorker.constructShouldThrow = false;
         FakeWorker.autoResponder = undefined;
-        // Suppress and observe the single fallback log line.
+        // Suppress and observe the fallback log line.
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     });
 
     afterEach(function () {
         stopWorker();
         errorSpy.mockRestore();
+        infoSpy.mockRestore();
         globalThis.Worker = savedWorker;
     });
 
@@ -322,6 +326,71 @@ describe("WorkerCurveBackend dispatch (Node, fake worker)", function () {
         } finally {
             nowSpy.mockRestore();
         }
+    });
+
+    it("reports offload transitions to onStatusChange, in both directions", async function () {
+        // Whether crypto is running in the worker is a security property in the
+        // default build (private keys on the main thread or not), and the automatic
+        // rebuild means it can change more than once. A console line is not an
+        // observable, so a consumer needs to be told.
+        let now = 1_000_000;
+        const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+        const seen: WorkerStatus[] = [];
+        try {
+            startWorker(WORKER_URL, { onStatusChange: (s) => seen.push({ ...s }) });
+            const worker = FakeWorker.only();
+            worker.responder = () => keyPairReply();
+
+            // Neither a healthy start nor a healthy op is a transition.
+            await internalCrypto.createKeyPair();
+            expect(seen).to.have.length(0);
+
+            worker.emitError("worker boom");
+            expect(seen).to.have.length(1);
+            expect(seen[0].offloaded).to.equal(false);
+            expect(seen[0].error).to.be.instanceOf(Error);
+
+            // Still down: staying in a state is not a transition, so no repeat.
+            await internalCrypto.createKeyPair();
+            expect(seen).to.have.length(1);
+
+            // Rebuilt and answering again, so the consumer can clear what it showed.
+            now += 5_000;
+            FakeWorker.autoResponder = () => keyPairReply();
+            await internalCrypto.createKeyPair();
+            expect(seen).to.have.length(2);
+            expect(seen[1].offloaded).to.equal(true);
+            expect(seen[1].error).to.equal(undefined);
+        } finally {
+            nowSpy.mockRestore();
+        }
+    });
+
+    it("does not report stopWorker(), which the caller already knows about", async function () {
+        const seen: WorkerStatus[] = [];
+        startWorker(WORKER_URL, { onStatusChange: (s) => seen.push({ ...s }) });
+        FakeWorker.only().responder = () => keyPairReply();
+        await internalCrypto.createKeyPair();
+
+        stopWorker();
+        expect(seen).to.have.length(0);
+    });
+
+    it("contains a throwing onStatusChange handler", async function () {
+        // The handler runs inside the dispatch path, so a consumer bug must not
+        // fail the operation that triggered it.
+        startWorker(WORKER_URL, {
+            onStatusChange: () => {
+                throw new Error("consumer handler blew up");
+            },
+        });
+        const worker = FakeWorker.only(); // responder unset: the op stays in flight
+
+        const pending = internalCrypto.createKeyPair();
+        worker.emitError("worker boom");
+
+        const key = await pending;
+        expect(key.pubKey.byteLength).to.equal(33); // completed on the local backend
     });
 
     it("stopWorker terminates a healthy worker and reverts to the local backend", async function () {

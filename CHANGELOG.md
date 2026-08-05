@@ -17,6 +17,8 @@
 - The worker reply protocol now asserts success explicitly (`ok: true`) instead of
   inferring it from the absence of an error.
 - Worker failures no longer disable offloading for the lifetime of the page.
+- New `startWorker(url, { onStatusChange })` reports when operations start or stop
+  running in the worker.
 - New build `libomemo.js/worker-client` (ESM): the same public API as the default
   build but with **no bundled WebAssembly**. Its local backend is a stub that
   throws until `startWorker(url)` is called, so the worker carries the only copy

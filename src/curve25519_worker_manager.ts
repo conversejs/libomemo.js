@@ -1,4 +1,4 @@
-import { CurveBackend, KeyPair } from "./types";
+import { CurveBackend, KeyPair, StartWorkerOptions, WorkerStatus } from "./types";
 import { getLocalCurveBackend, resetCurveBackend, setCurveBackend } from "./crypto";
 
 /**
@@ -209,17 +209,54 @@ class WorkerCurveBackend implements CurveBackend {
     readonly #url: string;
     readonly #fallback: CurveBackend;
     readonly #timeoutMs: number;
+    readonly #onStatusChange: ((status: WorkerStatus) => void) | undefined;
     #transport: Curve25519Worker | null = null;
     #stopped = false;
-    #loggedFailure = false;
     #restartAttempts = 0;
     #nextAttemptAt = 0;
+    #offloaded = true; // Whether operations are currently reaching the worker.
 
-    constructor(url: string, fallback: CurveBackend, timeoutMs: number) {
+    constructor(
+        url: string,
+        fallback: CurveBackend,
+        timeoutMs: number,
+        onStatusChange?: (status: WorkerStatus) => void
+    ) {
         this.#url = url;
         this.#fallback = fallback;
         this.#timeoutMs = timeoutMs;
+        // Assigned before #connect so a worker that fails to construct is reported.
+        this.#onStatusChange = onStatusChange;
         this.#connect();
+    }
+
+    /**
+     * Record where operations are running, announcing only genuine transitions.
+     *
+     * The consumer's callback is untrusted. It runs inside our dispatch path, so a
+     * throw from it must not fail the operation that triggered it or surface as an
+     * unhandled rejection.
+     */
+    #setOffloaded(offloaded: boolean, error?: Error): void {
+        if (this.#offloaded === offloaded) return;
+        this.#offloaded = offloaded;
+
+        if (offloaded) {
+            console.info(
+                "libomemo.js: the curve25519 worker recovered; operations are offloaded again."
+            );
+        } else {
+            console.error(
+                "libomemo.js: the curve25519 worker failed; falling back to the local backend.",
+                error
+            );
+        }
+
+        try {
+            this.#onStatusChange?.(error ? { offloaded, error } : { offloaded });
+        } catch {
+            // A broken status handler is the consumer's problem, not the crypto's.
+        }
     }
 
     /**
@@ -251,13 +288,7 @@ class WorkerCurveBackend implements CurveBackend {
     }
 
     #onTransportError(error: Error): void {
-        if (!this.#loggedFailure) {
-            this.#loggedFailure = true;
-            console.error(
-                "libomemo.js: the curve25519 worker failed; falling back to the local backend.",
-                error
-            );
-        }
+        this.#setOffloaded(false, error);
 
         // Back off before the next attempt, doubling per consecutive failure, so a
         // permanently broken worker URL costs one spawn per interval rather than one
@@ -284,15 +315,21 @@ class WorkerCurveBackend implements CurveBackend {
 
         try {
             const result = (await transport.post(methodName, args)) as T;
-            this.#restartAttempts = 0; // a completed round trip: this worker works
+            this.#onRoundTrip();
             return result;
         } catch (error) {
             // The worker died mid-call; #onTransportError has already dropped it and
             // scheduled the next attempt, so just complete this operation locally.
             if (error instanceof WorkerTransportError) return local();
-            this.#restartAttempts = 0; // an operation error also proves it is alive
+            this.#onRoundTrip(); // an operation error also proves it is alive
             throw error; // operation error: propagate
         }
+    }
+
+    /** A completed round trip: this worker works, so clear the backoff and report it. */
+    #onRoundTrip(): void {
+        this.#restartAttempts = 0;
+        this.#setOffloaded(true);
     }
 
     createKeyPair(privKey: ArrayBuffer): Promise<KeyPair> {
@@ -352,16 +389,27 @@ let activeWorkerBackend: WorkerCurveBackend | null = null;
  * disable offloading, or, in the `worker-client` build, all cryptography, for the
  * lifetime of the page. `stopWorker()` is the only permanent stop.
  *
+ * Because that movement is invisible from the outside, and in the default build it
+ * means private-key operations have moved onto the main thread, pass
+ * `options.onStatusChange` to observe it rather than relying on the console.
+ *
  * @param url      URL of the worker script. It receives raw private keys, so it must
  *                 be a trusted same-origin, CSP-permitted script, not a URL derived
  *                 from remote input.
  * @param options.timeout  Per-operation reply timeout in milliseconds
  *                 (default 10000). Pass 0 to disable the timeout.
+ * @param options.onStatusChange  Called whenever operations start or stop running in
+ *                 the worker. See {@link WorkerStatus}.
  */
-export function startWorker(url: string, options: { timeout?: number } = {}): void {
+export function startWorker(url: string, options: StartWorkerOptions = {}): void {
     stopWorker();
     const timeoutMs = options.timeout ?? DEFAULT_WORKER_TIMEOUT_MS;
-    const backend = new WorkerCurveBackend(url, getLocalCurveBackend(), timeoutMs);
+    const backend = new WorkerCurveBackend(
+        url,
+        getLocalCurveBackend(),
+        timeoutMs,
+        options.onStatusChange
+    );
     activeWorkerBackend = backend;
     setCurveBackend(backend);
 }

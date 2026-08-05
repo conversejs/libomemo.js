@@ -279,6 +279,21 @@ falls back to the main-thread WebAssembly, so crypto keeps working. Errors the
 worker reports for a specific operation (an invalid signature, for example) are
 propagated unchanged and do not trigger a fallback.
 
+Whether operations are currently offloaded is observable. In the default build
+a fallback means private key operations have moved onto the main thread, which
+some applications will want to surface or act on:
+
+```js
+startWorker("/path/to/libomemo-worker.js", {
+    onStatusChange: ({ offloaded, error }) => {
+        if (!offloaded) console.warn("OMEMO crypto is on the main thread", error);
+    },
+});
+```
+
+The callback is edge-triggered. It fires when offloading starts or stops, not per
+operation, and not for `stopWorker()`.
+
 **Important**: The worker script runs inside the trust boundary and it receives
 raw private keys. Serve it as a trusted, same-origin script under your own CSP,
 and do not build its URL from remote or user-supplied input.
